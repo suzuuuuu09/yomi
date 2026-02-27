@@ -1,9 +1,17 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "api",
+	"name": "yomi-api",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-02-27",
-	"compatibility_flags": ["nodejs_compat"]
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"routes": [
+		{
+			"pattern": "api.yomi.suzuuuuu09.com",
+			"custom_domain": true
+		}
+	]
 	// "vars": {
 	//   "MY_VAR": "my-variable"
 	// },
@@ -34,4 +42,3 @@
 	//   "head_sampling_rate": 1
 	// }
 }
-

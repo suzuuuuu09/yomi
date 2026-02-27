@@ -1,5 +1,5 @@
 {
-	"name": "api",
+	"name": "yomi-api",
 	"type": "module",
 	"scripts": {
 		"dev": "wrangler dev",
