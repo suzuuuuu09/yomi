@@ -1,0 +1,13 @@
+{
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "aliases": {
+    "components": "@/components/liftkit",
+    "utils": "@/lib/liftkit/utils",
+    "ui": "@/components/liftkit/ui",
+    "lib": "@/lib/liftkit",
+    "hooks": "@/hooks/liftkit"
+  },
+  "iconLibrary": "lucide"
+}
