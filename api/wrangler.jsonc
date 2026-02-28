@@ -8,7 +8,7 @@
 	],
 	"routes": [
 		{
-			"pattern": "api.yomi.suzuuuuu09.com",
+			"pattern": "yomi-api.suzuuuuu09.com",
 			"custom_domain": true
 		}
 	]

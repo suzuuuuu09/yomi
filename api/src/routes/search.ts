@@ -1,13 +1,17 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
+import { cache } from "hono/cache";
+import { fetchBookData } from "@/lib/fetch-book";
 import {
 	BookResponseSchema,
 	FinalResponseSchema,
 	SearchQuerySchema,
 } from "@/schemas/book";
-import { fetchBookData } from "@/lib/fetch-book";
+import { CACHE_CONFIG } from "@/config/cache";
 import type { Env } from "@/types";
 
 const searchApp = new OpenAPIHono<Env>();
+
+searchApp.use("*", cache(CACHE_CONFIG.SEARCH_BOOKS));
 
 const searchRoute = createRoute({
 	method: "get",
