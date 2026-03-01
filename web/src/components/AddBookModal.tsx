@@ -2,14 +2,18 @@
 
 import { ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react";
 import type { IconName } from "lucide-react/dynamic";
+import { css } from "styled-system/css";
 import { Flex, Stack, styled as s } from "styled-system/jsx";
-import { ModeButton } from "./ModeButton";
+import { SearchResultItem } from "@/components/SearchResultItem";
+import { useAddBook } from "@/hooks/useAddBook";
+import type { BookSearchMode } from "@/types/book-search";
 import type { Book } from "@/types/library";
 import Badge from "~liftkit/badge";
 import Card from "~liftkit/card";
 import Column from "~liftkit/column";
 import Grid from "~liftkit/grid";
 import Heading from "~liftkit/heading";
+import IconButton from "~liftkit/icon-button";
 import {
   Select,
   SelectMenu,
@@ -18,11 +22,7 @@ import {
 } from "~liftkit/select";
 import Text from "~liftkit/text";
 import TextInput from "~liftkit/text-input";
-import { css } from "styled-system/css";
-import IconButton from "~liftkit/icon-button";
-import { SearchResultItem } from "@/components/SearchResultItem";
-import type { BookSearchMode } from "@/types/book-search";
-import { useAddBook } from "@/hooks/useAddBook";
+import { ModeButton } from "./ModeButton";
 
 const GENRES = ["文学", "SF", "科学", "歴史", "社会科学", "ビジネス", "その他"];
 
@@ -79,18 +79,19 @@ export default function AddBookModal(props: AddBlockModalProps) {
       justifyContent="center"
       p={4}
     >
-      <s.button
-        type="button"
+      <s.div
         position="absolute"
         inset={0}
-        bg="blackAlpha.60"
-        backdropBlur="sm"
         w="full"
         h="full"
         border="none"
-        cursor="pointer"
         onClick={onCloseAction}
         className={css({ animation: "fadeIn 0.2s ease-out" })}
+        style={{
+          background: "rgba(0, 0, 0, 0.6)",
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+        }}
       />
 
       <s.div

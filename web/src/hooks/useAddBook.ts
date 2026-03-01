@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { Book } from "@/types/library";
 import { useBookSearchStore } from "@/store/useBookSearchStore";
 import type { BookSearchResult } from "@/types/book-search";
+import type { Book } from "@/types/library";
 
 const EMPTY_FORM = {
   title: "",

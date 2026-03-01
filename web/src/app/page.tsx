@@ -4,12 +4,14 @@ import dynamic from "next/dynamic";
 import { css } from "styled-system/css";
 import { Circle, Flex, styled as s } from "styled-system/jsx";
 import AddBookModal from "@/components/AddBookModal";
+import StarInsightPanel from "@/components/StarInsightPanel";
+import BottomDock from "@/components/sections/BottomDock";
 import StatsOverlay from "@/components/sections/StatsOverlay";
 import TopBar from "@/components/sections/TopBar";
-import { CONSTELLATION_LINES } from "@/store/useLibraryStore";
-import useLibraryStore from "@/store/useLibraryStore";
-import { useObservatory } from "@/hooks/useObservatory";
 import { IconCardButton } from "@/components/shares/IconCardButton";
+import { useObservatory } from "@/hooks/useObservatory";
+import { useStarInsight } from "@/hooks/useStarInsight";
+import useLibraryStore, { CONSTELLATION_LINES } from "@/store/useLibraryStore";
 
 const UniverseCanvas = dynamic(() => import("@/components/UniverseCanvas"), {
   ssr: false,
@@ -97,6 +99,10 @@ export default function Observatory() {
     handleStarClick,
     handleAdd,
   } = useObservatory();
+  const starInsight = useStarInsight();
+
+  const { updatePageProgress, setSelectedBook } = useLibraryStore();
+  const nowReading = books.filter((b) => b.status === "reading");
 
   return (
     <s.main position="relative" w="screen" h="screen" overflow="hidden">
@@ -113,7 +119,7 @@ export default function Observatory() {
 
       <s.div
         position="fixed"
-        bottom={36}
+        bottom={16}
         right={4}
         md={{ bottom: 6, right: 6 }}
         zIndex={30}
@@ -121,11 +127,19 @@ export default function Observatory() {
         <AddBookButton setIsAddModalOpen={setIsAddModalOpen} />
       </s.div>
 
+      <BottomDock
+        nowReading={nowReading}
+        onQuickAdd={(bookId) => updatePageProgress(bookId, 1)}
+        onBookClick={(book) => setSelectedBook(book)}
+      />
+
       <AddBookModal
         isOpen={isAddModalOpen}
         onCloseAction={() => setIsAddModalOpen(false)}
         onAddAction={handleAdd}
       />
+
+      <StarInsightPanel {...starInsight} />
 
       <StatsOverlay books={books} />
     </s.main>

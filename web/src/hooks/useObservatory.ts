@@ -1,11 +1,12 @@
 import { useCallback, useState } from "react";
-import useLibraryStore from "@/store/useLibraryStore";
-import { useFilteredBooks } from "@/hooks/useFilteredBooks";
-import type { Book } from "@/types/library";
 import { useBookCount } from "@/hooks/useBookCount";
+import { useFilteredBooks } from "@/hooks/useFilteredBooks";
+import useLibraryStore from "@/store/useLibraryStore";
+import type { Book } from "@/types/library";
 
 export function useObservatory() {
   const { selectedBookId, addBook, setSelectedBook } = useLibraryStore();
+  // TODO: 別の場所で管理したほうがいいかも？
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isBookListOpen, setIsBookListOpen] = useState(false);
 

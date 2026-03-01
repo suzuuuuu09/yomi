@@ -33,6 +33,10 @@ interface LibraryState {
   selectedBookId: string | null;
   addBook: (partial: Partial<Book>) => void;
   setSelectedBook: (book: Book | null) => void;
+  updatePageProgress: (bookId: string, delta: number) => void;
+  setPageProgress: (bookId: string, page: number) => void;
+  addNote: (bookId: string, content: string, page: number | null) => void;
+  deleteNote: (bookId: string, noteId: string) => void;
 }
 
 const useLibraryStore = create<LibraryState>((set) => ({
@@ -62,6 +66,59 @@ const useLibraryStore = create<LibraryState>((set) => ({
     }),
 
   setSelectedBook: (book) => set({ selectedBookId: book?.id ?? null }),
+
+  updatePageProgress: (bookId, delta) =>
+    set((state) => ({
+      books: state.books.map((b) =>
+        b.id === bookId
+          ? {
+              ...b,
+              currentPage: Math.min(
+                b.totalPages,
+                Math.max(0, b.currentPage + delta),
+              ),
+            }
+          : b,
+      ),
+    })),
+
+  setPageProgress: (bookId, page) =>
+    set((state) => ({
+      books: state.books.map((b) =>
+        b.id === bookId
+          ? { ...b, currentPage: Math.min(b.totalPages, Math.max(0, page)) }
+          : b,
+      ),
+    })),
+
+  addNote: (bookId, content, page) =>
+    set((state) => ({
+      books: state.books.map((b) =>
+        b.id === bookId
+          ? {
+              ...b,
+              notes: [
+                ...b.notes,
+                {
+                  id: `note-${Date.now()}`,
+                  content,
+                  page,
+                  createdAt: new Date().toLocaleDateString("ja-JP"),
+                },
+              ],
+            }
+          : b,
+      ),
+    })),
+
+  deleteNote: (bookId, noteId) =>
+    set((state) => ({
+      books: state.books.map((b) =>
+        b.id === bookId
+          ? { ...b, notes: b.notes.filter((n) => n.id !== noteId) }
+          : b,
+      ),
+    })),
 }));
 
 export default useLibraryStore;
