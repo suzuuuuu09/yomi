@@ -1,19 +1,4 @@
-export interface BookSearchResult {
-  id: string;
-  title: string;
-  authors: string[];
-  publisher?: string;
-  publishedDate?: string;
-  description?: string;
-  isbn: string | null;
-  page?: number;
-  thumbnail?: string | null;
-}
-
-export interface BookSearchResponse {
-  totalItems: number;
-  books?: BookSearchResult[];
-}
+import type { BookSearchResponse } from "@/types/book-search";
 
 const API_BASE = "https://yomi-api.suzuuuuu09.com";
 

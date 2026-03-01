@@ -1,28 +1,9 @@
 import { create } from "zustand";
-import { type BookSearchResult, searchBooks, searchByISBN } from "@/lib/api";
-
-export type BookSearchMode = "manual" | "search" | "isbn";
-
-interface BookSearchState {
-  mode: BookSearchMode;
-  query: string;
-  searchResults: BookSearchResult[];
-  totalItems: number;
-  currentPage: number;
-  isSearching: boolean;
-  hasSearched: boolean;
-  selectedResult: BookSearchResult | null;
-
-  // アクション
-  setMode: (mode: BookSearchMode) => void;
-  setQuery: (query: string) => void;
-  setSelectedResult: (result: BookSearchResult | null) => void;
-  fetchPage: (page: number) => Promise<void>;
-  reset: () => void;
-}
+import { searchBooks, searchByISBN } from "@/lib/api";
+import type { BookSearchState } from "@/types/book-search";
 
 export const useBookSearchStore = create<BookSearchState>((set, get) => ({
-  mode: "manual",
+  mode: "search",
   query: "",
   searchResults: [],
   totalItems: 0,

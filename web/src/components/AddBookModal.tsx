@@ -1,13 +1,10 @@
 "use client";
 
-import Image from "next/image";
+import { ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react";
 import type { IconName } from "lucide-react/dynamic";
-import {
-  useBookSearchStore,
-  type BookSearchMode,
-} from "@/store/useBookSearchStore";
-import type { BookSearchResult } from "@/lib/api";
-import type { Book } from "@/lib/types";
+import { Flex, Stack, styled as s } from "styled-system/jsx";
+import { ModeButton } from "./ModeButton";
+import type { Book } from "@/types/library";
 import Badge from "~liftkit/badge";
 import Card from "~liftkit/card";
 import Column from "~liftkit/column";
@@ -21,168 +18,56 @@ import {
 } from "~liftkit/select";
 import Text from "~liftkit/text";
 import TextInput from "~liftkit/text-input";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  Search,
-} from "lucide-react";
-import { useState } from "react";
 import { css } from "styled-system/css";
-import { Flex, Stack, styled as s } from "styled-system/jsx";
-import IconButton from "./liftkit/icon-button";
-import Button from "~liftkit/button";
+import IconButton from "~liftkit/icon-button";
+import { SearchResultItem } from "@/components/SearchResultItem";
+import type { BookSearchMode } from "@/types/book-search";
+import { useAddBook } from "@/hooks/useAddBook";
 
 const GENRES = ["文学", "SF", "科学", "歴史", "社会科学", "ビジネス", "その他"];
 
-interface ModeButtonProps {
-  mode: BookSearchMode;
-  current: BookSearchMode;
-  onClick: (mode: BookSearchMode) => void;
-  icon: IconName;
-  label: string;
-}
+const MODES: { mode: BookSearchMode; label: string; icon: IconName }[] = [
+  { mode: "search", label: "キーワード検索", icon: "search" },
+  { mode: "isbn", label: "ISBN検索", icon: "book-open" },
+  { mode: "manual", label: "手動入力", icon: "pencil" },
+];
 
-const ModeButton = ({ mode, current, onClick, icon, label }: ModeButtonProps) => {
-  const isSelected = current === mode;
-  return (
-    <s.div
-      flex={1}
-      display="flex"
-      style={
-        isSelected
-          ? { filter: "drop-shadow(0 0 10px rgba(99,102,241,0.55))" }
-          : undefined
-      }
-    >
-      <Button
-        label={label}
-        startIcon={icon}
-        variant={isSelected ? "fill" : "text"}
-        color={isSelected ? "primarycontainer" : "surfacevariant"}
-        size="sm"
-        onClick={() => onClick(mode)}
-        style={{
-          width: "100%",
-          justifyContent: "center",
-          opacity: isSelected ? 1 : 0.5,
-          transition: "all 0.2s ease",
-        }}
-      />
-    </s.div>
-  );
-};
-
-const SearchResultItem = ({
-  book,
-  onSelect,
-}: {
-  book: BookSearchResult;
-  onSelect: (b: BookSearchResult) => void;
-}) => (
-  <s.button
-    type="button"
-    onClick={() => onSelect(book)}
-    w="full"
-    display="flex"
-    alignItems="start"
-    gap={3}
-    p={2}
-    rounded="xl"
-    textAlign="left"
-    cursor="pointer"
-    transition="colors"
-    _hover={{ bg: "whiteAlpha.5" }}
-  >
-    <s.div
-      w={10}
-      h={14}
-      bg="whiteAlpha.10"
-      rounded="sm"
-      overflow="hidden"
-      flexShrink={0}
-    >
-      {book.thumbnail && (
-        <Image
-          src={book.thumbnail.replace("http://", "https://")}
-          width={80}
-          height={112}
-          alt={book.title}
-        />
-      )}
-    </s.div>
-    <s.div flex={1} minW={0}>
-      <s.p fontSize="sm" fontWeight="medium" color="slate.200" truncate={true}>
-        {book.title}
-      </s.p>
-      <s.p fontSize="11px" color="slate.500" truncate={true}>
-        {book.authors?.join(", ")}
-      </s.p>
-    </s.div>
-  </s.button>
-);
-
-export default function AddBookModal({
-  isOpen,
-  onCloseAction,
-  onAddAction,
-}: {
+interface AddBlockModalProps {
   isOpen: boolean;
   onCloseAction: () => void;
   onAddAction: (book: Partial<Book>) => void;
-}) {
-  const store = useBookSearchStore();
+}
 
-  const [form, setForm] = useState({
-    title: "",
-    author: "",
-    pages: "",
-    genre: "",
-    isbn: "",
-  });
+const ManualInputForm = () => {
+  return (
+    <Column gap="md">
+      <TextInput
+        placeholder="本のタイトル"
+        name="タイトル"
+        endIcon="book-open"
+      />
+      <Grid gap="md" className={css({ gridTemplateColumns: 2 })}>
+        <TextInput name="著者" placeholder="著者名" endIcon="user" />
+        <TextInput
+          name="ページ数"
+          placeholder="320"
+          endIcon="file-text"
+          type="number"
+        />
+      </Grid>
+      <TextInput name="ISBN（任意）" placeholder="978..." endIcon="barcode" />
+    </Column>
+  );
+};
 
-  const updateForm = (key: keyof typeof form, value: string) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  };
+export default function AddBookModal(props: AddBlockModalProps) {
+  const { isOpen, onCloseAction, onAddAction } = props;
+  const { store, form, setField, handleSelectResult, handleSubmit, canSubmit } =
+    useAddBook(onAddAction, onCloseAction);
 
   if (!isOpen) return null;
 
-  const handleSelectResult = (book: BookSearchResult) => {
-    store.setSelectedResult(book);
-    setForm({
-      title: book.title,
-      author: book.authors?.join(", ") || "",
-      pages: book.page ? String(book.page) : "",
-      isbn: book.isbn || "",
-      genre: form.genre,
-    });
-  };
-
-  const handleSubmit = () => {
-    const finalTitle = store.selectedResult?.title || form.title;
-    if (!finalTitle) return;
-
-    onAddAction({
-      title: finalTitle,
-      author: store.selectedResult?.authors?.join(", ") || form.author,
-      isbn: form.isbn || store.selectedResult?.isbn || "",
-      totalPages:
-        store.selectedResult?.page || Number.parseInt(form.pages, 10) || 0,
-      genre: form.genre,
-      coverUrl:
-        store.selectedResult?.thumbnail?.replace("http://", "https://") || "",
-      currentPage: 0,
-      status: "unread",
-    });
-
-    setForm({ title: "", author: "", pages: "", genre: "", isbn: "" });
-    store.reset();
-    onCloseAction();
-  };
-
   const totalPages = Math.ceil(Math.min(store.totalItems, 100) / 20);
-  const canSubmit =
-    store.mode === "manual" ? !!form.title : !!store.selectedResult;
 
   return (
     <s.div
@@ -273,9 +158,7 @@ export default function AddBookModal({
               </s.div>
             </Flex>
 
-            {/* Mode Selector */}
-            <s.div
-              display="flex"
+            <Flex
               gap={1}
               mb={6}
               rounded="2xl"
@@ -284,64 +167,20 @@ export default function AddBookModal({
               borderColor="indigo.500/25"
               style={{ padding: "4px" }}
             >
-              <ModeButton
-                mode="search"
-                current={store.mode}
-                onClick={store.setMode}
-                icon="search"
-                label="フリーワード"
-              />
-              <ModeButton
-                mode="isbn"
-                current={store.mode}
-                onClick={store.setMode}
-                icon="book-open"
-                label="ISBN検索"
-              />
-              <ModeButton
-                mode="manual"
-                current={store.mode}
-                onClick={store.setMode}
-                icon="pencil"
-                label="手動入力"
-              />
-            </s.div>
+              {MODES.map(({ mode, label, icon }) => (
+                <ModeButton
+                  key={mode}
+                  mode={mode}
+                  current={store.mode}
+                  onClick={store.setMode}
+                  icon={icon}
+                  label={label}
+                />
+              ))}
+            </Flex>
 
-            {/* Input Area */}
             {store.mode === "manual" ? (
-              <Column gap="md">
-                <TextInput
-                  placeholder="本のタイトル"
-                  name="タイトル"
-                  endIcon="book-open"
-                  value={form.title}
-                  onChange={(e) => updateForm("title", e.target.value)}
-                />
-                <Grid gap="md" className={css({ gridTemplateColumns: 2 })}>
-                  <TextInput
-                    name="著者"
-                    placeholder="著者名"
-                    endIcon="user"
-                    value={form.author}
-                    onChange={(e) => updateForm("author", e.target.value)}
-                  />
-                  <TextInput
-                    name="ページ数"
-                    placeholder="320"
-                    endIcon="file-text"
-                    type="number"
-                    value={form.pages}
-                    onChange={(e) => updateForm("pages", e.target.value)}
-                  />
-                </Grid>
-                <TextInput
-                  name="ISBN（任意）"
-                  placeholder="978..."
-                  endIcon="barcode"
-                  value={form.isbn}
-                  onChange={(e) => updateForm("isbn", e.target.value)}
-                />
-              </Column>
+              <ManualInputForm />
             ) : (
               <Stack dir="column">
                 <Flex align="flex-end" gap={2}>
@@ -424,7 +263,6 @@ export default function AddBookModal({
               </Stack>
             )}
 
-            {/* Genre & Submit */}
             <s.div mt={4}>
               <Text
                 tag="p"
@@ -436,7 +274,7 @@ export default function AddBookModal({
               <Select
                 options={GENRES.map((g) => ({ label: g, value: g }))}
                 value={form.genre}
-                onChange={(e) => updateForm("genre", e.target.value)}
+                onChange={setField("genre")}
               >
                 <SelectTrigger>
                   <s.button
@@ -452,7 +290,6 @@ export default function AddBookModal({
                     border="1px solid"
                     borderColor="whiteAlpha.10"
                     fontSize="sm"
-                    color="white"
                     cursor="pointer"
                   >
                     {form.genre || "選択してください"}
@@ -485,7 +322,10 @@ export default function AddBookModal({
               fontWeight="semibold"
               cursor="pointer"
               _hover={{ bg: "indigo.500/30" }}
-              _disabled={{ opacity: 0.3 }}
+              _disabled={{
+                opacity: 0.3,
+                cursor: "not-allowed",
+              }}
             >
               星を誕生させる
             </s.button>

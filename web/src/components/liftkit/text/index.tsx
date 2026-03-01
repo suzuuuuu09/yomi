@@ -1,4 +1,4 @@
-import { useMemo, ElementType, JSX } from "react";
+import { ElementType, JSX } from "react";
 import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 
 type LkSemanticTag = keyof JSX.IntrinsicElements;
@@ -20,7 +20,7 @@ export default function Text({
   className,
   ...restProps
 }: LkTextProps) {
-  const Tag = tag as ElementType;
+  const Tag = tag as unknown as React.ComponentType<React.PropsWithChildren<React.HTMLAttributes<HTMLElement>>>;
 
   /**Temporarily removing the attr spreader because it's not being used */
   // const textAttrs = useMemo(() => propsToDataAttrs(restProps, "text"), [restProps]);

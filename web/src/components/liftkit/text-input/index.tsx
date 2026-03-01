@@ -1,6 +1,5 @@
 "use client";
-
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import "@/components/liftkit/text-input/text-input.css";
 import Icon from "@/components/liftkit/icon";
@@ -8,7 +7,6 @@ import Row from "@/components/liftkit/row";
 import Text from "@/components/liftkit/text";
 import StateLayer from "@/components/liftkit/state-layer";
 import { IconName } from "lucide-react/dynamic";
-import { useState } from "react";
 Text;
 
 interface LkTextInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -18,6 +16,7 @@ interface LkTextInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   name?: string;
   endIcon?: IconName;
   labelBackgroundColor?: LkColor;
+  onEndIconClick?: () => void;
 }
 
 export default function TextInput({
@@ -27,6 +26,7 @@ export default function TextInput({
   name = "Label",
   endIcon = "search",
   labelBackgroundColor,
+  onEndIconClick,
   ...restProps
 }: LkTextInputProps) {
   const textInputProps = useMemo(
@@ -36,6 +36,9 @@ export default function TextInput({
 
   const [inputValue, setInputValue] = useState("");
 
+  const isControlled = restProps.value !== undefined;
+  const currentValue = isControlled ? restProps.value : inputValue;
+
   return (
     <div data-lk-component="text-input" {...textInputProps}>
       {labelPosition === "default" && (
@@ -43,7 +46,6 @@ export default function TextInput({
           {name}
         </label>
       )}
-
       <div
         data-lk-text-input-el="input-wrap"
         data-lk-input-help-text={helpText ? "true" : "false"}
@@ -52,7 +54,7 @@ export default function TextInput({
         {labelPosition === "on-input" && (
           <label
             htmlFor={name}
-            className={`body ${labelBackgroundColor ? ` bg-${labelBackgroundColor}` : ""} ${inputValue ? "on-field-with-value-set" : ""}`}
+            className={`body${labelBackgroundColor ? ` bg-${labelBackgroundColor}` : ""}${currentValue ? " on-field-with-value-set" : ""}`}
           >
             {name}
           </label>
@@ -62,15 +64,28 @@ export default function TextInput({
           name={name}
           id={name}
           placeholder={labelPosition !== "on-input" ? placeholder : ""}
-          onChange={(e) => setInputValue(e.target.value)}
-          value={inputValue}
+          value={currentValue}
+          onChange={(e) => {
+            if (!isControlled) setInputValue(e.target.value);
+            restProps.onChange?.(e);
+          }}
           {...restProps}
         />
         <StateLayer />
-        <Icon name={endIcon} />
+        {onEndIconClick ? (
+          <button
+            type="button"
+            onClick={onEndIconClick}
+            className="end-icon-button"
+            aria-label={endIcon}
+          >
+            <Icon name={endIcon} />
+          </button>
+        ) : (
+          <Icon name={endIcon} />
+        )}
         {/* implementation omitted for brevity */}
       </div>
-
       {helpText && (
         <Row alignItems="center">
           <Icon

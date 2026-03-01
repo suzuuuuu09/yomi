@@ -1,4 +1,3 @@
-import Button from "@/components/liftkit/button";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -7,8 +6,6 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "books.google.com",
-        port: "",
-        pathname: "/books/content?id=**",
       },
     ],
   },
