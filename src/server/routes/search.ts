@@ -1,17 +1,12 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import { cache } from "hono/cache";
-import { fetchBookData } from "@/lib/fetch-book";
+import { fetchBookData } from "@/server/lib/fetch-book";
 import {
 	BookResponseSchema,
 	FinalResponseSchema,
 	SearchQuerySchema,
-} from "@/schemas/book";
-import { CACHE_CONFIG } from "@/config/cache";
-import type { Env } from "@/types";
+} from "@/server/schemas/book";
 
-const searchApp = new OpenAPIHono<Env>();
-
-searchApp.use("*", cache(CACHE_CONFIG.SEARCH_BOOKS));
+const searchApp = new OpenAPIHono();
 
 const searchRoute = createRoute({
 	method: "get",
@@ -37,10 +32,9 @@ const searchRoute = createRoute({
 	},
 });
 
-// ハンドラーの実装
 searchApp.openapi(searchRoute, async (c) => {
 	const { q, isbn, index, results } = c.req.valid("query");
-	const apiKey = c.env.GOOGLE_API_KEY;
+	const apiKey = process.env.GOOGLE_API_KEY ?? "";
 
 	const searchQuery = isbn ? `isbn:${isbn}` : q || "";
 	const rawData = await fetchBookData(searchQuery, index, results, apiKey);

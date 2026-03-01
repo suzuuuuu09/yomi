@@ -1,6 +1,6 @@
 import type { BookSearchResponse } from "@/types/book-search";
 
-const API_BASE = "https://yomi-api.suzuuuuu09.com";
+const API_BASE = "/api";
 
 export async function searchBooks(
   query: string,

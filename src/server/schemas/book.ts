@@ -50,7 +50,7 @@ export const BookResponseSchema = z
 	})
 	.openapi("BookResponse");
 
-// 変換語の本のデータのスキーマ
+// 変換後の本のデータのスキーマ
 const BookDataSchema = z.object({
 	id: z.string().openapi({ example: "zT3GEAAAQBAJ" }),
 	title: z.string().openapi({ example: "TypeScript入門" }),
