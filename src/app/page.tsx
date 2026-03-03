@@ -13,7 +13,7 @@ import TopBar from "@/components/sections/TopBar";
 import { IconCardButton } from "@/components/shares/IconCardButton";
 import { useObservatory } from "@/hooks/useObservatory";
 import { useStarInsight } from "@/hooks/useStarInsight";
-import useLibraryStore, { CONSTELLATION_LINES } from "@/store/useLibraryStore";
+import useLibraryStore from "@/store/useLibraryStore";
 
 const UniverseCanvas = dynamic(() => import("@/components/UniverseCanvas"), {
   ssr: false,
@@ -91,6 +91,7 @@ function AddBookButton({
 
 export default function Observatory() {
   const books = useLibraryStore((s) => s.books);
+  const constellationLines = useLibraryStore((s) => s.constellationLines);
   const fetchBooks = useLibraryStore((s) => s.fetchBooks);
 
   // ログインユーザーの本をAPIから取得
@@ -116,7 +117,7 @@ export default function Observatory() {
     <s.main position="relative" w="screen" h="screen" overflow="hidden">
       <UniverseCanvas
         books={filteredBooks}
-        constellationLines={CONSTELLATION_LINES}
+        constellationLines={constellationLines}
         onStarClick={handleStarClick}
         selectedBookId={selectedBookId}
       />

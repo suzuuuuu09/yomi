@@ -493,6 +493,108 @@ function ReadingNotes({
   );
 }
 
+function DeleteBookButton({
+  bookId,
+  onDelete,
+}: {
+  bookId: string;
+  onDelete: (bookId: string) => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+
+  if (confirming) {
+    return (
+      <s.div
+        p={4}
+        rounded="2xl"
+        border="1px solid"
+        borderColor="red.500/20"
+        className={css({
+          bg: "red.500/6",
+          animation: "fadeIn 0.15s ease-out",
+        })}
+      >
+        <s.p fontSize="xs" color="red.300" mb={3} textAlign="center">
+          この本を削除しますか？
+          <s.br />
+          <s.span color="slate.500">この操作は取り消せません</s.span>
+        </s.p>
+        <Flex gap={2}>
+          <s.button
+            flex={1}
+            py={2.5}
+            rounded="xl"
+            fontSize="xs"
+            fontWeight="medium"
+            cursor="pointer"
+            className={css({
+              bg: "white/5",
+              border: "1px solid",
+              borderColor: "white/10",
+              color: "slate.400",
+              transition: "all 0.15s",
+              _hover: { bg: "white/10", color: "white" },
+            })}
+            onClick={() => setConfirming(false)}
+          >
+            キャンセル
+          </s.button>
+          <s.button
+            flex={1}
+            py={2.5}
+            rounded="xl"
+            fontSize="xs"
+            fontWeight="semibold"
+            cursor="pointer"
+            className={css({
+              bg: "red.500/15",
+              border: "1px solid",
+              borderColor: "red.500/30",
+              color: "red.400",
+              transition: "all 0.15s",
+              _hover: { bg: "red.500/25", color: "red.300" },
+            })}
+            onClick={() => onDelete(bookId)}
+          >
+            削除する
+          </s.button>
+        </Flex>
+      </s.div>
+    );
+  }
+
+  return (
+    <s.button
+      w="full"
+      py={2.5}
+      rounded="xl"
+      fontSize="xs"
+      fontWeight="medium"
+      cursor="pointer"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      gap={1.5}
+      className={css({
+        bg: "transparent",
+        border: "1px solid",
+        borderColor: "white/8",
+        color: "slate.600",
+        transition: "all 0.2s",
+        _hover: {
+          bg: "red.500/8",
+          borderColor: "red.500/20",
+          color: "red.500",
+        },
+      })}
+      onClick={() => setConfirming(true)}
+    >
+      <Trash2 size={13} />
+      この本を削除
+    </s.button>
+  );
+}
+
 export default function StarInsightPanel({
   book,
   onClose,
@@ -500,6 +602,7 @@ export default function StarInsightPanel({
   onPageSet,
   onAddNote,
   onDeleteNote,
+  onDeleteBook,
 }: {
   book: Book | null;
   onClose: () => void;
@@ -507,6 +610,7 @@ export default function StarInsightPanel({
   onPageSet: (bookId: string, page: number) => void;
   onAddNote: (bookId: string, content: string, page: number | null) => void;
   onDeleteNote: (bookId: string, noteId: string) => void;
+  onDeleteBook: (bookId: string) => void;
 }) {
   if (!book) return null;
 
@@ -824,6 +928,11 @@ export default function StarInsightPanel({
                 onDelete={onDeleteNote}
               />
             </Card>
+
+            {/* 破壊的操作はコンテンツ末尾に分離 */}
+            <s.div pt={2} pb={1}>
+              <DeleteBookButton bookId={book.id} onDelete={onDeleteBook} />
+            </s.div>
           </Stack>
         </s.div>
       </s.div>

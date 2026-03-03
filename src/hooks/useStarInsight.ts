@@ -9,6 +9,7 @@ export function useStarInsight() {
     setPageProgress,
     addNote,
     deleteNote,
+    deleteBook,
   } = useLibraryStore();
 
   const book = books.find((b) => b.id === selectedBookId) ?? null;
@@ -20,5 +21,6 @@ export function useStarInsight() {
     onPageSet: setPageProgress,
     onAddNote: addNote,
     onDeleteNote: deleteNote,
+    onDeleteBook: deleteBook,
   };
 }

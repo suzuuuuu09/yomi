@@ -3,32 +3,14 @@ import type { Book, BookStatus } from "@/types/library";
 
 const API_BASE = "/api/books";
 
-const STAR_COLORS = [
-  "#818cf8",
-  "#a855f7",
-  "#ec4899",
-  "#3b82f6",
-  "#06b6d4",
-  "#10b981",
-  "#f59e0b",
-];
-
-function randomPosition(): [number, number, number] {
-  return [
-    (Math.random() - 0.5) * 10,
-    (Math.random() - 0.5) * 8,
-    (Math.random() - 0.5) * 10,
-  ];
-}
-
-export const CONSTELLATION_LINES: [string, string][] = [];
-
 interface LibraryState {
   books: Book[];
+  constellationLines: [string, string][];
   isLoading: boolean;
   selectedBookId: string | null;
   fetchBooks: () => Promise<void>;
   addBook: (partial: Partial<Book>) => void;
+  deleteBook: (bookId: string) => void;
   setSelectedBook: (book: Book | null) => void;
   updatePageProgress: (bookId: string, delta: number) => void;
   setPageProgress: (bookId: string, page: number) => void;
@@ -36,8 +18,27 @@ interface LibraryState {
   deleteNote: (bookId: string, noteId: string) => void;
 }
 
+interface FetchBooksResponse {
+  books: Book[];
+  constellationLines: [string, string][];
+}
+
+interface CreateBookResponse {
+  id: string;
+  position: [number, number, number];
+  brightness: number;
+  color: string;
+}
+
+interface UpdateBookResponse {
+  ok: boolean;
+  brightness: number;
+  color: string;
+}
+
 const useLibraryStore = create<LibraryState>((set, get) => ({
   books: [],
+  constellationLines: [],
   isLoading: false,
   selectedBookId: null,
 
@@ -46,22 +47,21 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
     try {
       const res = await fetch(API_BASE);
       if (!res.ok) {
-        set({ books: [], isLoading: false });
+        set({ books: [], constellationLines: [], isLoading: false });
         return;
       }
-      const data: Book[] = await res.json();
-      set({ books: data, isLoading: false });
+      const data = (await res.json()) as FetchBooksResponse;
+      set({
+        books: data.books,
+        constellationLines: data.constellationLines,
+        isLoading: false,
+      });
     } catch {
-      set({ books: [], isLoading: false });
+      set({ books: [], constellationLines: [], isLoading: false });
     }
   },
 
   addBook: (partial) => {
-    const position = randomPosition();
-    const color =
-      STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
-    const brightness = 0.7 + Math.random() * 0.3;
-
     const tempId = `temp-${Date.now()}`;
     const newBook: Book = {
       id: tempId,
@@ -75,29 +75,35 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
       coverUrl: partial.coverUrl ?? "",
       registeredAt: new Date().toISOString(),
       completedAt: null,
-      position,
-      brightness,
-      color,
+      position: [0, 0, 0],
+      brightness: 0.15,
+      color: "#1b1b98",
       notes: [],
     };
     set((state) => ({ books: [...state.books, newBook] }));
 
-    // APIに保存
     fetch(API_BASE, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...partial, position, brightness, color }),
+      body: JSON.stringify(partial),
     })
-      .then((res) => res.json() as Promise<{ id: string }>)
+      .then((res) => res.json() as Promise<CreateBookResponse>)
       .then((data) => {
         set((state) => ({
           books: state.books.map((b) =>
-            b.id === tempId ? { ...b, id: data.id } : b,
+            b.id === tempId
+              ? {
+                  ...b,
+                  id: data.id,
+                  position: data.position,
+                  brightness: data.brightness,
+                  color: data.color,
+                }
+              : b,
           ),
         }));
       })
       .catch(() => {
-        // 失敗時はローカルから削除
         set((state) => ({
           books: state.books.filter((b) => b.id !== tempId),
         }));
@@ -106,6 +112,15 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
 
   setSelectedBook: (book) => set({ selectedBookId: book?.id ?? null }),
 
+  deleteBook: (bookId) => {
+    set((state) => ({
+      books: state.books.filter((b) => b.id !== bookId),
+      selectedBookId:
+        state.selectedBookId === bookId ? null : state.selectedBookId,
+    }));
+    fetch(`${API_BASE}/${bookId}`, { method: "DELETE" });
+  },
+
   updatePageProgress: (bookId, delta) => {
     const book = get().books.find((b) => b.id === bookId);
     if (!book) return;
@@ -113,18 +128,26 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
       book.totalPages,
       Math.max(0, book.currentPage + delta),
     );
-    // 楽観的更新
     set((state) => ({
       books: state.books.map((b) =>
         b.id === bookId ? { ...b, currentPage: newPage } : b,
       ),
     }));
-    // APIに保存
     fetch(`${API_BASE}/${bookId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentPage: newPage }),
-    });
+    })
+      .then((res) => res.json() as Promise<UpdateBookResponse>)
+      .then((data) => {
+        set((state) => ({
+          books: state.books.map((b) =>
+            b.id === bookId
+              ? { ...b, brightness: data.brightness, color: data.color }
+              : b,
+          ),
+        }));
+      });
   },
 
   setPageProgress: (bookId, page) => {
@@ -136,12 +159,21 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
         b.id === bookId ? { ...b, currentPage: newPage } : b,
       ),
     }));
-    // APIに保存
     fetch(`${API_BASE}/${bookId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentPage: newPage }),
-    });
+    })
+      .then((res) => res.json() as Promise<UpdateBookResponse>)
+      .then((data) => {
+        set((state) => ({
+          books: state.books.map((b) =>
+            b.id === bookId
+              ? { ...b, brightness: data.brightness, color: data.color }
+              : b,
+          ),
+        }));
+      });
   },
 
   addNote: (bookId, content, page) => {
@@ -158,7 +190,6 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
           : b,
       ),
     }));
-    // APIに保存
     fetch(`${API_BASE}/${bookId}/notes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -189,7 +220,6 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
           : b,
       ),
     }));
-    // APIに保存
     fetch(`${API_BASE}/${bookId}/notes/${noteId}`, {
       method: "DELETE",
     });

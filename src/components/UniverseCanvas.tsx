@@ -411,7 +411,7 @@ export default function UniverseCanvas({
       }}
     >
       <Canvas
-        camera={{ position: [0, 0, 8], fov: 60, near: 0.1, far: 100 }}
+        camera={{ position: [0, 2, 20], fov: 60, near: 0.1, far: 100 }}
         style={{ background: "#020617" }}
         gl={{ antialias: true }}
       >
@@ -477,7 +477,7 @@ export default function UniverseCanvas({
           rotateSpeed={0.5}
           zoomSpeed={0.8}
           minDistance={3}
-          maxDistance={20}
+          maxDistance={40}
           enablePan
         />
       </Canvas>
