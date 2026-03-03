@@ -27,10 +27,22 @@ interface LkSnackbarProps extends React.HTMLAttributes<HTMLDivElement> {
  * A snackbar component that displays temporary notifications with optional action buttons.
  */
 export default function Snackbar(props: LkSnackbarProps) {
-  const { globalColor, message = "Notification text goes here.", cardProps, children, ...restProps } = props;
+  const {
+    globalColor,
+    message = "Notification text goes here.",
+    cardProps,
+    children,
+    ...restProps
+  } = props;
 
   // Declare allowed types, so if a child with the wrong type is passed, it'll throw an error
-  const allowedTypes = [Badge, Button, Icon, IconButton, Text] as React.ComponentType<any>[];
+  const allowedTypes = [
+    Badge,
+    Button,
+    Icon,
+    IconButton,
+    Text,
+  ] as React.ComponentType<any>[];
 
   // Validate all children first
   const childArray = React.Children.toArray(children);
@@ -43,10 +55,13 @@ export default function Snackbar(props: LkSnackbarProps) {
 
   // Validate all children upfront
   React.Children.forEach(children, (child) => {
-    if (React.isValidElement(child) && !allowedTypes.includes(child.type as React.ComponentType)) {
+    if (
+      React.isValidElement(child) &&
+      !allowedTypes.includes(child.type as React.ComponentType)
+    ) {
       throw new Error(
         `Snackbar component received an invalid child component: ${getComponentName(child.type)}. ` +
-          `Only Badge, Button, and IconButton components are allowed.`
+          `Only Badge, Button, and IconButton components are allowed.`,
       );
     }
   });
@@ -82,9 +97,9 @@ export default function Snackbar(props: LkSnackbarProps) {
           globalColor,
           message,
         },
-        "snackbar"
+        "snackbar",
       ),
-    [globalColor, message]
+    [globalColor, message],
   );
 
   /** If you have an icon, but no button, render extra margin-right on the body text. */
@@ -109,7 +124,10 @@ export default function Snackbar(props: LkSnackbarProps) {
           {icon && (
             <div data-lk-slot="snackbar-icon">
               {globalColor
-                ? React.cloneElement(icon, { color: getOnToken(globalColor), strokeWidth: 1.75 } as LkIconProps)
+                ? React.cloneElement(icon, {
+                    color: getOnToken(globalColor),
+                    strokeWidth: 1.75,
+                  } as LkIconProps)
                 : icon}
             </div>
           )}
@@ -125,7 +143,7 @@ export default function Snackbar(props: LkSnackbarProps) {
                       fontClass: "body",
                       className: getMargin(),
                     } as LkTextProps)
-                  : React.cloneElement(text, { key: index })
+                  : React.cloneElement(text, { key: index }),
               )}
             </div>
           )}
@@ -143,7 +161,9 @@ export default function Snackbar(props: LkSnackbarProps) {
                         style: {
                           backgroundColor: `rgb(from var(--lk-${getOnToken(globalColor)}) r g b / 0.1)`,
                           border: `1px solid rgb(from var(--lk-${getOnToken(globalColor)}) r g b / 0.2)`,
-                          marginRight: !icon && "calc(-1em * pow(var(--lk-wholestep-dec), 2))",
+                          marginRight:
+                            !icon &&
+                            "calc(-1em * pow(var(--lk-wholestep-dec), 2))",
                         },
                         stateLayerOverride: { bgColor: `on${globalColor}` },
                       } as Partial<LkButtonProps>)
@@ -151,7 +171,7 @@ export default function Snackbar(props: LkSnackbarProps) {
                         key: index,
                         size: "sm",
                         variant: "outline",
-                      } as Partial<LkButtonProps>)
+                      } as Partial<LkButtonProps>),
                 )}
               </div>
             )}
@@ -168,7 +188,7 @@ export default function Snackbar(props: LkSnackbarProps) {
                     : React.cloneElement(iconButton, {
                         key: index,
                         fontClass: "heading",
-                      } as Partial<LkIconButtonProps>)
+                      } as Partial<LkIconButtonProps>),
                 )}
               </div>
             )}
@@ -196,7 +216,10 @@ const fontClassList: LkFontClass[] = [
   "capline",
 ];
 
-function getAdjustedFontClass(componentName: string, parentFontClass: LkFontClass) {
+function getAdjustedFontClass(
+  componentName: string,
+  parentFontClass: LkFontClass,
+) {
   switch (componentName) {
   }
 }

@@ -18,11 +18,16 @@ interface LkSectionProps extends React.HTMLAttributes<HTMLElement> {
 
 export default function Section(props: LkSectionProps) {
   /**TODO:  Give section default padding of "md" */
-  const { container, children, padding, px, py, pt, pb, pl, pr, ...restProps } = props;
+  const { container, children, padding, px, py, pt, pb, pl, pr, ...restProps } =
+    props;
 
   const lkSectionAttrs = useMemo(
-    () => propsToDataAttrs({ container, children, padding, px, py, pt, pb, pl, pr }, "section"),
-    [container, children, padding, px, py, pt, pb, pl, pr]
+    () =>
+      propsToDataAttrs(
+        { container, children, padding, px, py, pt, pb, pl, pr },
+        "section",
+      ),
+    [container, children, padding, px, py, pt, pb, pl, pr],
   );
 
   return (

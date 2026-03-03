@@ -5,9 +5,6 @@
   padding: var(--lk-size-md);
 }
 
-
-
-
 /* Mobile Navbar */
 .navbar-mobile {
   display: none;
@@ -26,7 +23,7 @@
 }
 
 @media (max-width: 768px) {
-  [data-lk-navbar-el="nav-menu"]>.active {
+  [data-lk-navbar-el="nav-menu"] > .active {
     position: fixed;
     top: 0;
     left: 0;
@@ -55,7 +52,9 @@
   align-items: center;
   gap: var(--lk-size-xs);
   margin-left: auto;
-  transition: transform 0.3s ease, opacity 0.2s ease;
+  transition:
+    transform 0.3s ease,
+    opacity 0.2s ease;
 }
 
 [data-lk-slot="nav-icon-buttons"],
@@ -64,8 +63,6 @@
   align-items: center;
   gap: var(--lk-size-xs);
   margin-left: var(--lk-size-xs);
-
-
 }
 
 [data-lk-navbar-material="glass"] {

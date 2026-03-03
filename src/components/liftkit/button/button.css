@@ -3,8 +3,14 @@
   --button-font-size: var(--body-font-size);
   --button-line-height: var(--lk-halfstep) !important;
   --button-padX: var(--button-font-size);
-  --button-padY: calc(var(--button-font-size) * calc(var(--lk-halfstep) / var(--lk-size-xl-unitless)));
-  --button-padX-sideWithIcon: calc(var(--button-font-size) / var(--lk-wholestep));
+  --button-padY: calc(
+    var(--button-font-size) *
+    calc(var(--lk-halfstep) / var(--lk-size-xl-unitless))
+  );
+  --button-padX-sideWithIcon: calc(
+    var(--button-font-size) /
+    var(--lk-wholestep)
+  );
   --button-gap: calc(var(--button-padY) / var(--lk-eighthstep));
   cursor: pointer;
 
@@ -44,7 +50,9 @@
   padding-right: var(--button-padX-sideWithIcon);
 }
 
-[data-lk-component="button"]:has([data-lk-icon-position="start"]):has([data-lk-icon-position="end"]) {
+[data-lk-component="button"]:has([data-lk-icon-position="start"]):has(
+    [data-lk-icon-position="end"]
+  ) {
   padding-left: var(--button-padX-sideWithIcon);
   padding-right: var(--button-padX-sideWithIcon);
 }

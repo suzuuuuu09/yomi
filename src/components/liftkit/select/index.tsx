@@ -2,7 +2,13 @@
 
 // CustomSelect.tsx
 import Card, { LkCardProps } from "@/components/liftkit/card";
-import React, { useContext, useState, useRef, useEffect, createContext } from "react";
+import React, {
+  useContext,
+  useState,
+  useRef,
+  useEffect,
+  createContext,
+} from "react";
 import Column from "@/components/liftkit/column";
 import Icon from "@/components/liftkit/icon";
 import { LkIconProps } from "@/components/liftkit/icon";
@@ -59,7 +65,13 @@ export interface LkSelectOptionProps {
 // Context for select state
 const SelectContext = createContext<LkSelectContext>({} as LkSelectContext);
 
-export function Select({ children, options = [], value = "", onChange, name }: SelectProps) {
+export function Select({
+  children,
+  options = [],
+  value = "",
+  onChange,
+  name,
+}: SelectProps) {
   const [open, setOpen] = useState(false);
   const [selectedValue, setSelectedValue] = useState(value);
   const triggerRef = useRef(null);
@@ -204,7 +216,10 @@ export function SelectMenu({ children, cardProps }: LkSelectMenuProps) {
   return ReactDOM.createPortal(
     <div
       ref={contentRef}
-      style={{ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX }}
+      style={{
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+      }}
       role="menu"
       data-lk-component="select-menu"
       data-isactive={open}
@@ -215,11 +230,17 @@ export function SelectMenu({ children, cardProps }: LkSelectMenuProps) {
         </Column>
       </Card>
     </div>,
-    document.body
+    document.body,
   );
 }
 
-export function SelectOption({ value, children, onClick, startIcon, endIcon }: LkSelectOptionProps) {
+export function SelectOption({
+  value,
+  children,
+  onClick,
+  startIcon,
+  endIcon,
+}: LkSelectOptionProps) {
   const { selectedValue, setSelectedValue } = useContext(SelectContext);
   const isSelected = selectedValue === value;
 
@@ -252,7 +273,7 @@ export function SelectOption({ value, children, onClick, startIcon, endIcon }: L
       {startIcon && <Icon {...startIcon} data-lk-icon-position="start"></Icon>}
       <p data-lk-menu-item-element="content-wrap">{children}</p>
       {endIcon && <Icon {...endIcon} data-lk-icon-position="end"></Icon>}
-      <StateLayer forcedState={isSelected ? 'active' : undefined}></StateLayer>
+      <StateLayer forcedState={isSelected ? "active" : undefined}></StateLayer>
     </div>
   );
 }

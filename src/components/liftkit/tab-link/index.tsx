@@ -11,8 +11,6 @@ interface LkTabLinkProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export default function TabLink(props: LkTabLinkProps) {
-
-
   const {
     selected = false,
     fontClass = "body",
@@ -21,13 +19,10 @@ export default function TabLink(props: LkTabLinkProps) {
     ...restProps
   } = props;
 
-
   const dataAttrs = useMemo(
     () => propsToDataAttrs({ selected, fontClass, indicatorClass }, "tab-link"),
     [selected],
   );
-
-
 
   return (
     <div data-lk-component="tab-link" {...dataAttrs} {...restProps}>

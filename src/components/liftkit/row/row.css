@@ -94,24 +94,24 @@
 }
 
 /* Default Child Behavior */
-[data-lk-row-default-child-behavior="auto-grow"]>* {
+[data-lk-row-default-child-behavior="auto-grow"] > * {
   flex-grow: 1;
   flex-shrink: 0;
   flex-basis: auto;
 }
 
-[data-lk-row-default-child-behavior="auto-shrink"]>* {
+[data-lk-row-default-child-behavior="auto-shrink"] > * {
   flex-grow: 0;
   flex-shrink: 1;
   flex-basis: auto;
 }
 
-[data-lk-row-default-child-behavior="ignoreFlexRules"]>* {
+[data-lk-row-default-child-behavior="ignoreFlexRules"] > * {
   flex-grow: 0;
   flex-shrink: 0;
   flex-basis: auto;
 }
 
-[data-lk-row-default-child-behavior="ignoreIntrinsicSize"]>* {
+[data-lk-row-default-child-behavior="ignoreIntrinsicSize"] > * {
   flex-basis: 0;
 }

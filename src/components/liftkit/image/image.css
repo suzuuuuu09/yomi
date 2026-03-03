@@ -5,11 +5,12 @@
   object-fit: var(--lk-image-fit, fill);
 }
 
-[data-lk-image-radius]:not([data-lk-image-radius="none"]):not([data-lk-image-radius="zero"]) {
+[data-lk-image-radius]:not([data-lk-image-radius="none"]):not(
+    [data-lk-image-radius="zero"]
+  ) {
   border-radius: var(--lk-size-md);
   overflow: hidden;
 }
-
 
 /* IMAGE RADII TESTING AREA - Remove for production  */
 .radius-test-grid {
@@ -39,7 +40,6 @@
   color: #333;
 }
 
-
 /* BORDER RADIUS
   The CSS pow() and round() functions may not work in many browsers yet because they're part of an experimental CSS spec (Values and Units Level 4) that lacks full support.
 
@@ -47,7 +47,6 @@
 [data-lk-image-border-radius="3xs"] {
   border-radius: var(--lk-size-3xs);
   overflow: hidden;
-
 }
 
 [data-lk-image-border-radius="2xs"] {
@@ -125,7 +124,6 @@
 [data-lk-image-width="3xs"] {
   width: var(--lk-size-3xs);
   overflow: hidden;
-
 }
 
 [data-lk-image-width="2xs"] {
@@ -177,7 +175,6 @@
 [data-lk-image-height="3xs"] {
   height: var(--lk-size-3xs);
   overflow: hidden;
-
 }
 
 [data-lk-image-height="2xs"] {
@@ -225,7 +222,6 @@
   overflow: hidden;
 }
 
-
 /* OBJECT-FIT TESTING AREA - Remove for production */
 .objectfit-test-grid {
   display: grid;
@@ -245,7 +241,6 @@
     background-color: #ddd;
   }
 }
-
 
 /* OBJECT-FIT MAPPING
 Include inherit, initial, unset?
@@ -269,8 +264,6 @@ Include inherit, initial, unset?
 [data-lk-image-object-fit="scale-down"] {
   object-fit: scale-down;
 }
-
-
 
 /* ASPECT TESTING AREA - Remove for production */
 .aspect-test-grid {
@@ -299,7 +292,6 @@ Include inherit, initial, unset?
   font-size: 0.875rem;
   color: #333;
 }
-
 
 /* IMAGE ASPECT RATIO MAPPING */
 [data-lk-image-aspect="auto"] {

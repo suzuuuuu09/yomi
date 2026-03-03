@@ -4,10 +4,16 @@ import Row from "@/components/liftkit/row";
 import TabLink from "@/components/liftkit/tab-link";
 import "@/components/liftkit/tab-menu/tab-menu.css";
 
-interface LkTabMenuProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onClick'> {
+interface LkTabMenuProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"> {
   tabLinks?: string[];
   alignItems?: "start" | "center" | "end" | "stretch";
-  justifyContent?: "start" | "center" | "end" | "space-between" | "space-around";
+  justifyContent?:
+    | "start"
+    | "center"
+    | "end"
+    | "space-between"
+    | "space-around";
   activeTab: number;
   setActiveTab: (index: number) => void;
   onClick?: (index: number) => void; // Optional function to lift state
@@ -24,18 +30,23 @@ export default function TabMenu(props: LkTabMenuProps) {
     ...restProps
   } = props;
 
-/**Don't include tabLinks or setActiveTab props in the useMemo hook, because they don't affect CSS. */
+  /**Don't include tabLinks or setActiveTab props in the useMemo hook, because they don't affect CSS. */
 
   const dataAttrs = useMemo(
-    () => propsToDataAttrs({ alignItems, justifyContent, activeTab }, "tab-menu"),
-    [alignItems, justifyContent, activeTab]
+    () =>
+      propsToDataAttrs({ alignItems, justifyContent, activeTab }, "tab-menu"),
+    [alignItems, justifyContent, activeTab],
   );
 
   return (
     <div data-lk-component="tab-menu" {...dataAttrs} {...restProps}>
       <Row alignItems={alignItems} justifyContent={justifyContent}>
         {tabLinks.map((label, index) => (
-          <TabLink key={index} selected={index === activeTab} onClick={() => setActiveTab(index)}>
+          <TabLink
+            key={index}
+            selected={index === activeTab}
+            onClick={() => setActiveTab(index)}
+          >
             <div>{label ?? "Tab Link"}</div>
           </TabLink>
         ))}

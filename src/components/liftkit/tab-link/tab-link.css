@@ -15,6 +15,6 @@
   transition: opacity 0.2s ease-out;
 }
 
-[data-lk-tab-link-selected="true"]>.lk-indicator {
+[data-lk-tab-link-selected="true"] > .lk-indicator {
   opacity: 1;
 }

@@ -36,6 +36,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
     "@chainlift/liftkit": "^0.2.0",
+    "@cloudflare/next-on-pages": "^1.13.16",
     "@pandacss/dev": "^1.8.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",

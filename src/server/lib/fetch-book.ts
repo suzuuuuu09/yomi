@@ -7,19 +7,19 @@
  * @description Google Books APIを使用して本の情報を取得する。
  */
 export const fetchBookData = async (
-	query: string,
-	index: number,
-	results: number,
-	apiKey: string,
+  query: string,
+  index: number,
+  results: number,
+  apiKey: string,
 ) => {
-	const baseUrl = "https://www.googleapis.com/books/v1/volumes";
-	const params = new URLSearchParams({
-		q: query,
-		startIndex: index.toString(),
-		maxResults: results.toString(),
-		key: apiKey,
-	});
+  const baseUrl = "https://www.googleapis.com/books/v1/volumes";
+  const params = new URLSearchParams({
+    q: query,
+    startIndex: index.toString(),
+    maxResults: results.toString(),
+    key: apiKey,
+  });
 
-	const res = await fetch(`${baseUrl}?${params.toString()}`);
-	return res.json();
+  const res = await fetch(`${baseUrl}?${params.toString()}`);
+  return res.json();
 };

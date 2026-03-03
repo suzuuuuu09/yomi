@@ -22,19 +22,31 @@ type LkColorGroup =
   | "info";
 
 export default function ThemeController() {
-  const { palette, setPalette, theme, updateTheme, updateThemeFromMaster, colorMode, setColorMode } =
-    useContext(ThemeContext);
+  const {
+    palette,
+    setPalette,
+    theme,
+    updateTheme,
+    updateThemeFromMaster,
+    colorMode,
+    setColorMode,
+  } = useContext(ThemeContext);
 
   const brandPalette: LkColorGroup[] = ["primary", "secondary", "tertiary"];
 
-  const semanticPalette: LkColorGroup[] = ["error", "warning", "success", "info"];
+  const semanticPalette: LkColorGroup[] = [
+    "error",
+    "warning",
+    "success",
+    "info",
+  ];
 
   const layoutPalette: LkColorGroup[] = ["neutral", "neutralvariant"];
 
   const [paletteArray, setPaletteArray] = useState(
     Object.keys(palette).map((key) => {
       return { key, value: palette[key] };
-    })
+    }),
   );
   useEffect(() => {
     updateTheme(palette);
@@ -45,8 +57,6 @@ export default function ThemeController() {
   }, [palette]);
 
   const handleColorChange = (key: LkColorGroup, newValue: string) => {
-
-
     if (key === "master") {
       updateThemeFromMaster(newValue, setPalette);
     } else {
@@ -123,13 +133,17 @@ export default function ThemeController() {
                 <div>
                   <h2 className="label mb-xs">Config</h2>
                   <p className="caption color-onsurfacevariant mb-xs">
-                    Copy and paste this snippet into your theme/index.tsx file to update your project to match the
-                    current configuration.
+                    Copy and paste this snippet into your theme/index.tsx file
+                    to update your project to match the current configuration.
                   </p>
 
                   <Card
                     material="glass"
-                    materialProps={{ thickness: "thin", tint: "onsurface", tintOpacity: 0.1 }}
+                    materialProps={{
+                      thickness: "thin",
+                      tint: "onsurface",
+                      tintOpacity: 0.1,
+                    }}
                     bgColor="surfacecontainerlowest"
                     scaleFactor="body"
                     className="position-relative"
@@ -143,7 +157,10 @@ const [palette, setPalette] = useState<PaletteState>(${JSON.stringify(palette, n
                     </pre>
                     <IconButton
                       icon="copy"
-                      style={{ position: "absolute", inset: "1em 1em auto auto" }}
+                      style={{
+                        position: "absolute",
+                        inset: "1em 1em auto auto",
+                      }}
                       onClick={handleCopyPalette}
                     ></IconButton>
                   </Card>
@@ -152,22 +169,33 @@ const [palette, setPalette] = useState<PaletteState>(${JSON.stringify(palette, n
                   <h2 className="capline mb-lg color-onsurfacevariant">Mode</h2>
                   <Row alignItems="start" gap="md">
                     <Column>
-                      <Switch onClick={handleColorModeSwitch} value={colorMode === "dark" ? true : false}></Switch>
+                      <Switch
+                        onClick={handleColorModeSwitch}
+                        value={colorMode === "dark" ? true : false}
+                      ></Switch>
                     </Column>
                     <Column>
-                      <label className="label mb-xs">Default to Dark Mode</label>
-                      <p className="caption color-onsurfacevariant mb-xs">Toggles dark mode.</p>
+                      <label className="label mb-xs">
+                        Default to Dark Mode
+                      </label>
+                      <p className="caption color-onsurfacevariant mb-xs">
+                        Toggles dark mode.
+                      </p>
                     </Column>
                   </Row>
                 </div>
                 <div>
-                  <h2 className="capline mb-lg color-onsurfacevariant">Globals</h2>
+                  <h2 className="capline mb-lg color-onsurfacevariant">
+                    Globals
+                  </h2>
                   <Row alignItems="start" gap="md">
                     <input
                       type="color"
                       name="master"
                       value={palette["master"]}
-                      onChange={(event) => handleColorChange("master", event.target.value)}
+                      onChange={(event) =>
+                        handleColorChange("master", event.target.value)
+                      }
                     ></input>
                     <Column>
                       <label className="label mb-xs" htmlFor={"master"}>
@@ -175,25 +203,39 @@ const [palette, setPalette] = useState<PaletteState>(${JSON.stringify(palette, n
                       </label>
                       <p className="caption color-onsurfacevariant mb-xs">
                         The seed color.{" "}
-                        <strong className="color-error">If you edit this, all other color tokens will reset.</strong>
+                        <strong className="color-error">
+                          If you edit this, all other color tokens will reset.
+                        </strong>
                       </p>
                     </Column>
                   </Row>
                 </div>
                 <div>
                   <div>
-                    <h2 className="capline mb-lg color-onsurfacevariant">Brand</h2>
+                    <h2 className="capline mb-lg color-onsurfacevariant">
+                      Brand
+                    </h2>
                   </div>
                   {brandPalette.map((colorGroup) => (
-                    <Row key={colorGroup} alignItems="start" gap="md" className="mb-sm">
+                    <Row
+                      key={colorGroup}
+                      alignItems="start"
+                      gap="md"
+                      className="mb-sm"
+                    >
                       <input
                         type="color"
                         name={colorGroup}
                         value={palette[colorGroup]}
-                        onChange={(event) => handleColorChange(colorGroup, event.target.value)}
+                        onChange={(event) =>
+                          handleColorChange(colorGroup, event.target.value)
+                        }
                       ></input>
                       <Column>
-                        <label className="caption-bold mono mb-2xs" htmlFor={colorGroup}>
+                        <label
+                          className="caption-bold mono mb-2xs"
+                          htmlFor={colorGroup}
+                        >
                           {colorGroup}
                         </label>
                         <p className="caption color-onsurfacevariant mb-xs">
@@ -211,18 +253,30 @@ const [palette, setPalette] = useState<PaletteState>(${JSON.stringify(palette, n
                 </div>
                 <div>
                   <div>
-                    <h2 className="capline color-onsurfacevariant mb-lg">Semantic</h2>
+                    <h2 className="capline color-onsurfacevariant mb-lg">
+                      Semantic
+                    </h2>
                   </div>
                   {semanticPalette.map((colorGroup) => (
-                    <Row key={colorGroup} alignItems="start" gap="md" className="mb-sm">
+                    <Row
+                      key={colorGroup}
+                      alignItems="start"
+                      gap="md"
+                      className="mb-sm"
+                    >
                       <input
                         type="color"
                         name={colorGroup}
                         value={palette[colorGroup]}
-                        onChange={(event) => handleColorChange(colorGroup, event.target.value)}
+                        onChange={(event) =>
+                          handleColorChange(colorGroup, event.target.value)
+                        }
                       ></input>
                       <Column>
-                        <label className="caption-bold mono mb-2xs" htmlFor={colorGroup}>
+                        <label
+                          className="caption-bold mono mb-2xs"
+                          htmlFor={colorGroup}
+                        >
                           {colorGroup}
                         </label>
                         <p className="caption color-onsurfacevariant mb-xs">
@@ -242,18 +296,30 @@ const [palette, setPalette] = useState<PaletteState>(${JSON.stringify(palette, n
                 </div>
                 <div>
                   <div>
-                    <h2 className="capline color-onsurfacevariant mb-lg">Layout</h2>
+                    <h2 className="capline color-onsurfacevariant mb-lg">
+                      Layout
+                    </h2>
                   </div>
                   {layoutPalette.map((colorGroup) => (
-                    <Row key={colorGroup} alignItems="start" gap="md" className="mb-sm">
+                    <Row
+                      key={colorGroup}
+                      alignItems="start"
+                      gap="md"
+                      className="mb-sm"
+                    >
                       <input
                         type="color"
                         name={colorGroup}
                         value={palette[colorGroup]}
-                        onChange={(event) => handleColorChange(colorGroup, event.target.value)}
+                        onChange={(event) =>
+                          handleColorChange(colorGroup, event.target.value)
+                        }
                       ></input>
                       <Column>
-                        <label className="caption-bold mono mb-xs" htmlFor={colorGroup}>
+                        <label
+                          className="caption-bold mono mb-xs"
+                          htmlFor={colorGroup}
+                        >
                           {colorGroup}
                         </label>
                         <p className="caption color-onsurfacevariant mb-xs">
@@ -270,7 +336,7 @@ const [palette, setPalette] = useState<PaletteState>(${JSON.stringify(palette, n
               </Column>
             </Card>
           </div>,
-          document.body
+          document.body,
         )}
 
       <style jsx>{`

@@ -32,11 +32,18 @@ export default function Heading({
   children,
   ...restProps
 }: LkHeadingProps) {
-  const headingAttrs = useMemo(() => propsToDataAttrs(restProps, "heading"), [restProps]);
+  const headingAttrs = useMemo(
+    () => propsToDataAttrs(restProps, "heading"),
+    [restProps],
+  );
   const Tag = tag;
 
   return (
-    <Tag data-lk-component="heading" className={`${fontClass} color-${fontColor} ${className || ""}`} {...headingAttrs}>
+    <Tag
+      data-lk-component="heading"
+      className={`${fontClass} color-${fontColor} ${className || ""}`}
+      {...headingAttrs}
+    >
       {children}
     </Tag>
   );

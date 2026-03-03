@@ -99,7 +99,7 @@ declare global {
     | "surfacecontainerhigh"
     | "surfacecontainerhighest"
     | "inversesurface"
-    | "transparent"
+    | "transparent";
 
   type LkOnColor =
     | "onprimary"

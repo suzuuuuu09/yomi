@@ -19,7 +19,7 @@
 [data-lk-menu-item-element="content-wrap"] {
   flex: 1 0 0;
   overflow: hidden;
-  white-space: nowrap; 
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 
@@ -45,7 +45,6 @@
 [data-lk-component="menu-item"] > [data-lk-component="state-layer"] {
   border-radius: var(--lk-size-xs);
 }
-
 
 /* Force-inherit font size when nested within lk-component="dropdown-menu" */
 

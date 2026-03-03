@@ -9,7 +9,8 @@ import StateLayer from "@/components/liftkit/state-layer";
 import { LkStateLayerProps } from "@/components/liftkit/state-layer";
 import Icon from "@/components/liftkit/icon";
 
-export interface LkButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface LkButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   label?: string;
   variant?: "fill" | "outline" | "text";
   color?: LkColorWithOnToken;
@@ -63,8 +64,12 @@ export default function Button({
   ...restProps
 }: LkButtonProps) {
   const lkButtonAttrs = useMemo(
-    () => propsToDataAttrs({ variant, color, size, startIcon, endIcon, opticIconShift }, "button"),
-    [variant, color, size, startIcon, endIcon, opticIconShift]
+    () =>
+      propsToDataAttrs(
+        { variant, color, size, startIcon, endIcon, opticIconShift },
+        "button",
+      ),
+    [variant, color, size, startIcon, endIcon, opticIconShift],
   );
 
   const onColorToken = getOnToken(color) as LkColor;
@@ -95,9 +100,8 @@ export default function Button({
       return stateLayerOverride;
     } else {
       return {
-        bgColor: variant === "fill" ? onColorToken : color
-      }
-    
+        bgColor: variant === "fill" ? onColorToken : color,
+      };
     }
   }
 
@@ -114,17 +118,25 @@ export default function Button({
       <div data-lk-button-content-wrap="true">
         {startIcon && (
           <div data-lk-icon-position="start">
-            <Icon name={startIcon} color={variant === "fill" ? onColorToken : color} data-lk-icon-position="start"></Icon>
+            <Icon
+              name={startIcon}
+              color={variant === "fill" ? onColorToken : color}
+              data-lk-icon-position="start"
+            ></Icon>
           </div>
         )}
         <span data-lk-button-child="button-text">{label ?? "Button"}</span>
         {endIcon && (
           <div data-lk-icon-position="end">
-            <Icon name={endIcon} color={variant === "fill" ? onColorToken : color} data-lk-icon-position="end"></Icon>
+            <Icon
+              name={endIcon}
+              color={variant === "fill" ? onColorToken : color}
+              data-lk-icon-position="end"
+            ></Icon>
           </div>
         )}
       </div>
-      <StateLayer {...localStateLayerProps}/>
+      <StateLayer {...localStateLayerProps} />
     </button>
   );
 }

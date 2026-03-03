@@ -13,12 +13,17 @@ interface LkTabsProps extends React.HTMLAttributes<HTMLDivElement> {
   onActiveTabChange?: (index: number) => void; // Optional function to lift state
 }
 
-export default function Tabs({ tabLinks, onActiveTabChange, scrollableContent, children, ...restProps }: LkTabsProps) {
+export default function Tabs({
+  tabLinks,
+  onActiveTabChange,
+  scrollableContent,
+  children,
+  ...restProps
+}: LkTabsProps) {
   const [activeTab, setActiveTab] = useState(0);
 
   const handleTabClick = (index: number) => {
     setActiveTab(index); // Set the clicked tab as active
-
   };
 
   useEffect(() => {
@@ -29,10 +34,18 @@ export default function Tabs({ tabLinks, onActiveTabChange, scrollableContent, c
     }
   }, [activeTab]);
 
-  const dataAttrs = useMemo(() => propsToDataAttrs({ activeTab }, "tabs"), [activeTab]);
+  const dataAttrs = useMemo(
+    () => propsToDataAttrs({ activeTab }, "tabs"),
+    [activeTab],
+  );
 
   return (
-    <div data-lk-component="tabs" data-lk-tabs-content-scrollable={scrollableContent} {...dataAttrs} {...restProps}>
+    <div
+      data-lk-component="tabs"
+      data-lk-tabs-content-scrollable={scrollableContent}
+      {...dataAttrs}
+      {...restProps}
+    >
       <TabMenu
         tabLinks={tabLinks}
         justifyContent="start"
@@ -41,10 +54,16 @@ export default function Tabs({ tabLinks, onActiveTabChange, scrollableContent, c
         setActiveTab={setActiveTab}
         onClick={handleTabClick}
       />
-      <div data-lk-tabs-el="tab-content" data-lk-tabs-content-scrollable={scrollableContent}>
+      <div
+        data-lk-tabs-el="tab-content"
+        data-lk-tabs-content-scrollable={scrollableContent}
+      >
         {children.map((child, index) => (
-          <div key={index} style={{ display: index === activeTab ? "block" : "none" }}>
-            {child }
+          <div
+            key={index}
+            style={{ display: index === activeTab ? "block" : "none" }}
+          >
+            {child}
           </div>
         ))}
       </div>

@@ -156,7 +156,7 @@
   }
 
   /* Force all children to single span (use !important to override combinations) */
-  [data-lk-component="grid"][data-lk-grid-auto-responsive="true"]>* {
+  [data-lk-component="grid"][data-lk-grid-auto-responsive="true"] > * {
     grid-column: span 1 !important;
   }
 }
@@ -205,48 +205,59 @@
 /* THESE ARE FOR WEBFLOW ONLY */
 
 /* Show only the first 1 slot */
-[data-lk-component="grid"][data-lk-grid-slots-to-show="1"]>[data-lk-element="slot"]:nth-of-type(n + 2) {
+[data-lk-component="grid"][data-lk-grid-slots-to-show="1"]
+  > [data-lk-element="slot"]:nth-of-type(n + 2) {
   display: none;
 }
 
 /* Show only the first 2 slots */
-[data-lk-component="grid"][data-lk-grid-slots-to-show="2"]>[data-lk-element="slot"]:nth-of-type(n + 3) {
+[data-lk-component="grid"][data-lk-grid-slots-to-show="2"]
+  > [data-lk-element="slot"]:nth-of-type(n + 3) {
   display: none;
 }
 
-[data-lk-component="grid"][data-lk-grid-slots-to-show="3"]>[data-lk-element="slot"]:nth-of-type(n + 4) {
+[data-lk-component="grid"][data-lk-grid-slots-to-show="3"]
+  > [data-lk-element="slot"]:nth-of-type(n + 4) {
   display: none;
 }
 
-[data-lk-component="grid"][data-lk-grid-slots-to-show="4"]>[data-lk-element="slot"]:nth-of-type(n + 5) {
+[data-lk-component="grid"][data-lk-grid-slots-to-show="4"]
+  > [data-lk-element="slot"]:nth-of-type(n + 5) {
   display: none;
 }
 
-[data-lk-component="grid"][data-lk-grid-slots-to-show="5"]>[data-lk-element="slot"]:nth-of-type(n + 6) {
+[data-lk-component="grid"][data-lk-grid-slots-to-show="5"]
+  > [data-lk-element="slot"]:nth-of-type(n + 6) {
   display: none;
 }
 
-[data-lk-component="grid"][data-lk-grid-slots-to-show="6"]>[data-lk-element="slot"]:nth-of-type(n + 7) {
+[data-lk-component="grid"][data-lk-grid-slots-to-show="6"]
+  > [data-lk-element="slot"]:nth-of-type(n + 7) {
   display: none;
 }
 
-[data-lk-component="grid"][data-lk-grid-slots-to-show="7"]>[data-lk-element="slot"]:nth-of-type(n + 8) {
+[data-lk-component="grid"][data-lk-grid-slots-to-show="7"]
+  > [data-lk-element="slot"]:nth-of-type(n + 8) {
   display: none;
 }
 
-[data-lk-component="grid"][data-lk-grid-slots-to-show="8"]>[data-lk-element="slot"]:nth-of-type(n + 9) {
+[data-lk-component="grid"][data-lk-grid-slots-to-show="8"]
+  > [data-lk-element="slot"]:nth-of-type(n + 9) {
   display: none;
 }
 
-[data-lk-component="grid"][data-lk-grid-slots-to-show="9"]>[data-lk-element="slot"]:nth-of-type(n + 10) {
+[data-lk-component="grid"][data-lk-grid-slots-to-show="9"]
+  > [data-lk-element="slot"]:nth-of-type(n + 10) {
   display: none;
 }
 
-[data-lk-component="grid"][data-lk-grid-slots-to-show="10"]>[data-lk-element="slot"]:nth-of-type(n + 11) {
+[data-lk-component="grid"][data-lk-grid-slots-to-show="10"]
+  > [data-lk-element="slot"]:nth-of-type(n + 11) {
   display: none;
 }
 
-[data-lk-component="grid"][data-lk-grid-slots-to-show="11"]>[data-lk-element="slot"]:nth-of-type(n + 12) {
+[data-lk-component="grid"][data-lk-grid-slots-to-show="11"]
+  > [data-lk-element="slot"]:nth-of-type(n + 12) {
   display: none;
 }
 
@@ -254,5 +265,4 @@
 
 .lk-debug--grid-override {
   grid-template-columns: 0.5fr 1fr 0.5fr 2fr 0.5fr;
-
 }

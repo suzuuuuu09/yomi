@@ -6,30 +6,26 @@
   transition: transform 0.3s ease-out;
 
   &[data-isactive="true"] {
-        transform: scale(100%);
+    transform: scale(100%);
   }
 
   &[data-lk-dropdown-trigger-quadrant="top-left"] {
     transform: translate(0%, -100%);
     transform-origin: top left;
-
   }
 
   &[data-lk-dropdown-trigger-quadrant="top-right"] {
     transform: translate(-100%, -100%);
     transform-origin: top right;
-  
   }
 
   &[data-lk-dropdown-trigger-quadrant="bottom-right"] {
     transform: translate(-100%, 0%);
     transform-origin: bottom right;
-
   }
 
   &[data-lk-dropdown-trigger-quadrant="bottom-left"] {
     transform: translate(0%, 0%);
     transform-origin: bottom left;
-
   }
 }

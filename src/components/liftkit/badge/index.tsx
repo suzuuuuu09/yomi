@@ -45,13 +45,27 @@ export default function Badge({
   }
 
   return (
-    <div data-lk-component="badge" data-lk-badge-scale={scale} data-lk-badge-color={`lk-${color}`} {...restProps}>
+    <div
+      data-lk-component="badge"
+      data-lk-badge-scale={scale}
+      data-lk-badge-color={`lk-${color}`}
+      {...restProps}
+    >
       <div data-lk-component="slot" data-lk-slot="icon">
         <div data-lk-icon-element="wrapper">
-          <Icon name={icon} color={iconColor} strokeWidth={iconStrokeWidth || defaultIconStrokeWidth}></Icon>
+          <Icon
+            name={icon}
+            color={iconColor}
+            strokeWidth={iconStrokeWidth || defaultIconStrokeWidth}
+          ></Icon>
         </div>
       </div>
-      {scrim && <div data-lk-component="badge-scrim" className={`bg-${iconColor}`}></div>}
+      {scrim && (
+        <div
+          data-lk-component="badge-scrim"
+          className={`bg-${iconColor}`}
+        ></div>
+      )}
     </div>
   );
 }

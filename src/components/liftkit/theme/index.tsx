@@ -1,8 +1,21 @@
 "use client";
 
-import { createContext, useState, useCallback, useEffect, ReactNode, useContext } from "react";
+import {
+  createContext,
+  useState,
+  useCallback,
+  useEffect,
+  ReactNode,
+  useContext,
+} from "react";
 import materialDynamicColors from "material-dynamic-colors";
-import { hexFromArgb, argbFromHex, TonalPalette, Hct, customColor } from "@material/material-color-utilities";
+import {
+  hexFromArgb,
+  argbFromHex,
+  TonalPalette,
+  Hct,
+  customColor,
+} from "@material/material-color-utilities";
 
 // Define types for theme colors
 interface ThemeColors {
@@ -80,7 +93,7 @@ interface ThemeContextType {
   updateTheme: (palette: PaletteState) => Promise<void>;
   updateThemeFromMaster: (
     hexCode: string,
-    setPalette: React.Dispatch<React.SetStateAction<PaletteState>>
+    setPalette: React.Dispatch<React.SetStateAction<PaletteState>>,
   ) => Promise<void>;
   palette: PaletteState;
   setPalette: React.Dispatch<React.SetStateAction<PaletteState>>;
@@ -92,7 +105,9 @@ interface ThemeContextType {
   setNavIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-export const ThemeContext = createContext<ThemeContextType>({} as ThemeContextType);
+export const ThemeContext = createContext<ThemeContextType>(
+  {} as ThemeContextType,
+);
 
 export default function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<ThemeState>({
@@ -203,24 +218,24 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
    *
    */
 
-const [colorMode, setColorMode] = useState<"light" | "dark">("light");
-  
-  const [palette, setPalette] = useState<PaletteState>({
-  "primary": "#035eff",
-  "secondary": "#badcff",
-  "tertiary": "#00ddfe",
-  "neutral": "#000000",
-  "neutralvariant": "#3f4f5b",
-  "error": "#dd305c",
-  "warning": "#feb600",
-  "success": "#0cfecd",
-  "info": "#175bfc"
-}
+  const [colorMode, setColorMode] = useState<"light" | "dark">("light");
 
-  /**
-   * END OF REPLACE BLOCK; DO NOT ALTER ANYTHING BELOW THIS COMMENT
-   */
+  const [palette, setPalette] = useState<PaletteState>(
+    {
+      primary: "#035eff",
+      secondary: "#badcff",
+      tertiary: "#00ddfe",
+      neutral: "#000000",
+      neutralvariant: "#3f4f5b",
+      error: "#dd305c",
+      warning: "#feb600",
+      success: "#0cfecd",
+      info: "#175bfc",
+    },
 
+    /**
+     * END OF REPLACE BLOCK; DO NOT ALTER ANYTHING BELOW THIS COMMENT
+     */
   );
 
   const [navIsOpen, setNavIsOpen] = useState(false);
@@ -230,16 +245,25 @@ const [colorMode, setColorMode] = useState<"light" | "dark">("light");
     const root = document.documentElement;
     // console.log(root);
     Object.keys(theme.light).forEach((key) => {
-      root.style.setProperty(`--light__${key.toLowerCase()}_lkv`, theme.light[key]);
+      root.style.setProperty(
+        `--light__${key.toLowerCase()}_lkv`,
+        theme.light[key],
+      );
     });
 
     Object.keys(theme.dark).forEach((key) => {
-      root.style.setProperty(`--dark__${key.toLowerCase()}_lkv`, theme.dark[key]);
+      root.style.setProperty(
+        `--dark__${key.toLowerCase()}_lkv`,
+        theme.dark[key],
+      );
     });
 
     if (colorMode === "dark") {
       Object.keys(theme.dark).forEach((key) => {
-        root.style.setProperty(`--light__${key.toLowerCase()}_lkv`, theme.dark[key]);
+        root.style.setProperty(
+          `--light__${key.toLowerCase()}_lkv`,
+          theme.dark[key],
+        );
       });
     }
   }, [theme, colorMode]);
@@ -260,7 +284,10 @@ const [colorMode, setColorMode] = useState<"light" | "dark">("light");
 
     const handleKeyDown = (event: KeyboardEvent) => {
       const activeElement = document.activeElement as HTMLInputElement;
-      if (["ArrowUp", "ArrowDown"].includes(event.key) && activeElement?.type === "number") {
+      if (
+        ["ArrowUp", "ArrowDown"].includes(event.key) &&
+        activeElement?.type === "number"
+      ) {
         event.preventDefault();
       }
     };
@@ -457,7 +484,10 @@ const [colorMode, setColorMode] = useState<"light" | "dark">("light");
   }, []);
 
   const updateThemeFromMaster = useCallback(
-    async (hexCode: string, setPalette: React.Dispatch<React.SetStateAction<PaletteState>>) => {
+    async (
+      hexCode: string,
+      setPalette: React.Dispatch<React.SetStateAction<PaletteState>>,
+    ) => {
       var newPalette: Record<string, string> = {};
 
       // need to get the key colors to feed back to the ColorModule so it can update the palette
@@ -499,7 +529,7 @@ const [colorMode, setColorMode] = useState<"light" | "dark">("light");
         console.error(error);
       }
     },
-    []
+    [],
   );
 
   //normalization functions; things that prevent weird input behavior

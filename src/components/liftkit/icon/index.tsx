@@ -20,8 +20,19 @@ export default function Icon({
   ...restProps
 }: LkIconProps) {
   return (
-    <div data-lk-component="icon" data-lk-icon-offset={opticShift} {...restProps} data-lk-icon-font-class={fontClass} >
-      <DynamicIcon name={name} width="1em" height="1em" color={`var(--lk-${color})`} strokeWidth={strokeWidth} />
+    <div
+      data-lk-component="icon"
+      data-lk-icon-offset={opticShift}
+      {...restProps}
+      data-lk-icon-font-class={fontClass}
+    >
+      <DynamicIcon
+        name={name}
+        width="1em"
+        height="1em"
+        color={`var(--lk-${color})`}
+        strokeWidth={strokeWidth}
+      />
     </div>
   );
 }

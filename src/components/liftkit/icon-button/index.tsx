@@ -10,22 +10,29 @@ declare global {
   type LkIconButtonSize = "xs" | "sm" | "md" | "lg" | "xl";
 }
 
-interface LkIconButtonBaseProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface LkIconButtonBaseProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: IconName;
   size?: LkIconButtonSize;
   fontClass?: LkFontClass; //optional, if present it will control the size directly via fontClass
   className?: string; //optional, making explicit here so we can control how it mixes in with locally-passed props
 }
 
-type IconButtonColor<T extends "fill" | "outline" | "text"> = T extends "fill" ? LkColorWithOnToken : LkColor;
+type IconButtonColor<T extends "fill" | "outline" | "text"> = T extends "fill"
+  ? LkColorWithOnToken
+  : LkColor;
 
-export interface LkIconButtonProps<T extends "fill" | "outline" | "text" = "fill"> extends LkIconButtonBaseProps {
+export interface LkIconButtonProps<
+  T extends "fill" | "outline" | "text" = "fill",
+> extends LkIconButtonBaseProps {
   icon: IconName;
   variant?: T;
   color?: IconButtonColor<T>;
 }
 
-export default function IconButton<T extends "fill" | "outline" | "text" = "fill">({
+export default function IconButton<
+  T extends "fill" | "outline" | "text" = "fill",
+>({
   icon = "roller-coaster",
   variant = "fill" as T,
   color = "primary" as IconButtonColor<T>,
@@ -34,7 +41,10 @@ export default function IconButton<T extends "fill" | "outline" | "text" = "fill
   className,
   ...restProps
 }: LkIconButtonProps<T>) {
-  const dataAttrs = useMemo(() => propsToDataAttrs({ variant, color, size }, "icon-button"), [variant, color, size]);
+  const dataAttrs = useMemo(
+    () => propsToDataAttrs({ variant, color, size }, "icon-button"),
+    [variant, color, size],
+  );
 
   const onToken = getOnToken(color) as LkColor;
 
@@ -77,7 +87,11 @@ export default function IconButton<T extends "fill" | "outline" | "text" = "fill
       className={`${fontClass} ${className || ""}`}
     >
       <div>
-        <Icon name={icon} color={getIconColor(variant)} strokeWidth={iconStrokeWidth}></Icon>
+        <Icon
+          name={icon}
+          color={getIconColor(variant)}
+          strokeWidth={iconStrokeWidth}
+        ></Icon>
       </div>
       <StateLayer bgColor={getIconColor(variant)}></StateLayer>
     </button>

@@ -11,7 +11,12 @@ export interface LkSwitchProps {
   value?: boolean;
 }
 
-export default function Switch({ onClick, offColor = "surfacevariant", onColor = "primary", value }: LkSwitchProps) {
+export default function Switch({
+  onClick,
+  offColor = "surfacevariant",
+  onColor = "primary",
+  value,
+}: LkSwitchProps) {
   const [switchIsOn, setSwitchIsOn] = useState(value ? value : false);
 
   const switchThumbOffColor = getOnToken(offColor);
@@ -42,7 +47,10 @@ export default function Switch({ onClick, offColor = "surfacevariant", onColor =
         onClick={() => handleClick(!switchIsOn)}
         data-lk-switch-state={switchIsOn ? "on" : "off"}
       >
-        <div data-lk-component="switch-thumb" data-lk-switch-state={switchIsOn ? "on" : "off"}></div>
+        <div
+          data-lk-component="switch-thumb"
+          data-lk-switch-state={switchIsOn ? "on" : "off"}
+        ></div>
       </div>
       <style jsx>{`
         [data-lk-component="switch"] {

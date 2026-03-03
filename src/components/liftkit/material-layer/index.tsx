@@ -117,15 +117,17 @@ export default function MaterialLayer({
             isolation: isolate;
             backdrop-filter: blur(
               var(
-                --blur-${(materialProps as LkMatProps_Glass)?.thickness ||
-                  "normal"}
+                --blur-${
+                  (materialProps as LkMatProps_Glass)?.thickness || "normal"
+                }
               )
             );
           }
 
           [data-lk-material-sublayer="light"] {
-            background: ${(materialProps as LkMatProps_Glass)
-              ?.lightExpression || "none"};
+            background: ${
+              (materialProps as LkMatProps_Glass)?.lightExpression || "none"
+            };
             mix-blend-mode: soft-light;
             opacity: 1;
           }

@@ -20,9 +20,6 @@ if there are any.
 
 */
 
-
-
-
 .bg-primary {
   background-color: var(--lk-primary);
   color: var(--lk-onprimary);
@@ -333,9 +330,6 @@ if there are any.
   background-color: transparent;
   color: var(--lk-onsurface);
 }
-
-
-
 
 /** DEPRECATED: EXPLICIT LIGHT/DARK FLAGS. Commenting out for now but may remove in future versions.
 

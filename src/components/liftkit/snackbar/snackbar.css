@@ -29,5 +29,4 @@
   [data-lk-slot="snackbar-actions"] {
     margin-left: calc(1em / var(--lk-halfstep));
   }
-
 }

@@ -51,11 +51,13 @@ export default function NavBar({
   ctaButtons,
   ...restProps
 }: LkNavBarProps) {
-  const dataAttrs = useMemo(() => propsToDataAttrs({ material, restProps }, "navbar"), [material, restProps]);
+  const dataAttrs = useMemo(
+    () => propsToDataAttrs({ material, restProps }, "navbar"),
+    [material, restProps],
+  );
 
   const [menuOpen, setMenuOpen] = useState(false);
   const toggleMenu = () => setMenuOpen(!menuOpen);
-
 
   // If no navButtons or navDropdowns are provided, render placeholder blocks
   function getPlaceholderBlocks(count: number) {
@@ -66,29 +68,39 @@ export default function NavBar({
     return blocks;
   }
 
-
   return (
     <div data-lk-component="navbar" {...dataAttrs}>
       {/* Desktop Navbar */}
       <div className="navbar-desktop">
         <Row alignItems="center" gap="sm">
           <Link href="/">
-            <Image alt="" src="/logotype.svg" height="md"/>
+            <Image alt="" src="/logotype.svg" height="md" />
           </Link>
         </Row>
         <Row>
-          <Row data-lk-slot="nav-buttons">{navButtons || getPlaceholderBlocks(2)}</Row>
-          <Row data-lk-slot="nav-dropdowns">{navDropdowns || getPlaceholderBlocks(2) }</Row>
+          <Row data-lk-slot="nav-buttons">
+            {navButtons || getPlaceholderBlocks(2)}
+          </Row>
+          <Row data-lk-slot="nav-dropdowns">
+            {navDropdowns || getPlaceholderBlocks(2)}
+          </Row>
         </Row>
         <Row data-lk-navbar-el="nav-menu-end">
-          <div data-lk-slot="nav-icon-buttons">{iconButtons || getPlaceholderBlocks(3)}</div>
-          <div data-lk-slot="nav-cta-buttons">{ctaButtons || getPlaceholderBlocks(2)}</div>
+          <div data-lk-slot="nav-icon-buttons">
+            {iconButtons || getPlaceholderBlocks(3)}
+          </div>
+          <div data-lk-slot="nav-cta-buttons">
+            {ctaButtons || getPlaceholderBlocks(2)}
+          </div>
         </Row>
       </div>
 
       {/* Mobile Navbar */}
       <div data-lk-navbar-el="nav-menu">
-        <Column alignItems="start" className={`navbar-mobile ${menuOpen ? "active" : ""}`}>
+        <Column
+          alignItems="start"
+          className={`navbar-mobile ${menuOpen ? "active" : ""}`}
+        >
           <IconButton icon="menu" onClick={() => toggleMenu()} />
           <Link href="/">
             <Image alt="" src="/vercel.svg" width="md" height="md" />
@@ -103,4 +115,3 @@ export default function NavBar({
     </div>
   );
 }
-

@@ -8,7 +8,7 @@ interface LkContainerProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export default function Container(props: LkContainerProps) {
   const { maxWidth = "md", children, ...restProps } = props;
-  
+
   const dataAttrs = useMemo(
     () => propsToDataAttrs({ maxWidth }, "container"),
     [maxWidth],

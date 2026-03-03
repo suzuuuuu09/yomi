@@ -4,7 +4,7 @@ import { getOnToken } from "@/lib/liftkit/colorUtils";
 
 /**
  * Props for the LkSticker component.
- * 
+ *
  * @param fontClass - Optional font class styling for the sticker text
  * @param bgColor - Optional background color with on-token support for the sticker
  * @param children - Optional React nodes to render inside the sticker
@@ -25,7 +25,11 @@ export default function Sticker({
   ...restProps
 }: LkStickerProps) {
   return (
-    <div data-lk-component="sticker" {...restProps} className={`bg-${bgColor} color-${getOnToken(bgColor)} ${className || ""}`}>
+    <div
+      data-lk-component="sticker"
+      {...restProps}
+      className={`bg-${bgColor} color-${getOnToken(bgColor)} ${className || ""}`}
+    >
       <Text fontClass={fontClass}>{children || "Sticker"}</Text>
     </div>
   );

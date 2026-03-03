@@ -48,7 +48,9 @@ const colorsWithoutOnTokens = [
 ];
 
 export function getColorsWithoutOnTokens(): LkColor[] {
-  return LkColors.filter((color) => !colorsWithOnTokens.includes(color as LkColorWithOnToken));
+  return LkColors.filter(
+    (color) => !colorsWithOnTokens.includes(color as LkColorWithOnToken),
+  );
 }
 
 export function getOnToken(colorToken: LkColor) {
@@ -58,7 +60,8 @@ export function getOnToken(colorToken: LkColor) {
   //   throw new Error(`The color token "${colorToken}" does not have a corresponding "on-" token.`);
   // }
 
-  const isAlreadyOnToken = colorToken.startsWith("on") || colorToken.startsWith("inverseon");
+  const isAlreadyOnToken =
+    colorToken.startsWith("on") || colorToken.startsWith("inverseon");
   const startsWithOn = colorToken.startsWith("on");
   const endsWithFixed = colorToken.endsWith("fixed");
   const endsWithDim = colorToken.endsWith("dim");

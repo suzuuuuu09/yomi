@@ -2,21 +2,28 @@ import { useMemo } from "react";
 import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import "@/components/liftkit/row/row.css";
 
-
-
 interface LkRowProps extends React.HTMLAttributes<HTMLDivElement> {
   alignItems?: "start" | "center" | "end" | "stretch";
-  justifyContent?: "start" | "center" | "end" | "space-between" | "space-around";
+  justifyContent?:
+    | "start"
+    | "center"
+    | "end"
+    | "space-between"
+    | "space-around";
   gap?: LkSizeUnit;
   wrapChildren?: boolean;
-  defaultChildBehavior?: "auto-grow" | "auto-shrink" | "ignoreFlexRules" | "ignoreIntrinsicSize";
+  defaultChildBehavior?:
+    | "auto-grow"
+    | "auto-shrink"
+    | "ignoreFlexRules"
+    | "ignoreIntrinsicSize";
 }
 
 export default function Row(props: LkRowProps) {
   const {
     children,
-    alignItems="start",
-    justifyContent="start",
+    alignItems = "start",
+    justifyContent = "start",
     gap,
     wrapChildren,
     defaultChildBehavior,
@@ -27,9 +34,9 @@ export default function Row(props: LkRowProps) {
     () =>
       propsToDataAttrs(
         { alignItems, justifyContent, gap, wrapChildren, defaultChildBehavior },
-        "row"
+        "row",
       ),
-    [alignItems, justifyContent, gap, wrapChildren, defaultChildBehavior]
+    [alignItems, justifyContent, gap, wrapChildren, defaultChildBehavior],
   );
 
   return (

@@ -1,8 +1,14 @@
-'use client';
+"use client";
 
 // CustomDropdown.tsx
 import Card, { LkCardProps } from "@/components/liftkit/card";
-import React, { useContext, useState, useRef, useEffect, createContext } from "react";
+import React, {
+  useContext,
+  useState,
+  useRef,
+  useEffect,
+  createContext,
+} from "react";
 import Column from "@/components/liftkit/column";
 import ReactDOM from "react-dom";
 import "@/components/liftkit/dropdown/dropdown.css";
@@ -24,7 +30,9 @@ export interface LkDropdownMenuProps {
 }
 
 // Context for dropdown state
-const DropdownContext = createContext<LkDropdownContext>({} as LkDropdownContext);
+const DropdownContext = createContext<LkDropdownContext>(
+  {} as LkDropdownContext,
+);
 
 export function Dropdown({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -40,7 +48,9 @@ export function Dropdown({ children }: { children: React.ReactNode }) {
   }, [open]);
 
   return (
-    <DropdownContext.Provider value={{ open, setOpen, triggerRef, contentRef }}>{children}</DropdownContext.Provider>
+    <DropdownContext.Provider value={{ open, setOpen, triggerRef, contentRef }}>
+      {children}
+    </DropdownContext.Provider>
   );
 }
 
@@ -84,7 +94,11 @@ export function DropdownMenu({ children, cardProps }: LkDropdownMenuProps) {
     var windowHeight = window.innerHeight;
 
     /** Origin as in "the corner of the trigger the menu will expand from" */
-    var triggerQuadrant: "top-left" | "top-right" | "bottom-right" | "bottom-left";
+    var triggerQuadrant:
+      | "top-left"
+      | "top-right"
+      | "bottom-right"
+      | "bottom-left";
 
     const isTop: boolean = rect.top < windowHeight / 2;
     const isLeft: boolean = rect.left < windowWidth / 2;
@@ -105,13 +119,22 @@ export function DropdownMenu({ children, cardProps }: LkDropdownMenuProps) {
         };
         break;
       case "top-right":
-        positionStyle = { top: rect.top + window.scrollY, left: rect.right + window.scrollX };
+        positionStyle = {
+          top: rect.top + window.scrollY,
+          left: rect.right + window.scrollX,
+        };
         break;
       case "bottom-right":
-        positionStyle = { top: rect.bottom + window.scrollY, left: rect.right + window.scrollX };
+        positionStyle = {
+          top: rect.bottom + window.scrollY,
+          left: rect.right + window.scrollX,
+        };
         break;
       case "bottom-left":
-        positionStyle = { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX };
+        positionStyle = {
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+        };
         break;
     }
 
@@ -140,7 +163,7 @@ export function DropdownMenu({ children, cardProps }: LkDropdownMenuProps) {
         </Column>
       </Card>
     </div>,
-    document.body
+    document.body,
   );
 }
 

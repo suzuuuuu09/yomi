@@ -8,7 +8,6 @@
     overflow: hidden;
     flex-grow: 1;
   }
-
 }
 
 [data-lk-tabs-el="tab-content"] > * {
@@ -21,4 +20,3 @@
   scrollbar-color: var(--lk-outline) transparent;
   scrollbar-width: thin;
 }
-
