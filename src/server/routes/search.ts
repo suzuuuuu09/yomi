@@ -4,7 +4,7 @@ import {
   BookResponseSchema,
   FinalResponseSchema,
   SearchQuerySchema,
-} from "@/server/schemas/book";
+} from "@/server/schemas/search";
 
 const searchApp = new OpenAPIHono();
 
