@@ -1,17 +1,16 @@
 {
-  "$schema": "https://developers.cloudflare.com/workers/wrangler/schema/v2.0.0/wrangler.schema.json",
-  "name": "yomi",
-  "compatibility_date": "2026-02-28",
-  "compatibility_flags": ["nodejs_compat"],
-  "pages_build_output_dir": ".vercel/output/static",
-  "d1_databases": [
-    {
-      "binding": "yomi_db",
-      "database_name": "yomi-db",
-      "database_id": "0652fb68-4d3e-4fab-bc93-e2f5ed717389"
-    }
-  ],
-  "vars": {
-    "BETTER_AUTH_URL": "https://yomi.suzuuuuu09.com"
-  }
+	"$schema": "https://developers.cloudflare.com/workers/wrangler/schema/v2.0.0/wrangler.schema.json",
+	"name": "yomi",
+	"compatibility_date": "2026-02-28",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"pages_build_output_dir": ".vercel/output/static",
+	"d1_databases": [
+		{
+			"binding": "yomi_db",
+			"database_name": "yomi-db",
+			"database_id": "0652fb68-4d3e-4fab-bc93-e2f5ed717389"
+		}
+	]
 }
