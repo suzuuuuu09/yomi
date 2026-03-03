@@ -70,13 +70,11 @@ export default function BottomDock({
           shadowColor: "black/30",
         })}
       >
-        {/* Drag handle on mobile */}
         <Flex display={{ base: "flex", md: "none" }} justify="center" mb="2">
           <Box w="8" h="1" rounded="full" bg="white/20" />
         </Flex>
 
         <HStack alignItems="stretch" gap={{ base: "2", md: "3" }}>
-          {/* Label */}
           <Flex
             display={{ base: "none", md: "flex" }}
             alignItems="center"
@@ -99,7 +97,6 @@ export default function BottomDock({
             </Text>
           </Flex>
 
-          {/* Book cards */}
           <HStack
             gap={{ base: "2", md: "3" }}
             overflowX="auto"

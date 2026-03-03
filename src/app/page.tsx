@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { css } from "styled-system/css";
 import { Circle, Flex, styled as s } from "styled-system/jsx";
 import AddBookModal from "@/components/AddBookModal";
+import BookListDrawer from "@/components/BookListDrawer";
 import StarInsightPanel from "@/components/StarInsightPanel";
 import BottomDock from "@/components/sections/BottomDock";
 import StatsOverlay from "@/components/sections/StatsOverlay";
@@ -95,7 +96,6 @@ export default function Observatory() {
     selectedBookId,
     isAddModalOpen,
     setIsAddModalOpen,
-    setIsBookListOpen,
     handleStarClick,
     handleAdd,
   } = useObservatory();
@@ -112,10 +112,7 @@ export default function Observatory() {
         onStarClick={handleStarClick}
         selectedBookId={selectedBookId}
       />
-      <TopBar
-        bookCount={bookCount}
-        onOpenBookList={() => setIsBookListOpen(true)}
-      />
+      <TopBar bookCount={bookCount} />
 
       <s.div
         position="fixed"
@@ -138,6 +135,8 @@ export default function Observatory() {
         onCloseAction={() => setIsAddModalOpen(false)}
         onAddAction={handleAdd}
       />
+
+      <BookListDrawer />
 
       <StarInsightPanel {...starInsight} />
 

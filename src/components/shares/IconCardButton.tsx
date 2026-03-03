@@ -7,6 +7,7 @@ interface IconCardButtonProps
   icon: IconName;
   iconSize?: number;
   label: string;
+  children?: React.ReactNode;
 }
 
 export function IconCardButton({

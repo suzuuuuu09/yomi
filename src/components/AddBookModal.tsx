@@ -13,7 +13,7 @@ import Card from "~liftkit/card";
 import Column from "~liftkit/column";
 import Grid from "~liftkit/grid";
 import Heading from "~liftkit/heading";
-import IconButton from "~liftkit/icon-button";
+import CloseButton from "@/components/shares/CloseButton";
 import {
   Select,
   SelectMenu,
@@ -110,9 +110,7 @@ export default function AddBookModal(props: AddBlockModalProps) {
           scaleFactor="body"
           className={css({ boxShadow: "2xl" })}
         >
-          <IconButton
-            icon="x"
-            variant="text"
+          <CloseButton
             onClick={onCloseAction}
             className={css({
               position: "absolute!",
@@ -237,7 +235,6 @@ export default function AddBookModal(props: AddBlockModalProps) {
                     ))}
                 </s.div>
 
-                {/* Pagination */}
                 {totalPages > 1 && store.mode !== "isbn" && (
                   <Flex align="center" justify="center" gap={4} mt={2}>
                     <s.button

@@ -18,8 +18,8 @@ import type { Book, ReadingNote } from "@/types/library";
 import Card from "~liftkit/card";
 import Grid from "~liftkit/grid";
 import Text from "~liftkit/text";
+import StatusBadge from "./shares/badge/StatusBadge";
 
-// ─── Reading Progress ────────────────────────────────────────────────────────
 function ReadingProgress({
   current,
   total,
@@ -80,7 +80,6 @@ function ReadingProgress({
   );
 }
 
-// ─── Mini Graph ──────────────────────────────────────────────────────────────
 function MiniGraph() {
   const data = [3, 8, 5, 12, 20, 15, 7, 25, 18, 30, 22, 10, 28, 35];
   const max = Math.max(...data);
@@ -129,7 +128,6 @@ function MiniGraph() {
   );
 }
 
-// ─── Page Controls ────────────────────────────────────────────────────────────
 function PageControls({
   bookId,
   current,
@@ -299,7 +297,6 @@ function PageControls({
   );
 }
 
-// ─── Reading Notes ─────────────────────────────────────────────────────────────
 function ReadingNotes({
   bookId,
   notes,
@@ -496,59 +493,6 @@ function ReadingNotes({
   );
 }
 
-// ─── Status Badge ─────────────────────────────────────────────────────────────
-function StatusBadge({ status }: { status: Book["status"] }) {
-  const config = {
-    reading: {
-      label: "読書中",
-      dotColor: "#34d399",
-      bg: "emerald.500/10",
-      border: "emerald.500/20",
-      color: "emerald.400",
-    },
-    unread: {
-      label: "未観測",
-      dotColor: "#fbbf24",
-      bg: "amber.500/10",
-      border: "amber.500/20",
-      color: "amber.400",
-    },
-    completed: {
-      label: "読了",
-      dotColor: "#60a5fa",
-      bg: "blue.500/10",
-      border: "blue.500/20",
-      color: "blue.400",
-    },
-  };
-  const c = config[status];
-  return (
-    <s.span
-      display="inline-flex"
-      alignItems="center"
-      gap={1.5}
-      px={2.5}
-      py={1}
-      rounded="lg"
-      fontSize="10px"
-      fontWeight="semibold"
-      bg={c.bg}
-      border="1px solid"
-      borderColor={c.border}
-      color={c.color}
-    >
-      <s.span
-        w="6px"
-        h="6px"
-        rounded="full"
-        style={{ background: c.dotColor }}
-      />
-      {c.label}
-    </s.span>
-  );
-}
-
-// ─── Star Insight Panel ───────────────────────────────────────────────────────
 export default function StarInsightPanel({
   book,
   onClose,
@@ -568,7 +512,6 @@ export default function StarInsightPanel({
 
   return (
     <>
-      {/* Backdrop (mobile only) */}
       <s.div
         position="fixed"
         inset={0}
@@ -585,7 +528,6 @@ export default function StarInsightPanel({
         onClick={onClose}
       />
 
-      {/* Panel */}
       <s.div
         position="fixed"
         zIndex={50}
@@ -616,7 +558,6 @@ export default function StarInsightPanel({
           boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
         }}
       >
-        {/* Header glow */}
         <s.div
           position="absolute"
           top={0}
@@ -631,7 +572,6 @@ export default function StarInsightPanel({
           }}
         />
 
-        {/* Mobile drag handle */}
         <s.div
           display="flex"
           justifyContent="center"
@@ -643,7 +583,6 @@ export default function StarInsightPanel({
           <s.div w="40px" h="4px" rounded="full" bg="white/20" />
         </s.div>
 
-        {/* Close button row */}
         <Flex
           position="relative"
           align="center"
@@ -669,10 +608,8 @@ export default function StarInsightPanel({
           </s.button>
         </Flex>
 
-        {/* Scrollable content */}
         <s.div flex={1} overflowY="auto" p={5}>
           <Stack gap={6}>
-            {/* Book cover + title */}
             <Flex align="center" gap={4}>
               <s.div position="relative" flexShrink={0}>
                 {book.coverUrl ? (
@@ -732,7 +669,6 @@ export default function StarInsightPanel({
               </s.div>
             </Flex>
 
-            {/* Meta grid */}
             <s.div display="grid" gridTemplateColumns="repeat(2, 1fr)" gap={3}>
               <Card
                 material="glass"
@@ -784,7 +720,6 @@ export default function StarInsightPanel({
               </Card>
             </s.div>
 
-            {/* Progress */}
             <Card
               material="glass"
               variant="transparent"
@@ -804,7 +739,6 @@ export default function StarInsightPanel({
               />
             </Card>
 
-            {/* Reading graph */}
             {book.status !== "unread" && (
               <Card
                 material="glass"
@@ -816,7 +750,6 @@ export default function StarInsightPanel({
               </Card>
             )}
 
-            {/* Nebula tags */}
             <s.div>
               <Flex align="center" gap={1.5} mb={3}>
                 <s.span color="slate.400" display="flex">
@@ -877,7 +810,6 @@ export default function StarInsightPanel({
               </Flex>
             </s.div>
 
-            {/* Reading notes */}
             <Card
               material="glass"
               variant="transparent"

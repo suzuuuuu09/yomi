@@ -6,7 +6,7 @@ export function useBookCount() {
 
   return useMemo(
     () => ({
-      total: books.length,
+      all: books.length,
       reading: books.filter((b) => b.status === "reading").length,
       unread: books.filter((b) => b.status === "unread").length,
       completed: books.filter((b) => b.status === "completed").length,

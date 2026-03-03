@@ -200,7 +200,8 @@ function BookStar({
     if (!groupRef.current || !coreRef.current) return;
     if (reducedMotion) return;
     const t = state.clock.elapsedTime;
-    const seed = parseFloat(book.id) * 2.3 + 1;
+    const seed =
+      book.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) * 2.3 + 1;
 
     if (isReading) {
       const pulse = 1 + Math.sin(t * 2.2 + seed) * 0.18;
@@ -223,7 +224,6 @@ function BookStar({
 
   return (
     <group ref={groupRef} position={book.position}>
-      {/* Layered diffuse glows */}
       <GlowSprite
         color={book.color}
         scale={glow3}
@@ -240,21 +240,18 @@ function BookStar({
         opacity={isUnread ? 0.22 : 0.6}
       />
 
-      {/* Cross spike rays */}
       <StarSpikes
         color={book.color}
         size={spikeSize}
         opacity={isUnread ? 0.28 : 0.7}
       />
 
-      {/* White-hot core */}
       <sprite
         ref={coreRef}
         material={coreMat}
         scale={[coreScale, coreScale, 1]}
       />
 
-      {/* Selected: extra bright halo */}
       {isSelected && (
         <>
           <GlowSprite color="#ffffff" scale={glow2 * 2.0} opacity={0.22} />
@@ -263,12 +260,10 @@ function BookStar({
         </>
       )}
 
-      {/* Reading: orbiting energy ring */}
       {isReading && (
         <OrbitRing color={book.color} radius={coreScale * 3.2} opacity={0.6} />
       )}
 
-      {/* Invisible click target */}
       <mesh
         geometry={hitGeo}
         material={hitMat}
@@ -415,13 +410,20 @@ export default function UniverseCanvas({
   const reducedMotion = useReducedMotion();
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 0, width: "100%", height: "100%" }}>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 0,
+        width: "100%",
+        height: "100%",
+      }}
+    >
       <Canvas
         camera={{ position: [0, 0, 8], fov: 60, near: 0.1, far: 100 }}
         style={{ background: "#020617" }}
         gl={{ antialias: true }}
       >
-        {/* Far field stars */}
         <Stars
           radius={80}
           depth={60}
@@ -431,7 +433,6 @@ export default function UniverseCanvas({
           fade
           speed={reducedMotion ? 0 : 0.3}
         />
-        {/* Near bright stars */}
         <Stars
           radius={22}
           depth={22}
@@ -442,7 +443,6 @@ export default function UniverseCanvas({
           speed={reducedMotion ? 0 : 0.6}
         />
 
-        {/* Multi-color cosmic dust (additive blending) */}
         <DustCloud
           color="#6366f1"
           count={300}
