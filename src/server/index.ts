@@ -2,21 +2,15 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
 import searchApp from "@/server/routes/search";
 import authApp from "@/server/routes/auth";
+import booksApp from "@/server/routes/books";
 
 const app = new OpenAPIHono().basePath("/api");
 
 // NOTE: 同じドメインなのでCORSは必要ない
-/* app.use(
-  "*",
-  cors({
-    origin: "*",
-    credentials: true,
-    allowHeaders: ["Content-Type", "Authorization"],
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  }),
-); */
+
 app.route("/auth", authApp);
 app.route("/search", searchApp);
+app.route("/books", booksApp);
 
 app.get("/", (c) => {
   return c.text("Hello, YOMi API!");

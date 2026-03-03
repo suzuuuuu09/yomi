@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect } from "react";
 import { css } from "styled-system/css";
 import { Circle, Flex, styled as s } from "styled-system/jsx";
 import AddBookModal from "@/components/AddBookModal";
@@ -90,6 +91,13 @@ function AddBookButton({
 
 export default function Observatory() {
   const books = useLibraryStore((s) => s.books);
+  const fetchBooks = useLibraryStore((s) => s.fetchBooks);
+
+  // ログインユーザーの本をAPIから取得
+  useEffect(() => {
+    fetchBooks();
+  }, [fetchBooks]);
+
   const {
     filteredBooks,
     bookCount,
