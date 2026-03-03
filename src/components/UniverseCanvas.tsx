@@ -27,7 +27,6 @@ function getGlowTex(): THREE.CanvasTexture {
   return _glowTex;
 }
 
-// ─── Glow Sprite ──────────────────────────────────────────────────────────────
 function GlowSprite({
   color,
   scale,
@@ -52,7 +51,6 @@ function GlowSprite({
   return <sprite material={mat} scale={[scale, scale, 1]} />;
 }
 
-// ─── Cross Spike Rays (4-way + 4-way diagonal) ───────────────────────────────
 function StarSpikes({
   color,
   size,
@@ -109,7 +107,6 @@ function StarSpikes({
   );
 }
 
-// ─── Orbit Ring (reading status) ──────────────────────────────────────────────
 function OrbitRing({
   color,
   radius,
@@ -145,7 +142,6 @@ function OrbitRing({
   );
 }
 
-// ─── Book Star ────────────────────────────────────────────────────────────────
 function BookStar({
   book,
   onClick,
@@ -180,7 +176,6 @@ function BookStar({
         blending: THREE.AdditiveBlending,
         depthWrite: false,
       }),
-    // only depends on status bucket, not per-frame
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isUnread],
   );
@@ -283,7 +278,6 @@ function BookStar({
   );
 }
 
-// ─── Constellation Lines (animated shimmer) ───────────────────────────────────
 function ConstellationLines({
   books,
   lines,
@@ -330,7 +324,6 @@ function ConstellationLines({
   );
 }
 
-// ─── Cosmic Dust Cloud ────────────────────────────────────────────────────────
 function DustCloud({
   color,
   count,
@@ -382,7 +375,6 @@ function DustCloud({
   );
 }
 
-// ─── Reduced Motion Hook ──────────────────────────────────────────────────────
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -395,7 +387,6 @@ function useReducedMotion() {
   return reduced;
 }
 
-// ─── Main Canvas ──────────────────────────────────────────────────────────────
 export default function UniverseCanvas({
   books,
   constellationLines: lines,

@@ -149,13 +149,13 @@ export default function UserMenu() {
     );
   }
 
-  // unauthenticated state: PandaCSS button
   const unauthStyles = userMenuStyles({ status: "idle" });
   return (
     <Box
       as="button"
       onClick={() => {
-        document.cookie = "better-auth.session_token=; Max-Age=0; path=/;"; // クッキーを削除
+        document.cookie = "better-auth.session_token=; Max-Age=0; path=/;"; // クッキーを削除（ローカル）
+        document.cookie = "__Secure-better-auth.session_token=; Max-Age=0; path=/; Secure;"; // クッキーを削除（本番）
         window.location.href = "/login";
       }}
       aria-label="Googleでログイン"

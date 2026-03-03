@@ -1,13 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 const SESSION_COOKIE = "better-auth.session_token";
+const SESSION_COOKIE_SECURE = "__Secure-better-auth.session_token";
 
 export function middleware(request: NextRequest) {
   // パスを取得
   const { pathname } = request.nextUrl;
 
-  // セッションの有無を確認
-  const hasSession = request.cookies.has(SESSION_COOKIE);
+  // セッションの有無を確認（HTTPSでは__Secure-プレフィックスが付く）
+  const hasSession =
+    request.cookies.has(SESSION_COOKIE) ||
+    request.cookies.has(SESSION_COOKIE_SECURE);
 
   // ログインページへのアクセス
   if (pathname === "/login") {
