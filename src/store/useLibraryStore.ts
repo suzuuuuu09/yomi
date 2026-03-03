@@ -123,20 +123,35 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
 
   updatePageProgress: (bookId, delta) => {
     const book = get().books.find((b) => b.id === bookId);
+
     if (!book) return;
     const newPage = Math.min(
       book.totalPages,
       Math.max(0, book.currentPage + delta),
     );
+    const newStatus =
+      newPage === 0
+        ? "unread"
+        : newPage === book.totalPages
+          ? "completed"
+          : "reading";
+    const completedAt =
+      newStatus === "completed" ? new Date().toISOString() : null;
     set((state) => ({
       books: state.books.map((b) =>
-        b.id === bookId ? { ...b, currentPage: newPage } : b,
+        b.id === bookId
+          ? { ...b, currentPage: newPage, status: newStatus, completedAt }
+          : b,
       ),
     }));
     fetch(`${API_BASE}/${bookId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentPage: newPage }),
+      body: JSON.stringify({
+        currentPage: newPage,
+        status: newStatus,
+        completedAt,
+      }),
     })
       .then((res) => res.json() as Promise<UpdateBookResponse>)
       .then((data) => {
@@ -152,17 +167,33 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
 
   setPageProgress: (bookId, page) => {
     const book = get().books.find((b) => b.id === bookId);
+
     if (!book) return;
+
     const newPage = Math.min(book.totalPages, Math.max(0, page));
+    const newStatus =
+      newPage === 0
+        ? "unread"
+        : newPage === book.totalPages
+          ? "completed"
+          : "reading";
+    const completedAt =
+      newStatus === "completed" ? new Date().toISOString() : null;
     set((state) => ({
       books: state.books.map((b) =>
-        b.id === bookId ? { ...b, currentPage: newPage } : b,
+        b.id === bookId
+          ? { ...b, currentPage: newPage, status: newStatus, completedAt }
+          : b,
       ),
     }));
     fetch(`${API_BASE}/${bookId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentPage: newPage }),
+      body: JSON.stringify({
+        currentPage: newPage,
+        status: newStatus,
+        completedAt,
+      }),
     })
       .then((res) => res.json() as Promise<UpdateBookResponse>)
       .then((data) => {
@@ -185,7 +216,10 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
         b.id === bookId
           ? {
               ...b,
-              notes: [...b.notes, { id: tempId, content, page, createdAt: now }],
+              notes: [
+                ...b.notes,
+                { id: tempId, content, page, createdAt: now },
+              ],
             }
           : b,
       ),
