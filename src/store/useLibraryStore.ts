@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { pageToStatus, resolveCompletedAt } from "@/server/lib/book-status";
+import { computeConstellationLines } from "@/server/lib/star-formation";
 import type { Book, BookStatus } from "@/types/library";
 
 const API_BASE = "/api/books";
@@ -34,6 +36,28 @@ interface UpdateBookResponse {
   ok: boolean;
   brightness: number;
   color: string;
+  status: BookStatus;
+  completedAt: string | null;
+}
+
+// booksの配列から星座線計算用の入力に変換
+function toStarInfos(bs: Book[]) {
+  return bs.map((b) => ({
+    id: b.id,
+    status: b.status,
+    genre: b.genre,
+    positionX: b.position[0],
+    positionY: b.position[1],
+    positionZ: b.position[2],
+  }));
+}
+
+// booksを更新して星座線も同時に再計算する
+function withLines(books: Book[]) {
+  return {
+    books,
+    constellationLines: computeConstellationLines(toStarInfos(books)),
+  };
 }
 
 const useLibraryStore = create<LibraryState>((set, get) => ({
@@ -80,7 +104,7 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
       color: "#1b1b98",
       notes: [],
     };
-    set((state) => ({ books: [...state.books, newBook] }));
+    set((state) => withLines([...state.books, newBook]));
 
     fetch(API_BASE, {
       method: "POST",
@@ -89,8 +113,8 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
     })
       .then((res) => res.json() as Promise<CreateBookResponse>)
       .then((data) => {
-        set((state) => ({
-          books: state.books.map((b) =>
+        set((state) => {
+          const updatedBooks = state.books.map((b) =>
             b.id === tempId
               ? {
                   ...b,
@@ -100,13 +124,12 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
                   color: data.color,
                 }
               : b,
-          ),
-        }));
+          );
+          return withLines(updatedBooks);
+        });
       })
       .catch(() => {
-        set((state) => ({
-          books: state.books.filter((b) => b.id !== tempId),
-        }));
+        set((state) => withLines(state.books.filter((b) => b.id !== tempId)));
       });
   },
 
@@ -114,7 +137,7 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
 
   deleteBook: (bookId) => {
     set((state) => ({
-      books: state.books.filter((b) => b.id !== bookId),
+      ...withLines(state.books.filter((b) => b.id !== bookId)),
       selectedBookId:
         state.selectedBookId === bookId ? null : state.selectedBookId,
     }));
@@ -125,31 +148,76 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
     const book = get().books.find((b) => b.id === bookId);
 
     if (!book) return;
+    const prevPage = book.currentPage;
+    const prevStatus = book.status;
+    const prevCompletedAt = book.completedAt;
+
     const newPage = Math.min(
       book.totalPages,
       Math.max(0, book.currentPage + delta),
     );
-    set((state) => ({
-      books: state.books.map((b) =>
-        b.id === bookId ? { ...b, currentPage: newPage } : b,
-      ),
-    }));
+    const newStatus = pageToStatus(newPage, book.totalPages);
+    const now = new Date().toISOString();
+    const newCompletedAt = resolveCompletedAt(
+      newStatus,
+      book.status,
+      now,
+      book.completedAt,
+    );
+
+    set((state) => {
+      const updatedBooks = state.books.map((b) =>
+        b.id === bookId
+          ? {
+              ...b,
+              currentPage: newPage,
+              status: newStatus,
+              completedAt: newCompletedAt,
+            }
+          : b,
+      );
+      return withLines(updatedBooks);
+    });
     fetch(`${API_BASE}/${bookId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        currentPage: newPage,
-      }),
+      body: JSON.stringify({ currentPage: newPage }),
     })
-      .then((res) => res.json() as Promise<UpdateBookResponse>)
+      .then((res) => {
+        if (!res.ok) throw new Error(`PUT failed: ${res.status}`);
+        return res.json() as Promise<UpdateBookResponse>;
+      })
       .then((data) => {
-        set((state) => ({
-          books: state.books.map((b) =>
+        set((state) => {
+          const updatedBooks = state.books.map((b) =>
             b.id === bookId
-              ? { ...b, brightness: data.brightness, color: data.color }
+              ? {
+                  ...b,
+                  brightness: data.brightness,
+                  color: data.color,
+                  status: data.status,
+                  completedAt: data.completedAt,
+                }
               : b,
-          ),
-        }));
+          );
+          return withLines(updatedBooks);
+        });
+      })
+      .catch(() => {
+        // API失敗時に更新をロールバック
+        set((state) => {
+          const updatedBooks = state.books.map((b) =>
+            b.id === bookId
+              ? {
+                  ...b,
+                  currentPage: prevPage,
+                  status: prevStatus,
+                  completedAt: prevCompletedAt,
+                }
+              : b,
+          );
+          return withLines(updatedBooks);
+        });
       });
   },
 
@@ -158,26 +226,72 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
 
     if (!book) return;
 
+    const prevPage = book.currentPage;
+    const prevStatus = book.status;
+    const prevCompletedAt = book.completedAt;
+
     const newPage = Math.min(book.totalPages, Math.max(0, page));
-    set((state) => ({
-      books: state.books.map((b) =>
-        b.id === bookId ? { ...b, currentPage: newPage } : b,
-      ),
-    }));
+    const newStatus = pageToStatus(newPage, book.totalPages);
+    const now = new Date().toISOString();
+    const newCompletedAt = resolveCompletedAt(
+      newStatus,
+      book.status,
+      now,
+      book.completedAt,
+    );
+
+    set((state) => {
+      const updatedBooks = state.books.map((b) =>
+        b.id === bookId
+          ? {
+              ...b,
+              currentPage: newPage,
+              status: newStatus,
+              completedAt: newCompletedAt,
+            }
+          : b,
+      );
+      return withLines(updatedBooks);
+    });
     fetch(`${API_BASE}/${bookId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentPage: newPage }),
     })
-      .then((res) => res.json() as Promise<UpdateBookResponse>)
+      .then((res) => {
+        if (!res.ok) throw new Error(`PUT failed: ${res.status}`);
+        return res.json() as Promise<UpdateBookResponse>;
+      })
       .then((data) => {
-        set((state) => ({
-          books: state.books.map((b) =>
+        set((state) => {
+          const updatedBooks = state.books.map((b) =>
             b.id === bookId
-              ? { ...b, brightness: data.brightness, color: data.color }
+              ? {
+                  ...b,
+                  brightness: data.brightness,
+                  color: data.color,
+                  status: data.status,
+                  completedAt: data.completedAt,
+                }
               : b,
-          ),
-        }));
+          );
+          return withLines(updatedBooks);
+        });
+      })
+      .catch(() => {
+        set((state) => {
+          const updatedBooks = state.books.map((b) =>
+            b.id === bookId
+              ? {
+                  ...b,
+                  currentPage: prevPage,
+                  status: prevStatus,
+                  completedAt: prevCompletedAt,
+                }
+              : b,
+          );
+          return withLines(updatedBooks);
+        });
       });
   },
 

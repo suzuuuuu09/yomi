@@ -196,7 +196,13 @@ booksApp.put("/:id", async (c) => {
     .set(updates)
     .where(and(eq(books.id, bookId), eq(books.userId, user.id)));
 
-  return c.json({ ok: true, brightness: newBrightness, color: newColor });
+  return c.json({
+    ok: true,
+    brightness: newBrightness,
+    color: newColor,
+    status: newStatus,
+    completedAt: updates.completedAt,
+  });
 });
 
 // TODO: 他人のIDを指定して更新・削除できないようにする
