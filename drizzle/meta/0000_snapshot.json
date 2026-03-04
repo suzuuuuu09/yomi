@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "12c26e9e-861f-4926-8429-f7252bcc2fa8",
+  "id": "e896ddf1-99fe-434f-bd59-80c6338b66d8",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "accounts": {
@@ -58,14 +58,14 @@
         },
         "accessTokenExpiresAt": {
           "name": "accessTokenExpiresAt",
-          "type": "TEXT",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
         "refreshTokenExpiresAt": {
           "name": "refreshTokenExpiresAt",
-          "type": "TEXT",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -86,17 +86,19 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "TEXT",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(unixepoch())"
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "TEXT",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(unixepoch())"
         }
       },
       "indexes": {},
@@ -105,8 +107,12 @@
           "name": "accounts_userId_users_id_fk",
           "tableFrom": "accounts",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -267,17 +273,41 @@
       "indexes": {
         "idx_books_user_id": {
           "name": "idx_books_user_id",
-          "columns": ["user_id"],
+          "columns": [
+            "user_id"
+          ],
           "isUnique": false
         },
         "idx_books_user_status": {
           "name": "idx_books_user_status",
-          "columns": ["user_id", "status"],
+          "columns": [
+            "user_id",
+            "status"
+          ],
           "isUnique": false
         },
         "idx_books_user_genre": {
           "name": "idx_books_user_genre",
-          "columns": ["user_id", "genre"],
+          "columns": [
+            "user_id",
+            "genre"
+          ],
+          "isUnique": false
+        },
+        "idx_books_user_current_page": {
+          "name": "idx_books_user_current_page",
+          "columns": [
+            "user_id",
+            "current_page"
+          ],
+          "isUnique": false
+        },
+        "idx_books_user_total_pages": {
+          "name": "idx_books_user_total_pages",
+          "columns": [
+            "user_id",
+            "total_pages"
+          ],
           "isUnique": false
         }
       },
@@ -286,15 +316,36 @@
           "name": "books_user_id_users_id_fk",
           "tableFrom": "books",
           "tableTo": "users",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "checkConstraints": {
+        "chk_books_total_pages": {
+          "name": "chk_books_total_pages",
+          "value": "\"books\".\"total_pages\" >= 0"
+        },
+        "chk_books_current_page": {
+          "name": "chk_books_current_page",
+          "value": "\"books\".\"current_page\" >= 0"
+        },
+        "chk_books_current_lte_total": {
+          "name": "chk_books_current_lte_total",
+          "value": "\"books\".\"current_page\" <= \"books\".\"total_pages\" OR \"books\".\"total_pages\" = 0"
+        },
+        "chk_books_valid_status": {
+          "name": "chk_books_valid_status",
+          "value": "\"books\".\"status\" IN ('unread', 'reading', 'completed')"
+        }
+      }
     },
     "reading_logs": {
       "name": "reading_logs",
@@ -345,12 +396,26 @@
       "indexes": {
         "idx_reading_logs_book_date": {
           "name": "idx_reading_logs_book_date",
-          "columns": ["book_id", "date"],
+          "columns": [
+            "book_id",
+            "date"
+          ],
           "isUnique": true
         },
         "idx_reading_logs_user_date": {
           "name": "idx_reading_logs_user_date",
-          "columns": ["user_id", "date"],
+          "columns": [
+            "user_id",
+            "date"
+          ],
+          "isUnique": false
+        },
+        "idx_reading_logs_user_book": {
+          "name": "idx_reading_logs_user_book",
+          "columns": [
+            "user_id",
+            "book_id"
+          ],
           "isUnique": false
         }
       },
@@ -359,8 +424,12 @@
           "name": "reading_logs_book_id_books_id_fk",
           "tableFrom": "reading_logs",
           "tableTo": "books",
-          "columnsFrom": ["book_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "book_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -368,15 +437,24 @@
           "name": "reading_logs_user_id_users_id_fk",
           "tableFrom": "reading_logs",
           "tableTo": "users",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "checkConstraints": {
+        "chk_logs_pages_read": {
+          "name": "chk_logs_pages_read",
+          "value": "\"reading_logs\".\"pages_read\" >= 1"
+        }
+      }
     },
     "reading_notes": {
       "name": "reading_notes",
@@ -427,12 +505,16 @@
       "indexes": {
         "idx_reading_notes_book_id": {
           "name": "idx_reading_notes_book_id",
-          "columns": ["book_id"],
+          "columns": [
+            "book_id"
+          ],
           "isUnique": false
         },
         "idx_reading_notes_user_id": {
           "name": "idx_reading_notes_user_id",
-          "columns": ["user_id"],
+          "columns": [
+            "user_id"
+          ],
           "isUnique": false
         }
       },
@@ -441,8 +523,12 @@
           "name": "reading_notes_book_id_books_id_fk",
           "tableFrom": "reading_notes",
           "tableTo": "books",
-          "columnsFrom": ["book_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "book_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -450,15 +536,24 @@
           "name": "reading_notes_user_id_users_id_fk",
           "tableFrom": "reading_notes",
           "tableTo": "users",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "checkConstraints": {
+        "chk_notes_page": {
+          "name": "chk_notes_page",
+          "value": "\"reading_notes\".\"page\" >= 1 OR \"reading_notes\".\"page\" IS NULL"
+        }
+      }
     },
     "sessions": {
       "name": "sessions",
@@ -472,7 +567,7 @@
         },
         "expiresAt": {
           "name": "expiresAt",
-          "type": "TEXT",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -486,17 +581,19 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "TEXT",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(unixepoch())"
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "TEXT",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(unixepoch())"
         },
         "ipAddress": {
           "name": "ipAddress",
@@ -523,7 +620,9 @@
       "indexes": {
         "sessions_token_unique": {
           "name": "sessions_token_unique",
-          "columns": ["token"],
+          "columns": [
+            "token"
+          ],
           "isUnique": true
         }
       },
@@ -532,8 +631,12 @@
           "name": "sessions_userId_users_id_fk",
           "tableFrom": "sessions",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -572,7 +675,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": 0
+          "default": false
         },
         "image": {
           "name": "image",
@@ -583,23 +686,27 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "TEXT",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(unixepoch())"
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "TEXT",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(unixepoch())"
         }
       },
       "indexes": {
         "users_email_unique": {
           "name": "users_email_unique",
-          "columns": ["email"],
+          "columns": [
+            "email"
+          ],
           "isUnique": true
         }
       },
@@ -634,21 +741,21 @@
         },
         "expiresAt": {
           "name": "expiresAt",
-          "type": "TEXT",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "TEXT",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "TEXT",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
