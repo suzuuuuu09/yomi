@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  check,
   index,
   integer,
   real,
@@ -7,6 +8,9 @@ import {
   text,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
+
+const BOOK_STATUS = ["unread", "reading", "completed"] as const;
+export type BookStatus = (typeof BOOK_STATUS)[number];
 
 // ╭─────────────────────────────────────────────────────────╮
 // │                   認証関連のテーブル                    │
@@ -99,7 +103,7 @@ export const books = sqliteTable(
     isbn: text("isbn").default(""),
     totalPages: integer("total_pages").notNull().default(0),
     currentPage: integer("current_page").notNull().default(0),
-    status: text("status").notNull().default("unread"),
+    status: text("status", { enum: BOOK_STATUS }).notNull().default("unread"),
     genre: text("genre").notNull().default(""),
     coverUrl: text("cover_url").default(""),
     positionX: real("position_x").notNull().default(0),
@@ -112,10 +116,28 @@ export const books = sqliteTable(
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
-  (table) => [
-    index("idx_books_user_id").on(table.userId),
-    index("idx_books_user_status").on(table.userId, table.status),
-    index("idx_books_user_genre").on(table.userId, table.genre),
+  (t) => [
+    index("idx_books_user_id").on(t.userId),
+    index("idx_books_user_status").on(t.userId, t.status),
+    index("idx_books_user_genre").on(t.userId, t.genre),
+
+    // 進捗関連のインデックス
+    index("idx_books_user_current_page").on(t.userId, t.currentPage),
+    index("idx_books_user_total_pages").on(t.userId, t.totalPages),
+
+    // ページの値が0以上であることを保証
+    check("chk_books_total_pages", sql`${t.totalPages} >= 0`),
+    check("chk_books_current_page", sql`${t.currentPage} >= 0`),
+    // 現在のページが総ページ数以下であることを保証（総ページ数が0の場合は無制限とみなす）
+    check(
+      "chk_books_current_lte_total",
+      sql`${t.currentPage} <= ${t.totalPages} OR ${t.totalPages} = 0`,
+    ),
+    // ステータスが有効な値であることを保証
+    check(
+      "chk_books_valid_status",
+      sql`${t.status} IN ('unread', 'reading', 'completed')`,
+    ),
   ],
 );
 
@@ -134,9 +156,11 @@ export const readingNotes = sqliteTable(
     page: integer("page"),
     createdAt: text("created_at").notNull(),
   },
-  (table) => [
-    index("idx_reading_notes_book_id").on(table.bookId),
-    index("idx_reading_notes_user_id").on(table.userId),
+  (t) => [
+    index("idx_reading_notes_book_id").on(t.bookId),
+    index("idx_reading_notes_user_id").on(t.userId),
+    // ページの値が1以上であることを保証（NULLはページ指定なしとみなす）
+    check("chk_notes_page", sql`${t.page} >= 1 OR ${t.page} IS NULL`),
   ],
 );
 
@@ -155,8 +179,10 @@ export const readingLogs = sqliteTable(
     date: text("date").notNull(),
     createdAt: text("created_at").notNull(),
   },
-  (table) => [
-    uniqueIndex("idx_reading_logs_book_date").on(table.bookId, table.date),
-    index("idx_reading_logs_user_date").on(table.userId, table.date),
+  (t) => [
+    uniqueIndex("idx_reading_logs_book_date").on(t.bookId, t.date),
+    index("idx_reading_logs_user_date").on(t.userId, t.date),
+    index("idx_reading_logs_user_book").on(t.userId, t.bookId),
+    check("chk_logs_pages_read", sql`${t.pagesRead} >= 1`),
   ],
 );
