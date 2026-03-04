@@ -8,6 +8,7 @@ import {
   computeColor,
   computeConstellationLines,
 } from "@/server/lib/star-formation";
+import { pageToStatus, resolveCompletedAt } from "@/server/lib/book-status";
 import { books, readingNotes } from "@/server/schemas/db";
 import type { AppEnv } from "@/server/types";
 
@@ -134,10 +135,7 @@ booksApp.post("/", async (c) => {
     updatedAt: now,
   });
 
-  return c.json(
-    { id, position: [px, py, pz], brightness, color },
-    201,
-  );
+  return c.json({ id, position: [px, py, pz], brightness, color }, 201);
 });
 
 // PUT /api/books/:id — 本を更新
@@ -181,8 +179,17 @@ booksApp.put("/:id", async (c) => {
   const newGenre = (updates.genre as string | undefined) ?? book.genre;
   const newBrightness = computeBrightness(newCurrentPage, newTotalPages);
   const newColor = computeColor(newGenre, newBrightness);
+  const newStatus = pageToStatus(newCurrentPage, newTotalPages);
+
   updates.brightness = newBrightness;
   updates.color = newColor;
+  updates.status = newStatus;
+  updates.completedAt = resolveCompletedAt(
+    newStatus,
+    book.status,
+    now,
+    book.completedAt,
+  );
 
   await db
     .update(books)
@@ -191,6 +198,8 @@ booksApp.put("/:id", async (c) => {
 
   return c.json({ ok: true, brightness: newBrightness, color: newColor });
 });
+
+// TODO: 他人のIDを指定して更新・削除できないようにする
 
 // 本を削除
 booksApp.delete("/:id", async (c) => {

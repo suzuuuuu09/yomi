@@ -129,19 +129,9 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
       book.totalPages,
       Math.max(0, book.currentPage + delta),
     );
-    const newStatus =
-      newPage === 0
-        ? "unread"
-        : newPage === book.totalPages
-          ? "completed"
-          : "reading";
-    const completedAt =
-      newStatus === "completed" ? new Date().toISOString() : null;
     set((state) => ({
       books: state.books.map((b) =>
-        b.id === bookId
-          ? { ...b, currentPage: newPage, status: newStatus, completedAt }
-          : b,
+        b.id === bookId ? { ...b, currentPage: newPage } : b,
       ),
     }));
     fetch(`${API_BASE}/${bookId}`, {
@@ -149,8 +139,6 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         currentPage: newPage,
-        status: newStatus,
-        completedAt,
       }),
     })
       .then((res) => res.json() as Promise<UpdateBookResponse>)
@@ -171,29 +159,15 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
     if (!book) return;
 
     const newPage = Math.min(book.totalPages, Math.max(0, page));
-    const newStatus =
-      newPage === 0
-        ? "unread"
-        : newPage === book.totalPages
-          ? "completed"
-          : "reading";
-    const completedAt =
-      newStatus === "completed" ? new Date().toISOString() : null;
     set((state) => ({
       books: state.books.map((b) =>
-        b.id === bookId
-          ? { ...b, currentPage: newPage, status: newStatus, completedAt }
-          : b,
+        b.id === bookId ? { ...b, currentPage: newPage } : b,
       ),
     }));
     fetch(`${API_BASE}/${bookId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        currentPage: newPage,
-        status: newStatus,
-        completedAt,
-      }),
+      body: JSON.stringify({ currentPage: newPage }),
     })
       .then((res) => res.json() as Promise<UpdateBookResponse>)
       .then((data) => {
