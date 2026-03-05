@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useBookSearchStore } from "@/store/useBookSearchStore";
 import type { BookSearchResult } from "@/types/book-search";
 import type { Book } from "@/types/library";
+import type { BookInfoValues } from "@/types/book-search";
 
-const EMPTY_FORM = {
+const EMPTY_FORM: BookInfoValues = {
   title: "",
   author: "",
   pages: "",
@@ -11,23 +12,15 @@ const EMPTY_FORM = {
   isbn: "",
 };
 
-interface BookForm {
-  title: string;
-  author: string;
-  pages: string;
-  genre: string;
-  isbn: string;
-}
-
 export function useAddBook(
   onAddAction: (book: Partial<Book>) => void,
   onCloseAction: () => void,
 ) {
   const store = useBookSearchStore();
-  const [form, setForm] = useState<BookForm>(EMPTY_FORM);
+  const [form, setForm] = useState<BookInfoValues>(EMPTY_FORM);
 
   const setField =
-    (key: keyof BookForm) =>
+    (key: keyof BookInfoValues) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
 

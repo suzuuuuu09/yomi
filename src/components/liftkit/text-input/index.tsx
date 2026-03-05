@@ -17,6 +17,7 @@ interface LkTextInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   endIcon?: IconName;
   labelBackgroundColor?: LkColor;
   onEndIconClick?: () => void;
+  "data-erase-spin"?: boolean; // for internal use to trigger erase animation
 }
 
 export default function TextInput({
@@ -78,6 +79,7 @@ export default function TextInput({
             onClick={onEndIconClick}
             className="end-icon-button"
             aria-label={endIcon}
+            data-erase-spin={restProps["data-erase-spin"] ? "true" : "false"}
           >
             <Icon name={endIcon} />
           </button>

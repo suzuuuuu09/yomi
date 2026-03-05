@@ -155,7 +155,8 @@ export default function UserMenu() {
       as="button"
       onClick={() => {
         document.cookie = "better-auth.session_token=; Max-Age=0; path=/;"; // クッキーを削除（ローカル）
-        document.cookie = "__Secure-better-auth.session_token=; Max-Age=0; path=/; Secure;"; // クッキーを削除（本番）
+        document.cookie =
+          "__Secure-better-auth.session_token=; Max-Age=0; path=/; Secure;"; // クッキーを削除（本番）
         window.location.href = "/login";
       }}
       aria-label="Googleでログイン"

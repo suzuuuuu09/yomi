@@ -1,23 +1,25 @@
 "use client";
 
-import Card from "~liftkit/card";
-import Text from "~liftkit/text";
-import TextInput from "~liftkit/text-input";
+import { useState } from "react";
+import { css } from "styled-system/css";
+import { Box, Flex, styled as s } from "styled-system/jsx";
 import type { FilterTabsCounts } from "@/components/shares/FilterTabs";
 import FilterTabs from "@/components/shares/FilterTabs";
-import useBookListStore from "@/store/useBookListStore";
-import useLibraryFilterStore from "@/store/useLibraryFilterStore";
-import { css } from "styled-system/css";
-import { Flex, styled as s } from "styled-system/jsx";
-import Row from "~liftkit/row";
 import { IconCardButton } from "@/components/shares/IconCardButton";
 import UserMenu from "@/components/shares/UserMenu";
+import useBookListStore from "@/store/useBookListStore";
+import useLibraryFilterStore from "@/store/useLibraryFilterStore";
+import Card from "~liftkit/card";
 import Column from "~liftkit/column";
+import Row from "~liftkit/row";
+import Text from "~liftkit/text";
+import TextInput from "~liftkit/text-input";
 
 export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
   const { activeFilter, query, setFilter, setQuery, clearSearch } =
     useLibraryFilterStore();
   const openBookList = useBookListStore((s) => s.open);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   return (
     <s.header
@@ -51,17 +53,40 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
             </Text>
           </Card>
 
-          <TextInput
-            name=""
-            placeholder="星を検索..."
-            endIcon={query ? "x" : "search"}
-            value={query}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setQuery(e.target.value)
-            }
-            onEndIconClick={query ? clearSearch : undefined}
-          />
+          {/* PC: 常に表示 / Mobile: isSearchOpen時のみ */}
+          <Box
+            flex={1}
+            display={{ base: isSearchOpen ? "block" : "none", md: "block" }}
+          >
+            <TextInput
+              name=""
+              placeholder="星を検索..."
+              endIcon={query ? "x" : "search"}
+              value={query}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setQuery(e.target.value)
+              }
+              onEndIconClick={query ? clearSearch : undefined}
+            />
+          </Box>
+
           <Flex shrink={0} gap="1.5" align="center">
+            {/* Mobile: 検索トグルボタン */}
+            <Box display={{ base: "block", md: "none" }}>
+              <IconCardButton
+                icon={isSearchOpen ? "x" : "search"}
+                label="検索"
+                onClick={() => {
+                  setIsSearchOpen((prev) => !prev);
+                  if (isSearchOpen && query) clearSearch();
+                }}
+                className={css({
+                  shadow: "lg",
+                  color: isSearchOpen ? "indigo.300" : "slate.400",
+                  shadowColor: "black/20",
+                })}
+              />
+            </Box>
             <IconCardButton
               icon="library"
               label="本の一覧"

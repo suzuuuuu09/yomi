@@ -117,3 +117,19 @@ div[data-lk-text-input-label-position="on-input"]
   margin-bottom: var(--lk-size-xs);
   color: var(--lk-outline);
 }
+
+/* ブラウザ標準のnumber入力のスピンボタンを消すスタイル */
+/* Chrome, Safari, Edge, Opera */
+[data-lk-component="text-input"]
+  input[type="number"]::-webkit-outer-spin-button,
+[data-lk-component="text-input"]
+  input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+[data-lk-component="text-input"] input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 import { css } from "styled-system/css";
-import { Circle, Flex, styled as s } from "styled-system/jsx";
+import { Box, Circle, Flex, styled as s } from "styled-system/jsx";
 import AddBookModal from "@/components/AddBookModal";
 import BookListDrawer from "@/components/BookListDrawer";
 import StarInsightPanel from "@/components/StarInsightPanel";
@@ -11,6 +11,7 @@ import BottomDock from "@/components/sections/BottomDock";
 import StatsOverlay from "@/components/sections/StatsOverlay";
 import TopBar from "@/components/sections/TopBar";
 import { IconCardButton } from "@/components/shares/IconCardButton";
+import TutorialOverlay from "@/components/TutorialOverlay";
 import { useObservatory } from "@/hooks/useObservatory";
 import { useStarInsight } from "@/hooks/useStarInsight";
 import useLibraryStore from "@/store/useLibraryStore";
@@ -18,7 +19,7 @@ import useLibraryStore from "@/store/useLibraryStore";
 const UniverseCanvas = dynamic(() => import("@/components/UniverseCanvas"), {
   ssr: false,
   loading: () => (
-    <s.div
+    <Box
       position="fixed"
       inset={0}
       bg="#020617"
@@ -37,7 +38,7 @@ const UniverseCanvas = dynamic(() => import("@/components/UniverseCanvas"), {
           宇宙を展開中...
         </s.p>
       </Flex>
-    </s.div>
+    </Box>
   ),
 });
 
@@ -93,6 +94,8 @@ export default function Observatory() {
   const books = useLibraryStore((s) => s.books);
   const constellationLines = useLibraryStore((s) => s.constellationLines);
   const fetchBooks = useLibraryStore((s) => s.fetchBooks);
+  const newlyAddedBookId = useLibraryStore((s) => s.newlyAddedBookId);
+  const clearNewlyAdded = useLibraryStore((s) => s.clearNewlyAdded);
 
   // ログインユーザーの本をAPIから取得
   useEffect(() => {
@@ -111,6 +114,7 @@ export default function Observatory() {
   const starInsight = useStarInsight();
 
   const { updatePageProgress, setSelectedBook } = useLibraryStore();
+
   const nowReading = books.filter((b) => b.status === "reading");
 
   return (
@@ -120,10 +124,12 @@ export default function Observatory() {
         constellationLines={constellationLines}
         onStarClick={handleStarClick}
         selectedBookId={selectedBookId}
+        newlyAddedBookId={newlyAddedBookId}
+        onBirthEffectComplete={clearNewlyAdded}
       />
       <TopBar bookCount={bookCount} />
 
-      <s.div
+      <Box
         position="fixed"
         bottom={16}
         right={4}
@@ -131,7 +137,7 @@ export default function Observatory() {
         zIndex={30}
       >
         <AddBookButton setIsAddModalOpen={setIsAddModalOpen} />
-      </s.div>
+      </Box>
 
       <BottomDock
         nowReading={nowReading}
@@ -150,6 +156,8 @@ export default function Observatory() {
       <StarInsightPanel {...starInsight} />
 
       <StatsOverlay books={books} />
+
+      <TutorialOverlay />
     </s.main>
   );
 }

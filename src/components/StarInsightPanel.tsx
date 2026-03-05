@@ -1,29 +1,27 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import {
   BarChart3,
   BookOpen,
   Clock,
+  Pencil,
   Plus,
   StickyNote,
   Trash2,
   X,
 } from "lucide-react";
 import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
 import { css, cva } from "styled-system/css";
-import { token } from "styled-system/tokens";
 import { Box, Flex, styled as s } from "styled-system/jsx";
-import type { Book, ReadingNote } from "@/types/library";
-import Card from "~liftkit/card";
-import Grid from "~liftkit/grid";
-import Text from "~liftkit/text";
-import Row from "~liftkit/row";
-import Column from "~liftkit/column";
-import StatusBadge from "./shares/badge/StatusBadge";
+import { token } from "styled-system/tokens";
 import DeleteBookModal from "@/components/DelBookModal";
-
-const GRAPH_DATA = [3, 8, 5, 12, 20, 15, 7, 25, 18, 30, 22, 10, 28, 35];
+import BookEditModal from "@/components/BookEditModal";
+import type { Book, ReadingNote } from "@/types/library";
+import Column from "~liftkit/column";
+import Grid from "~liftkit/grid";
+import Row from "~liftkit/row";
+import Text from "~liftkit/text";
+import StatusBadge from "./shares/badge/StatusBadge";
+import ItemCard from "./shares/card/ItemCard";
 
 const DELTA_BUTTONS = [
   { label: "−10", delta: -10, color: "violet" },
@@ -69,17 +67,6 @@ const deltaButton = cva({
   },
 });
 
-const ItemCard = ({ children }: { children: React.ReactNode }) => (
-  <Card
-    material="glass"
-    variant="transparent"
-    scaleFactor="body"
-    materialProps={{ thickness: "thin" }}
-  >
-    {children}
-  </Card>
-);
-
 function ReadingProgress({
   current,
   total,
@@ -121,8 +108,26 @@ function ReadingProgress({
   );
 }
 
-function MiniGraph() {
-  const max = Math.max(...GRAPH_DATA);
+function MiniGraph({ notes }: { notes: ReadingNote[] }) {
+  const data = useMemo(() => {
+    const days = 14;
+    const now = new Date();
+    const counts = new Array(days).fill(0);
+    for (const note of notes) {
+      const diff = Math.floor(
+        (now.getTime() - new Date(note.createdAt).getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
+      if (diff >= 0 && diff < days) {
+        counts[days - 1 - diff] += 1;
+      }
+    }
+    return counts;
+  }, [notes]);
+
+  const max = Math.max(...data, 1);
+  const hasData = data.some((v) => v > 0);
+
   return (
     <Column gap="sm">
       <Row alignItems="center" gap="sm">
@@ -140,22 +145,38 @@ function MiniGraph() {
         </Text>
       </Row>
       <Row gap="xs" style={{ height: "64px", alignItems: "flex-end" }}>
-        {GRAPH_DATA.map((v, i) => {
-          const key = `bar-${i}`;
-          return (
-            <Box
-              key={key}
-              flex={1}
-              rounded="sm"
-              style={{
-                height: `${(v / max) * 100}%`,
-                background: "linear-gradient(180deg, #818cf8 0%, #6366f1 100%)",
-                opacity: 0.4 + (v / max) * 0.6,
-                transition: "all 0.3s",
-              }}
-            />
-          );
-        })}
+        {hasData ? (
+          data.map((v, i) => {
+            const key = `bar-${i}`;
+            return (
+              <Box
+                key={key}
+                flex={1}
+                rounded="sm"
+                style={{
+                  height: v > 0 ? `${(v / max) * 100}%` : "2px",
+                  background:
+                    v > 0
+                      ? "linear-gradient(180deg, #818cf8 0%, #6366f1 100%)"
+                      : "rgba(255,255,255,0.06)",
+                  opacity: v > 0 ? 0.4 + (v / max) * 0.6 : 1,
+                  transition: "all 0.3s",
+                }}
+              />
+            );
+          })
+        ) : (
+          <Box
+            w="full"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Text tag="span" fontClass="capline" color="outline">
+              まだ記録がありません
+            </Text>
+          </Box>
+        )}
       </Row>
     </Column>
   );
@@ -283,8 +304,6 @@ function ReadingNotes({
     setDraft("");
     setLinkPage(false);
   };
-
-  //
 
   return (
     <Column gap="sm">
@@ -458,6 +477,7 @@ function ReadingNotes({
 export default function StarInsightPanel({
   book,
   onClose,
+  onUpdateBook,
   onPageUpdate,
   onPageSet,
   onAddNote,
@@ -466,6 +486,7 @@ export default function StarInsightPanel({
 }: {
   book: Book | null;
   onClose: () => void;
+  onUpdateBook: (bookId: string, updates: Partial<Book>) => void;
   onPageUpdate: (bookId: string, delta: number) => void;
   onPageSet: (bookId: string, page: number) => void;
   onAddNote: (bookId: string, content: string, page: number | null) => void;
@@ -473,6 +494,8 @@ export default function StarInsightPanel({
   onDeleteBook: (bookId: string) => void;
 }) {
   const [isDelOpen, setIsDelOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
   if (!book) return null;
 
   const metaItems = [
@@ -512,6 +535,16 @@ export default function StarInsightPanel({
           onDeleteBook(id);
           setIsDelOpen(false);
           onClose();
+        }}
+      />
+
+      <BookEditModal
+        isOpen={isEditOpen}
+        book={book}
+        onCloseAction={() => setIsEditOpen(false)}
+        onSaveAction={(bookId, updates) => {
+          onUpdateBook(bookId, updates);
+          setIsEditOpen(false);
         }}
       />
 
@@ -580,19 +613,34 @@ export default function StarInsightPanel({
           flexShrink={0}
         >
           <StatusBadge status={book.status} />
-          <s.button
-            onClick={onClose}
-            p={2}
-            rounded="xl"
-            color="slate.400"
-            cursor="pointer"
-            className={css({
-              transition: "all 0.2s",
-              _hover: { color: "white", bg: "white/10" },
-            })}
-          >
-            <X size={16} />
-          </s.button>
+          <Flex gap={1}>
+            <s.button
+              onClick={() => setIsEditOpen(true)}
+              p={2}
+              rounded="xl"
+              color="slate.400"
+              cursor="pointer"
+              className={css({
+                transition: "all 0.2s",
+                _hover: { color: "white", bg: "white/10" },
+              })}
+            >
+              <Pencil size={16} />
+            </s.button>
+            <s.button
+              onClick={onClose}
+              p={2}
+              rounded="xl"
+              color="slate.400"
+              cursor="pointer"
+              className={css({
+                transition: "all 0.2s",
+                _hover: { color: "white", bg: "white/10" },
+              })}
+            >
+              <X size={16} />
+            </s.button>
+          </Flex>
         </Flex>
 
         {/* コンテンツ */}
@@ -699,7 +747,7 @@ export default function StarInsightPanel({
             {/* グラフ */}
             {book.status !== "unread" && (
               <ItemCard>
-                <MiniGraph />
+                <MiniGraph notes={book.notes} />
               </ItemCard>
             )}
 

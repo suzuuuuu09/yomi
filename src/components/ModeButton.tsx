@@ -1,5 +1,5 @@
 import type { IconName } from "lucide-react/dynamic";
-import { styled as s } from "styled-system/jsx";
+import { Box } from "styled-system/jsx";
 import type { BookSearchMode } from "@/types/book-search";
 import Button from "~liftkit/button";
 
@@ -16,7 +16,7 @@ export const ModeButton = (props: ModeButtonProps) => {
   const isSelected = current === mode;
 
   return (
-    <s.div
+    <Box
       flex={1}
       display="flex"
       style={
@@ -39,6 +39,6 @@ export const ModeButton = (props: ModeButtonProps) => {
           transition: "all 0.2s ease",
         }}
       />
-    </s.div>
+    </Box>
   );
 };

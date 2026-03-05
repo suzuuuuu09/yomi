@@ -1,6 +1,7 @@
-import React from "react";
+"use client";
+
 import Modal from "@/components/shares/modal/Modal";
-import { Flex, styled as s } from "styled-system/jsx";
+import { Box, Flex, styled as s } from "styled-system/jsx";
 import { useDelBook } from "@/hooks/useDelBook";
 
 interface DeleteBookModalProps {
@@ -19,7 +20,7 @@ export default function DeleteBookModal(props: DeleteBookModalProps) {
 
   return (
     <Modal isOpen={isOpen} onClose={handleCancel}>
-      <s.div
+      <Box
         p={4}
         rounded="2xl"
         border="1px solid"
@@ -68,7 +69,7 @@ export default function DeleteBookModal(props: DeleteBookModalProps) {
             削除する
           </s.button>
         </Flex>
-      </s.div>
+      </Box>
     </Modal>
   );
 }

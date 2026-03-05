@@ -155,7 +155,7 @@ export default function BookListDrawer() {
 
   return (
     <>
-      <s.div
+      <Box
         position="fixed"
         inset={0}
         zIndex={40}
@@ -164,7 +164,7 @@ export default function BookListDrawer() {
         className={css({ backdropFilter: "blur(4px)" })}
       />
 
-      <s.div
+      <Box
         position="fixed"
         zIndex={50}
         bottom={0}
@@ -299,7 +299,7 @@ export default function BookListDrawer() {
             ))
           )}
         </Box>
-      </s.div>
+      </Box>
     </>
   );
 }

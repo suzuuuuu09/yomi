@@ -22,7 +22,7 @@ export default function Modal(props: ModalProps) {
       display="flex"
       alignItems="center"
       justifyContent="center"
-      p="4"
+      p={{ base: "2", md: "4" }}
     >
       <Box
         position="absolute"
@@ -42,8 +42,8 @@ export default function Modal(props: ModalProps) {
       <Box
         position="relative"
         w="full"
-        maxW={maxW}
-        maxH="90vh"
+        maxW={{ base: "full", md: maxW }}
+        maxH={{ base: "85vh", md: "90vh" }}
         overflowY="auto"
         animation="scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
       >

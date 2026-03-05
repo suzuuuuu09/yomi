@@ -34,3 +34,11 @@ export interface BookSearchState {
   fetchPage: (page: number) => Promise<void>;
   reset: () => void;
 }
+
+export interface BookInfoValues {
+  title: string;
+  author: string;
+  pages: string;
+  genre: string;
+  isbn: string;
+}

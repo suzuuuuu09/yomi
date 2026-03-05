@@ -4,6 +4,7 @@ import type { BookSearchResult } from "@/types/book-search";
 
 interface SearchResultItemProps {
   book: BookSearchResult;
+  isSelected?: boolean;
   onSelect: (b: BookSearchResult) => void;
 }
 
@@ -49,13 +50,21 @@ const searchResultItemStyles = sva({
 });
 
 export const SearchResultItem = (props: SearchResultItemProps) => {
-  const { book, onSelect } = props;
+  const { book, isSelected, onSelect } = props;
   const styles = searchResultItemStyles();
   return (
     <button
       type="button"
       onClick={() => onSelect(book)}
       className={styles.button}
+      style={
+        isSelected
+          ? {
+              background: "rgba(99, 102, 241, 0.12)",
+              border: "1px solid rgba(99, 102, 241, 0.3)",
+            }
+          : undefined
+      }
     >
       <div className={styles.thumbnail}>
         {book.thumbnail && (

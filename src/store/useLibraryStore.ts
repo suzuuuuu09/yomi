@@ -10,8 +10,11 @@ interface LibraryState {
   constellationLines: [string, string][];
   isLoading: boolean;
   selectedBookId: string | null;
+  newlyAddedBookId: string | null;
+  clearNewlyAdded: () => void;
   fetchBooks: () => Promise<void>;
   addBook: (partial: Partial<Book>) => void;
+  updateBook: (bookId: string, updates: Partial<Book>) => void;
   deleteBook: (bookId: string) => void;
   setSelectedBook: (book: Book | null) => void;
   updatePageProgress: (bookId: string, delta: number) => void;
@@ -65,6 +68,8 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
   constellationLines: [],
   isLoading: false,
   selectedBookId: null,
+  newlyAddedBookId: null,
+  clearNewlyAdded: () => set({ newlyAddedBookId: null }),
 
   fetchBooks: async () => {
     set({ isLoading: true });
@@ -104,7 +109,10 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
       color: "#1b1b98",
       notes: [],
     };
-    set((state) => withLines([...state.books, newBook]));
+    set((state) => ({
+      ...withLines([...state.books, newBook]),
+      newlyAddedBookId: tempId,
+    }));
 
     fetch(API_BASE, {
       method: "POST",
@@ -125,11 +133,62 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
                 }
               : b,
           );
+          return { ...withLines(updatedBooks), newlyAddedBookId: data.id };
+        });
+      })
+      .catch(() => {
+        set((state) => ({
+          ...withLines(state.books.filter((b) => b.id !== tempId)),
+          newlyAddedBookId: null,
+        }));
+      });
+  },
+
+  updateBook: (bookId, updates) => {
+    const book = get().books.find((b) => b.id === bookId);
+    if (!book) return;
+
+    // 楽観的更新
+    set((state) => {
+      const updatedBooks = state.books.map((b) =>
+        b.id === bookId ? { ...b, ...updates } : b,
+      );
+      return withLines(updatedBooks);
+    });
+
+    fetch(`${API_BASE}/${bookId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`PUT failed: ${res.status}`);
+        return res.json() as Promise<UpdateBookResponse>;
+      })
+      .then((data) => {
+        set((state) => {
+          const updatedBooks = state.books.map((b) =>
+            b.id === bookId
+              ? {
+                  ...b,
+                  brightness: data.brightness,
+                  color: data.color,
+                  status: data.status,
+                  completedAt: data.completedAt,
+                }
+              : b,
+          );
           return withLines(updatedBooks);
         });
       })
       .catch(() => {
-        set((state) => withLines(state.books.filter((b) => b.id !== tempId)));
+        // 失敗時はロールバック
+        set((state) => {
+          const updatedBooks = state.books.map((b) =>
+            b.id === bookId ? book : b,
+          );
+          return withLines(updatedBooks);
+        });
       });
   },
 

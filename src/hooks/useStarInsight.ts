@@ -5,6 +5,7 @@ export function useStarInsight() {
     books,
     selectedBookId,
     setSelectedBook,
+    updateBook,
     updatePageProgress,
     setPageProgress,
     addNote,
@@ -17,6 +18,7 @@ export function useStarInsight() {
   return {
     book,
     onClose: () => setSelectedBook(null),
+    onUpdateBook: updateBook,
     onPageUpdate: updatePageProgress,
     onPageSet: setPageProgress,
     onAddNote: addNote,

@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useMemo, useEffect, useState } from "react";
+import { OrbitControls, Stars } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Stars, OrbitControls } from "@react-three/drei";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { Book } from "@/types/library";
 
@@ -387,18 +387,101 @@ function useReducedMotion() {
   return reduced;
 }
 
+function StarBirthEffect({
+  position,
+  color,
+  onComplete,
+}: {
+  position: [number, number, number];
+  color: string;
+  onComplete: () => void;
+}) {
+  const ref = useRef<THREE.Points>(null);
+  const startTime = useRef<number | null>(null);
+  const DURATION = 1.5;
+  const COUNT = 60;
+
+  const positions = useMemo(() => {
+    const pos = new Float32Array(COUNT * 3);
+    for (let i = 0; i < COUNT; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = 0.3 + Math.random() * 0.7;
+      pos[i * 3] = Math.sin(phi) * Math.cos(theta) * speed;
+      pos[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * speed;
+      pos[i * 3 + 2] = Math.cos(phi) * speed;
+    }
+    return pos;
+  }, []);
+
+  const basePositions = useMemo(() => new Float32Array(positions), [positions]);
+
+  useFrame((state) => {
+    if (!ref.current) return;
+    if (startTime.current === null) startTime.current = state.clock.elapsedTime;
+    const elapsed = state.clock.elapsedTime - startTime.current;
+    const progress = Math.min(elapsed / DURATION, 1);
+
+    const posAttr = ref.current.geometry.attributes
+      .position as THREE.BufferAttribute;
+    for (let i = 0; i < COUNT; i++) {
+      posAttr.setXYZ(
+        i,
+        position[0] + basePositions[i * 3] * progress * 2,
+        position[1] + basePositions[i * 3 + 1] * progress * 2,
+        position[2] + basePositions[i * 3 + 2] * progress * 2,
+      );
+    }
+    posAttr.needsUpdate = true;
+
+    const mat = ref.current.material as THREE.PointsMaterial;
+    mat.opacity = 1 - progress * progress;
+    mat.size = 0.06 * (1 - progress * 0.5);
+
+    if (progress >= 1) onComplete();
+  });
+
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          args={[positions, 3]}
+          count={COUNT}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.06}
+        color={color}
+        transparent
+        opacity={1}
+        sizeAttenuation
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+      />
+    </points>
+  );
+}
+
 export default function UniverseCanvas({
   books,
   constellationLines: lines,
   onStarClick,
   selectedBookId,
+  newlyAddedBookId,
+  onBirthEffectComplete,
 }: {
   books: Book[];
   constellationLines: [string, string][];
   onStarClick: (book: Book) => void;
   selectedBookId: string | null;
+  newlyAddedBookId: string | null;
+  onBirthEffectComplete: () => void;
 }) {
   const reducedMotion = useReducedMotion();
+  const newBook = newlyAddedBookId
+    ? books.find((b) => b.id === newlyAddedBookId)
+    : null;
 
   return (
     <div
@@ -470,6 +553,15 @@ export default function UniverseCanvas({
             reducedMotion={reducedMotion}
           />
         ))}
+
+        {newBook && !reducedMotion && (
+          <StarBirthEffect
+            key={newBook.id}
+            position={newBook.position}
+            color={newBook.color}
+            onComplete={onBirthEffectComplete}
+          />
+        )}
 
         <OrbitControls
           enableDamping

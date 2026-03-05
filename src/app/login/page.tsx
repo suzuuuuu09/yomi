@@ -2,7 +2,7 @@
 
 import { signIn } from "@/lib/auth-client";
 import { css } from "styled-system/css";
-import { Flex, Stack, styled as s } from "styled-system/jsx";
+import { Box, Stack, styled as s } from "styled-system/jsx";
 import Text from "~liftkit/text";
 
 export default function LoginPage() {
@@ -25,7 +25,7 @@ export default function LoginPage() {
       overflow="hidden"
     >
       {/* Background glow */}
-      <s.div
+      <Box
         position="absolute"
         top="50%"
         left="50%"
