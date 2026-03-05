@@ -16,7 +16,11 @@ function hashString(str: string): number {
   return Math.abs(hash) / 2147483647;
 }
 
-// ジャンルごとのクラスタ中心を計算
+/**
+ * ジャンル名からクラスタ中心の座標を計算する関数
+ * @param genre - ジャンル名
+ * @returns ジャンルに基づくクラスタ中心の座標 [x, y, z]
+ */
 function genreClusterCenter(genre: string): [number, number, number] {
   if (!genre) return [0, 0, 0];
 
@@ -89,7 +93,7 @@ export function computeColor(genre: string, brightness: number): string {
   const h = genreHue(genre);
   const s = 70;
   const l = Math.round(35 + brightness * (75 - 35));
-  
+
   return `hsl(${h}, ${s}%, ${l}%)`;
 }
 
