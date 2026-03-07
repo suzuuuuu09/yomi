@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { Book } from "@/types/library";
 import type { BookInfoValues } from "@/types/book-search";
+import type { Book } from "@/types/library";
 
 export function useEditBook(book: Book | null) {
   const [editForm, setEditForm] = useState<BookInfoValues>({

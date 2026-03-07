@@ -1,14 +1,14 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { eq, and } from "drizzle-orm";
-import { authMiddleware } from "@/server/middleware/auth";
+import { and, eq } from "drizzle-orm";
+import { pageToStatus, resolveCompletedAt } from "@/server/lib/book-status";
 import { getDBFromContext } from "@/server/lib/db";
 import {
-  computePosition,
   computeBrightness,
   computeColor,
   computeConstellationLines,
+  computePosition,
 } from "@/server/lib/star-formation";
-import { pageToStatus, resolveCompletedAt } from "@/server/lib/book-status";
+import { authMiddleware } from "@/server/middleware/auth";
 import { books, readingNotes } from "@/server/schemas/db";
 import type { AppEnv } from "@/server/types";
 

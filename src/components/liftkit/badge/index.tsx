@@ -1,6 +1,6 @@
+import type { IconName } from "lucide-react/dynamic";
 import Icon from "@/components/liftkit/icon";
 import { getOnToken } from "@/lib/liftkit/colorUtils";
-import { IconName } from "lucide-react/dynamic";
 import "@/components/liftkit/badge/badge.css";
 
 export interface LkBadgeProps extends React.HTMLAttributes<HTMLDivElement> {

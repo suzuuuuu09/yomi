@@ -1,13 +1,14 @@
 "use client";
 
+import type { IconName } from "lucide-react/dynamic";
 import { useMemo } from "react";
-import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import { getOnToken } from "@/lib/liftkit/colorUtils";
-import { IconName } from "lucide-react/dynamic";
+import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import "@/components/liftkit/button/button.css";
-import StateLayer from "@/components/liftkit/state-layer";
-import { LkStateLayerProps } from "@/components/liftkit/state-layer";
 import Icon from "@/components/liftkit/icon";
+import StateLayer, {
+  type LkStateLayerProps,
+} from "@/components/liftkit/state-layer";
 
 export interface LkButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {

@@ -1,20 +1,18 @@
-import { useMemo } from "react";
-import { propsToDataAttrs } from "@/lib/liftkit/utilities";
+import React, { useMemo } from "react";
 import Badge from "@/components/liftkit/badge";
 import Button from "@/components/liftkit/button";
 import IconButton from "@/components/liftkit/icon-button";
-import React from "react";
 import Text from "@/components/liftkit/text";
+import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import "@/components/liftkit/snackbar/snackbar.css";
 import { LkBadgeProps } from "@/components/liftkit/badge";
-import { LkTextProps } from "@/components/liftkit/text";
-import { LkButtonProps } from "@/components/liftkit/button";
-import { LkIconButtonProps } from "@/components/liftkit/icon-button";
-import { getOnToken } from "@/lib/liftkit/colorUtils";
-import Card from "@/components/liftkit/card";
+import type { LkButtonProps } from "@/components/liftkit/button";
+import Card, { type LkCardProps } from "@/components/liftkit/card";
+import Icon, { type LkIconProps } from "@/components/liftkit/icon";
+import type { LkIconButtonProps } from "@/components/liftkit/icon-button";
 import Row from "@/components/liftkit/row";
-import { LkCardProps } from "@/components/liftkit/card";
-import Icon, { LkIconProps } from "@/components/liftkit/icon";
+import type { LkTextProps } from "@/components/liftkit/text";
+import { getOnToken } from "@/lib/liftkit/colorUtils";
 
 interface LkSnackbarProps extends React.HTMLAttributes<HTMLDivElement> {
   globalColor?: LkColorWithOnToken;
@@ -68,11 +66,11 @@ export default function Snackbar(props: LkSnackbarProps) {
 
   // Find components and validate at the same time
   let badge: React.ReactElement | undefined;
-  let buttons: React.ReactElement[] = [];
+  const buttons: React.ReactElement[] = [];
   let icon: React.ReactElement | undefined;
-  let iconButtons: React.ReactElement[] = [];
+  const iconButtons: React.ReactElement[] = [];
 
-  let text: React.ReactElement[] = [];
+  const text: React.ReactElement[] = [];
 
   childArray.forEach((child) => {
     if (!React.isValidElement(child)) return;

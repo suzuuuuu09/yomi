@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import TabMenu from "@/components/liftkit/tab-menu";
+import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import "@/components/liftkit/tabs/tabs.css";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface LkTabsProps extends React.HTMLAttributes<HTMLDivElement> {
   tabLinks: string[];

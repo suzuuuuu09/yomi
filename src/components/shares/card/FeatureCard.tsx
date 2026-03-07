@@ -1,3 +1,4 @@
+import type { IconName } from "lucide-react/dynamic";
 import { css } from "styled-system/css";
 import { Box, Flex } from "styled-system/jsx";
 import CloseButton from "@/components/shares/CloseButton";
@@ -5,7 +6,6 @@ import Badge from "~liftkit/badge";
 import Card from "~liftkit/card";
 import Heading from "~liftkit/heading";
 import Text from "~liftkit/text";
-import type { IconName } from "lucide-react/dynamic";
 
 interface FeatureCardProps {
   title: string;

@@ -1,16 +1,16 @@
 "use client";
 
-// CustomDropdown.tsx
-import Card, { LkCardProps } from "@/components/liftkit/card";
 import React, {
-  useContext,
-  useState,
-  useRef,
-  useEffect,
   createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
-import Column from "@/components/liftkit/column";
 import ReactDOM from "react-dom";
+// CustomDropdown.tsx
+import Card, { type LkCardProps } from "@/components/liftkit/card";
+import Column from "@/components/liftkit/column";
 import "@/components/liftkit/dropdown/dropdown.css";
 
 interface LkDropdownContext {

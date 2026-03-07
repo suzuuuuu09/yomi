@@ -79,14 +79,16 @@ export function getOnToken(colorToken: LkColor) {
         }
       case false: {
         switch (endsWithDim) {
-          case true:
+          case true: {
             const rootColor = color.slice(0, -3); // remove "dim"
             return `on${rootColor}variant`;
+          }
           case false: {
             switch (endsWithVariant) {
-              case true:
+              case true: {
                 const rootColor = color.slice(0, -8); // remove "variant"
                 return `on${rootColor}fixed`;
+              }
               case false:
                 return `on${color}`;
             }

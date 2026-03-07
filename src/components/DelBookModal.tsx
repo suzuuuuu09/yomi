@@ -1,7 +1,7 @@
 "use client";
 
-import Modal from "@/components/shares/modal/Modal";
 import { Box, Flex, styled as s } from "styled-system/jsx";
+import Modal from "@/components/shares/modal/Modal";
 import { useDelBook } from "@/hooks/useDelBook";
 
 interface DeleteBookModalProps {

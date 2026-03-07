@@ -1,5 +1,7 @@
 import { css } from "styled-system/css";
 import { Box, styled as s } from "styled-system/jsx";
+import { GENRES } from "@/consts/genre";
+import type { BookInfoValues } from "@/types/book-search";
 import Column from "~liftkit/column";
 import Grid from "~liftkit/grid";
 import {
@@ -8,10 +10,8 @@ import {
   SelectOption,
   SelectTrigger,
 } from "~liftkit/select";
-import TextInput from "~liftkit/text-input";
 import Text from "~liftkit/text";
-import { GENRES } from "@/consts/genre";
-import type { BookInfoValues } from "@/types/book-search";
+import TextInput from "~liftkit/text-input";
 
 interface BookInfoFormProps {
   values: BookInfoValues;
@@ -52,7 +52,7 @@ export default function BookInfoFields(props: BookInfoFormProps) {
           </Grid>
           <TextInput
             name="ISBN（任意）"
-            placeholder="978..."
+            placeholder="97..."
             maxLength={13} // ISBN-13の最大文字数は13
             endIcon="barcode"
             value={values.isbn}

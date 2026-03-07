@@ -41,7 +41,7 @@ export default function Grid({
 
   /**Render placeholder blocks for columns if no children are passed */
 
-  let placeholderBlocks = [];
+  const placeholderBlocks = [];
 
   if (!children) {
     for (let i = 0; i < columns; i++) {

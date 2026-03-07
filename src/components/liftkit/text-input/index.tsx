@@ -2,11 +2,12 @@
 import { useMemo, useState } from "react";
 import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import "@/components/liftkit/text-input/text-input.css";
+import type { IconName } from "lucide-react/dynamic";
 import Icon from "@/components/liftkit/icon";
 import Row from "@/components/liftkit/row";
-import Text from "@/components/liftkit/text";
 import StateLayer from "@/components/liftkit/state-layer";
-import { IconName } from "lucide-react/dynamic";
+import Text from "@/components/liftkit/text";
+
 Text;
 
 interface LkTextInputProps extends React.InputHTMLAttributes<HTMLInputElement> {

@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useBookSearchStore } from "@/store/useBookSearchStore";
-import type { BookSearchResult } from "@/types/book-search";
+import type { BookInfoValues, BookSearchResult } from "@/types/book-search";
 import type { Book } from "@/types/library";
-import type { BookInfoValues } from "@/types/book-search";
 
 const EMPTY_FORM: BookInfoValues = {
   title: "",

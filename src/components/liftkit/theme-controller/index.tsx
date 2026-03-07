@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { ThemeContext } from "@/components/liftkit/theme";
 import Card from "@/components/liftkit/card";
 import Column from "@/components/liftkit/column";
+import IconButton from "@/components/liftkit/icon-button";
 import Row from "@/components/liftkit/row";
 import Switch from "@/components/liftkit/switch";
-import IconButton from "@/components/liftkit/icon-button";
+import { ThemeContext } from "@/components/liftkit/theme";
 
 type LkColorGroup =
   | "master"

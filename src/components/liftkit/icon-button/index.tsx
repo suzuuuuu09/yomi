@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import "@/components/liftkit/icon-button/icon-button.css";
+import type { IconName } from "lucide-react/dynamic";
 import Icon from "@/components/liftkit/icon";
 import StateLayer from "@/components/liftkit/state-layer";
-import { IconName } from "lucide-react/dynamic";
 import { getOnToken } from "@/lib/liftkit/colorUtils";
 
 declare global {
@@ -49,7 +49,7 @@ export default function IconButton<
   const onToken = getOnToken(color) as LkColor;
 
   /** Dynamically set stroke width based on font class */
-  let iconStrokeWidth: number = getIconStrokeWidth(fontClass);
+  const iconStrokeWidth: number = getIconStrokeWidth(fontClass);
 
   function getIconStrokeWidth(fontClass: LkFontClass) {
     switch (fontClass) {

@@ -1,18 +1,17 @@
 "use client";
 
-// CustomSelect.tsx
-import Card, { LkCardProps } from "@/components/liftkit/card";
 import React, {
-  useContext,
-  useState,
-  useRef,
-  useEffect,
   createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
-import Column from "@/components/liftkit/column";
-import Icon from "@/components/liftkit/icon";
-import { LkIconProps } from "@/components/liftkit/icon";
 import ReactDOM from "react-dom";
+// CustomSelect.tsx
+import Card, { type LkCardProps } from "@/components/liftkit/card";
+import Column from "@/components/liftkit/column";
+import Icon, { type LkIconProps } from "@/components/liftkit/icon";
 import "@/components/liftkit/select/select.css";
 import StateLayer from "@/components/liftkit/state-layer";
 

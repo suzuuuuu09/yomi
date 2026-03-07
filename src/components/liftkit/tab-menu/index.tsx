@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import Row from "@/components/liftkit/row";
 import TabLink from "@/components/liftkit/tab-link";
+import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import "@/components/liftkit/tab-menu/tab-menu.css";
 
 interface LkTabMenuProps

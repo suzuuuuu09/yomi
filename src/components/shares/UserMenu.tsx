@@ -1,12 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import { LogIn, LogOut, User as UserIcon } from "lucide-react";
+import Image from "next/image";
+import { sva } from "styled-system/css";
+import { Box, HStack } from "styled-system/jsx";
 import { authClient } from "@/lib/auth-client";
 import Card from "~liftkit/card";
 import Text from "~liftkit/text";
-import { Box, HStack } from "styled-system/jsx";
-import { sva } from "styled-system/css";
 
 const userMenuStyles = sva({
   slots: ["card", "avatar", "text", "logoutButton", "loginButton", "loginIcon"],

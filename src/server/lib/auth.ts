@@ -1,6 +1,6 @@
+import { getRequestContext } from "@cloudflare/next-on-pages";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { getRequestContext } from "@cloudflare/next-on-pages";
 import { drizzle as drizzleD1 } from "drizzle-orm/d1";
 import * as schema from "@/server/schemas/db";
 

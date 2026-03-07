@@ -22,10 +22,9 @@
 import { useMemo } from "react";
 import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import "@/components/liftkit/menu-item/menu-item.css";
-import StateLayer from "@/components/liftkit/state-layer";
 import type { IconName } from "lucide-react/dynamic";
-import Icon from "@/components/liftkit/icon";
-import { LkIconProps } from "@/components/liftkit/icon";
+import Icon, { type LkIconProps } from "@/components/liftkit/icon";
+import StateLayer from "@/components/liftkit/state-layer";
 
 interface LkMenuItemProps extends React.HTMLAttributes<HTMLDivElement> {
   startIcon?: LkIconProps;

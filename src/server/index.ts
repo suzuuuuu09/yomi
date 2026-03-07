@@ -1,8 +1,8 @@
-import { OpenAPIHono } from "@hono/zod-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
-import searchApp from "@/server/routes/search";
+import { OpenAPIHono } from "@hono/zod-openapi";
 import authApp from "@/server/routes/auth";
 import booksApp from "@/server/routes/books";
+import searchApp from "@/server/routes/search";
 
 const app = new OpenAPIHono().basePath("/api");
 

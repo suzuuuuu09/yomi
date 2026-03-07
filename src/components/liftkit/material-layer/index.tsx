@@ -1,6 +1,6 @@
 "use client";
-import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import { useMemo } from "react";
+import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 
 /** LKMatProps is an object of any of the given types. Each material type has different unique props. */
 type LkMatProps = LkMatProps_Glass | LkMatProps_Flat;
