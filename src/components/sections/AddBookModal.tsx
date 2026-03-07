@@ -123,12 +123,11 @@ export default function AddBookModal(props: AddBlockModalProps) {
         ) : (
           <Stack dir="column">
             <Stack dir="column" gap={2}>
-              <Flex align="flex-end" gap={2}>
+              <Flex align="stretch" gap={2}>
                 <Box flex={1}>
                   <TextInput
-                    name={
-                      store.mode === "isbn" ? "ISBNで検索" : "キーワードで検索"
-                    }
+                    labelPosition="on-input"
+                    name={store.mode === "isbn" ? "ISBN" : "キーワード"}
                     placeholder={
                       store.mode === "isbn" ? "97..." : "タイトルや著者名で検索"
                     }
@@ -142,7 +141,7 @@ export default function AddBookModal(props: AddBlockModalProps) {
                   onClick={() => store.fetchPage(0)}
                   disabled={!store.query.trim() || store.isSearching}
                   px={4}
-                  h="46px"
+                  alignSelf="stretch"
                   rounded="xl"
                   bg="indigo.500/20"
                   border="1px solid"

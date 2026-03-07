@@ -15,11 +15,65 @@ import Row from "~liftkit/row";
 import Text from "~liftkit/text";
 import TextInput from "~liftkit/text-input";
 
+function SearchOverlay({
+  query,
+  setQuery,
+}: {
+  query: string;
+  setQuery: (q: string) => void;
+}) {
+  return (
+    <Box
+      position="fixed"
+      inset="0"
+      bg="gray.950/95"
+      backdropFilter="blur(12px)"
+      border="1px solid"
+      borderColor="indigo.500/20"
+      rounded="2xl"
+      p="3"
+      zIndex="50"
+    >
+      <Flex gap="2" align="center">
+        <Box flex={1}>
+          <TextInput
+            name=""
+            placeholder="星を検索..."
+            endIcon={query ? "x" : "search"}
+            value={query}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setQuery(e.target.value)
+            }
+            onEndIconClick={query ? () => setQuery("") : undefined}
+          />
+        </Box>
+        <s.button
+          type="button"
+          onClick={() => setQuery("")}
+          px="3"
+          py="2"
+          rounded="xl"
+          color="slate.400"
+          fontSize="sm"
+          flexShrink={0}
+        >
+          キャンセル
+        </s.button>
+      </Flex>
+    </Box>
+  );
+}
+
 export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
   const { activeFilter, query, setFilter, setQuery, clearSearch } =
     useLibraryFilterStore();
   const openBookList = useBookListStore((s) => s.open);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const handleSearchClose = () => {
+    setIsSearchOpen(false);
+    clearSearch();
+  };
 
   return (
     <s.header
@@ -53,11 +107,8 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
             </Text>
           </Card>
 
-          {/* PC: 常に表示 / Mobile: isSearchOpen時のみ */}
-          <Box
-            flex={1}
-            display={{ base: isSearchOpen ? "block" : "none", md: "block" }}
-          >
+          {/* PC*/}
+          <Box flex={1} display={{ base: "none", md: "block" }}>
             <TextInput
               name=""
               placeholder="星を検索..."
@@ -71,18 +122,15 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
           </Box>
 
           <Flex shrink={0} gap="1.5" align="center">
-            {/* Mobile: 検索トグルボタン */}
+            {/* Mobile */}
             <Box display={{ base: "block", md: "none" }}>
               <IconCardButton
-                icon={isSearchOpen ? "x" : "search"}
+                icon="search"
                 label="検索"
-                onClick={() => {
-                  setIsSearchOpen((prev) => !prev);
-                  if (isSearchOpen && query) clearSearch();
-                }}
+                onClick={() => setIsSearchOpen(true)}
                 className={css({
                   shadow: "lg",
-                  color: isSearchOpen ? "indigo.300" : "slate.400",
+                  color: "slate.400",
                   shadowColor: "black/20",
                 })}
               />
@@ -112,6 +160,62 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
           counts={bookCount}
         />
       </Column>
+
+      {/* 検索over令*/}
+      {isSearchOpen && (
+        <>
+          {/* 背景タップで閉じる */}
+          <Box
+            display={{ base: "block", md: "none" }}
+            position="fixed"
+            inset="0"
+            zIndex="40"
+            onClick={handleSearchClose}
+          />
+          <Box
+            display={{ base: "block", md: "none" }}
+            position="fixed"
+            top="3"
+            left="3"
+            right="3"
+            zIndex="50"
+            bg="gray.950/95"
+            backdropFilter="blur(12px)"
+            border="1px solid"
+            borderColor="indigo.500/20"
+            rounded="2xl"
+            p="3"
+            shadow="lg"
+          >
+            <Flex gap="2" align="center">
+              <Box flex={1}>
+                <TextInput
+                  name=""
+                  placeholder="星を検索..."
+                  endIcon={query ? "x" : "search"}
+                  value={query}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setQuery(e.target.value)
+                  }
+                  onEndIconClick={query ? clearSearch : undefined}
+                />
+              </Box>
+              <s.button
+                type="button"
+                onClick={handleSearchClose}
+                px="3"
+                py="2"
+                rounded="xl"
+                color="slate.400"
+                fontSize="sm"
+                flexShrink={0}
+              >
+                キャンセル
+              </s.button>
+            </Flex>
+          </Box>
+        </>
+      )}
     </s.header>
   );
 }

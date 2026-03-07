@@ -23,9 +23,11 @@ export const BarcodeScanner = ({ onScan }: ScannerProps) => {
   useEffect(() => {
     const codeReader = new BrowserMultiFormatReader();
     codeReaderRef.current = codeReader;
+
     const hints = new Map();
     // ISBNのみをターゲットにする
     hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13]);
+
     if (videoRef.current) {
       codeReader.decodeFromVideoDevice(null, videoRef.current, (result) => {
         if (result) {
