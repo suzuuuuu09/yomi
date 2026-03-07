@@ -14,7 +14,7 @@ import Text from "~liftkit/text";
 import TextInput from "~liftkit/text-input";
 
 function BookRow({ book, onClick }: { book: Book; onClick: () => void }) {
-  const pct =
+  const parcentage =
     book.totalPages > 0
       ? Math.round((book.currentPage / book.totalPages) * 100)
       : 0;
@@ -94,7 +94,7 @@ function BookRow({ book, onClick }: { book: Book; onClick: () => void }) {
                 transitionProperty="all"
                 transitionDuration="700ms"
                 style={{
-                  width: `${pct}%`,
+                  width: `${parcentage}%`,
                   background: "linear-gradient(90deg, #6366f1, #a855f7)",
                 }}
               />
@@ -108,7 +108,7 @@ function BookRow({ book, onClick }: { book: Book; onClick: () => void }) {
                 flexShrink: 0,
               })}
             >
-              {pct}%
+              {parcentage}%
             </Text>
           </Flex>
         )}
@@ -170,7 +170,7 @@ export default function BookListDrawer() {
         bottom={0}
         left={0}
         right={0}
-        maxH="88vh"
+        minH="88vh"
         md={{ top: 0, bottom: 0, right: "auto", maxH: "none", w: "80" }}
         display="flex"
         flexDir="column"
