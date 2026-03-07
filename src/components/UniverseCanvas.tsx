@@ -1,7 +1,7 @@
 "use client";
 
 import { OrbitControls, Stars } from "@react-three/drei";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { Book } from "@/types/library";
@@ -9,8 +9,13 @@ import type { Book } from "@/types/library";
 // Glowのテクスチャは全ての星で共通なので，最初の呼び出し時に1回だけ生成してキャッシュする
 let _glowTex: THREE.CanvasTexture | null = null;
 function getGlowTex(): THREE.CanvasTexture {
+  // すでに生成されていればキャッシュを返す
   if (_glowTex) return _glowTex;
+
+  // グラデーションで中心が白く、外に行くほど透明になるテクスチャを生成
   const s = 128;
+
+  // キャンバスを作成
   const c = document.createElement("canvas");
   c.width = s;
   c.height = s;
@@ -23,7 +28,9 @@ function getGlowTex(): THREE.CanvasTexture {
   g.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, s, s);
+  // キャンバスからテクスチャを作成してキャッシュ
   _glowTex = new THREE.CanvasTexture(c);
+
   return _glowTex;
 }
 
@@ -293,32 +300,56 @@ function ConstellationLines({
         if (!from || !to) return null;
         if (from.status !== "completed" || to.status !== "completed")
           return null;
-        const geo = new THREE.BufferGeometry().setFromPoints([
+
+        const pts = [
           new THREE.Vector3(...from.position),
           new THREE.Vector3(...to.position),
-        ]);
-        const mat = new THREE.LineBasicMaterial({
-          color: "#93c5fd",
+        ];
+
+        // メイン線
+        const mainGeo = new THREE.BufferGeometry().setFromPoints(pts);
+        const mainMat = new THREE.LineBasicMaterial({
+          color: from.color,
           transparent: true,
-          opacity: 0.25,
+          opacity: 0.6,
           blending: THREE.AdditiveBlending,
+          depthWrite: false,
         });
-        return new THREE.Line(geo, mat);
+
+        // グロー線
+        const glowGeo = new THREE.BufferGeometry().setFromPoints(pts);
+        const glowMat = new THREE.LineBasicMaterial({
+          color: from.color,
+          transparent: true,
+          opacity: 0.22,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+
+        return {
+          main: new THREE.Line(mainGeo, mainMat),
+          glow: new THREE.Line(glowGeo, glowMat),
+        };
       })
-      .filter(Boolean) as THREE.Line[];
+      .filter(Boolean) as { main: THREE.Line; glow: THREE.Line }[];
   }, [books, lines]);
 
   useFrame((state) => {
-    lineObjects.forEach((line, i) => {
-      (line.material as THREE.LineBasicMaterial).opacity =
-        0.18 + Math.sin(state.clock.elapsedTime * 0.55 + i * 1.4) * 0.12;
+    const t = state.clock.elapsedTime;
+    lineObjects.forEach(({ main, glow }, i) => {
+      const pulse = 0.48 + Math.sin(t * 0.6 + i * 1.4) * 0.18;
+      (main.material as THREE.LineBasicMaterial).opacity = pulse;
+      (glow.material as THREE.LineBasicMaterial).opacity = pulse * 0.38;
     });
   });
 
   return (
     <>
-      {lineObjects.map((obj, i) => (
-        <primitive key={i} object={obj} />
+      {lineObjects.map(({ main, glow }, i) => (
+        <group key={i}>
+          <primitive object={main} />
+          <primitive object={glow} />
+        </group>
       ))}
     </>
   );
@@ -463,6 +494,72 @@ function StarBirthEffect({
   );
 }
 
+function CameraSetup({
+  books,
+  controlsRef,
+}: {
+  books: Book[];
+  controlsRef: React.RefObject<{
+    target: THREE.Vector3;
+    update: () => void;
+  } | null>;
+}) {
+  const { camera, size } = useThree();
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (initialized.current || books.length === 0) return;
+    initialized.current = true;
+
+    // 全星の重心を計算
+    let cx = 0,
+      cy = 0,
+      cz = 0;
+    for (const b of books) {
+      cx += b.position[0];
+      cy += b.position[1];
+      cz += b.position[2];
+    }
+    cx /= books.length;
+    cy /= books.length;
+    cz /= books.length;
+
+    // 重心からの最大距離（境界球の半径）
+    let radius = 0;
+    for (const b of books) {
+      const d = Math.hypot(
+        b.position[0] - cx,
+        b.position[1] - cy,
+        b.position[2] - cz,
+      );
+      if (d > radius) radius = d;
+    }
+    // 星のグローマージンを追加（最低半径を確保）
+    radius = Math.max(radius + 2.5, 4);
+
+    // 縦横のFOVから必要なカメラ距離を計算
+    const fovRad = ((camera as THREE.PerspectiveCamera).fov * Math.PI) / 180;
+    const aspect = size.width / size.height;
+    const hFovRad = 2 * Math.atan(Math.tan(fovRad / 2) * aspect);
+
+    const distV = radius / Math.tan(fovRad / 2);
+    const distH = radius / Math.tan(hFovRad / 2);
+    // モバイル縦持ち（aspect < 1）は横FOVが狭いため distH が大きくなる
+    const distance = Math.min(Math.max(distV, distH) * 1.15, 38);
+
+    camera.position.set(cx, cy, cz + distance);
+    camera.lookAt(cx, cy, cz);
+
+    // OrbitControlsのターゲットも重心に合わせる
+    if (controlsRef.current) {
+      controlsRef.current.target.set(cx, cy, cz);
+      controlsRef.current.update();
+    }
+  }, [books, camera, size, controlsRef]);
+
+  return null;
+}
+
 export default function UniverseCanvas({
   books,
   constellationLines: lines,
@@ -479,6 +576,10 @@ export default function UniverseCanvas({
   onBirthEffectComplete: () => void;
 }) {
   const reducedMotion = useReducedMotion();
+  const controlsRef = useRef<{
+    target: THREE.Vector3;
+    update: () => void;
+  } | null>(null);
   const newBook = newlyAddedBookId
     ? books.find((b) => b.id === newlyAddedBookId)
     : null;
@@ -564,6 +665,8 @@ export default function UniverseCanvas({
         )}
 
         <OrbitControls
+          // biome-ignore lint/suspicious/noExplicitAny: drei ref type
+          ref={controlsRef as any}
           enableDamping
           dampingFactor={0.05}
           rotateSpeed={0.5}
@@ -572,6 +675,7 @@ export default function UniverseCanvas({
           maxDistance={40}
           enablePan
         />
+        <CameraSetup books={books} controlsRef={controlsRef} />
       </Canvas>
     </div>
   );

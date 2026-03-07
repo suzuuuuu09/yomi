@@ -6,6 +6,7 @@ import "@/components/liftkit/badge/badge.css";
 export interface LkBadgeProps extends React.HTMLAttributes<HTMLDivElement> {
   icon?: IconName;
   color?: LkColorWithOnToken;
+  iconColor?: LkColor | (string & {});
   scale?: "md" | "lg";
   iconStrokeWidth?: number;
   scrim?: boolean;
@@ -24,12 +25,13 @@ export interface LkBadgeProps extends React.HTMLAttributes<HTMLDivElement> {
 export default function Badge({
   icon = "roller-coaster",
   color = "surface",
+  iconColor: iconColorProp,
   scale = "md",
   iconStrokeWidth = 1.5,
   scrim = false,
   ...restProps
 }: LkBadgeProps) {
-  const iconColor = getOnToken(color) as LkColor;
+  const iconColor = (iconColorProp ?? getOnToken(color)) as LkColor;
 
   /** Dynamically set default iconStrokeWidth based on provided scale, if provided */
   let defaultIconStrokeWidth;

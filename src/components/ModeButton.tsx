@@ -1,5 +1,4 @@
 import type { IconName } from "lucide-react/dynamic";
-import { css } from "styled-system/css";
 import { Box } from "styled-system/jsx";
 import type { BookSearchMode } from "@/types/book-search";
 import Button from "~liftkit/button";
@@ -11,12 +10,6 @@ interface ModeButtonProps {
   icon: IconName;
   label: string;
 }
-
-const hideLabelOnMobile = css({
-  "& [data-lk-button-child]": {
-    display: { base: "none", md: "inline" },
-  },
-});
 
 export const ModeButton = (props: ModeButtonProps) => {
   const { mode, current, onClick, icon, label } = props;
@@ -39,7 +32,6 @@ export const ModeButton = (props: ModeButtonProps) => {
         color={isSelected ? "primarycontainer" : "surfacevariant"}
         size="sm"
         onClick={() => onClick(mode)}
-        modifiers={hideLabelOnMobile}
         style={{
           width: "100%",
           justifyContent: "center",

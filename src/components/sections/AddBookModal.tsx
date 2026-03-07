@@ -1,18 +1,11 @@
 "use client";
 
-import {
-  Camera,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  Search,
-  X,
-} from "lucide-react";
+import { Camera, Search, X } from "lucide-react";
 import type { IconName } from "lucide-react/dynamic";
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { css } from "styled-system/css";
 import { Box, Flex, Stack, styled as s } from "styled-system/jsx";
+import { token } from "styled-system/tokens";
 import { ModeButton } from "@/components/ModeButton";
 import { SearchResultItem } from "@/components/SearchResultItem";
 import FeatureCard from "@/components/shares/card/FeatureCard";
@@ -21,6 +14,8 @@ import Modal from "@/components/shares/modal/Modal";
 import { useAddBook } from "@/hooks/useAddBook";
 import type { BookInfoValues, BookSearchMode } from "@/types/book-search";
 import type { Book } from "@/types/library";
+import IconButton from "~liftkit/icon-button";
+import Text from "~liftkit/text";
 import TextInput from "~liftkit/text-input";
 
 const BarcodeScanner = dynamic(
@@ -29,8 +24,8 @@ const BarcodeScanner = dynamic(
 );
 
 const MODES: { mode: BookSearchMode; label: string; icon: IconName }[] = [
-  { mode: "search", label: "キーワード検索", icon: "search" },
-  { mode: "isbn", label: "ISBN検索", icon: "book-open" },
+  { mode: "search", label: "キーワード", icon: "search" },
+  { mode: "isbn", label: "ISBN", icon: "book-open" },
   { mode: "manual", label: "手動入力", icon: "pencil" },
 ];
 
@@ -73,7 +68,8 @@ export default function AddBookModal(props: AddBlockModalProps) {
     } as React.ChangeEvent<HTMLInputElement>);
   };
 
-  const totalPages = Math.ceil(Math.min(store.totalItems, 100) / 20);
+  // TODO: APIの総件数からページ数を計算できるようにする
+  const totalPages = Math.ceil(Math.min(store.totalItems, 100));
 
   return (
     <Modal isOpen={isOpen} onClose={onCloseAction}>
@@ -123,43 +119,21 @@ export default function AddBookModal(props: AddBlockModalProps) {
         ) : (
           <Stack dir="column">
             <Stack dir="column" gap={2}>
-              <Flex align="stretch" gap={2}>
-                <Box flex={1}>
-                  <TextInput
-                    labelPosition="on-input"
-                    name={store.mode === "isbn" ? "ISBN" : "キーワード"}
-                    placeholder={
-                      store.mode === "isbn" ? "97..." : "タイトルや著者名で検索"
-                    }
-                    value={store.query}
-                    onChange={(e) => store.setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && store.fetchPage(0)}
-                  />
-                </Box>
-                <s.button
-                  type="button"
-                  onClick={() => store.fetchPage(0)}
-                  disabled={!store.query.trim() || store.isSearching}
-                  px={4}
-                  alignSelf="stretch"
-                  rounded="xl"
-                  bg="indigo.500/20"
-                  border="1px solid"
-                  borderColor="indigo.500/30"
-                  color="indigo.300"
-                  _disabled={{ opacity: 0.3 }}
-                  title={store.isSearching ? "検索中..." : "検索"}
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  {store.isSearching ? (
-                    <Loader2 size={16} className={css({ animation: "spin" })} />
-                  ) : (
-                    <Search size={16} />
-                  )}
-                </s.button>
-              </Flex>
+              <TextInput
+                name={store.mode === "isbn" ? "ISBN" : "キーワード"}
+                placeholder={
+                  store.mode === "isbn" ? "97..." : "タイトルや著者名で検索"
+                }
+                endIcon={store.isSearching ? "loader-circle" : "search"}
+                value={store.query}
+                onChange={(e) => store.setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && store.fetchPage(0)}
+                onEndIconClick={
+                  store.query.trim() && !store.isSearching
+                    ? () => store.fetchPage(0)
+                    : undefined
+                }
+              />
               {store.mode === "isbn" && (
                 <s.button
                   type="button"
@@ -199,25 +173,27 @@ export default function AddBookModal(props: AddBlockModalProps) {
 
             {totalPages > 1 && store.mode !== "isbn" && (
               <Flex align="center" justify="center" gap={4} mt={2}>
-                <s.button
-                  type="button"
+                <IconButton
+                  icon="chevron-left"
                   onClick={() => store.fetchPage(store.currentPage - 1)}
                   disabled={store.currentPage === 0}
-                  _disabled={{ opacity: 0.2 }}
+                  variant="text"
+                  aria-label="前のページ"
+                />
+                <Text
+                  tag="span"
+                  fontClass="caption"
+                  style={{ color: token("colors.slate.500") }}
                 >
-                  <ChevronLeft size={16} />
-                </s.button>
-                <s.span fontSize="xs" color="slate.500">
                   {store.currentPage + 1} / {totalPages}
-                </s.span>
-                <s.button
-                  type="button"
+                </Text>
+                <IconButton
+                  icon="chevron-right"
                   onClick={() => store.fetchPage(store.currentPage + 1)}
                   disabled={store.currentPage >= totalPages - 1}
-                  _disabled={{ opacity: 0.2 }}
-                >
-                  <ChevronRight size={16} />
-                </s.button>
+                  variant="text"
+                  aria-label="次のページ"
+                />
               </Flex>
             )}
 

@@ -180,3 +180,18 @@
 [data-lk-icon-button-variant="text"] {
   background-color: transparent;
 }
+
+/* DISABLED STATE */
+[data-lk-component="icon-button"]:disabled,
+[data-lk-component="icon-button"][data-lk-disabled="true"] {
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 0.38;
+}
+
+/* disabled時はstate-layerを非表示 */
+[data-lk-component="icon-button"]:disabled > [data-lk-component="state-layer"],
+[data-lk-component="icon-button"][data-lk-disabled="true"]
+  > [data-lk-component="state-layer"] {
+  display: none;
+}

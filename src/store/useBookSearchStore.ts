@@ -35,7 +35,7 @@ export const useBookSearchStore = create<BookSearchState>((set, get) => ({
     set({ isSearching: true, hasSearched: true });
 
     // 検索の個数
-    const searchNumber = mode === "isbn" ? 1 : 10;
+    const searchNumber = mode === "isbn" ? 1 : 20;
     const res =
       mode === "isbn"
         ? await searchByISBN(q)

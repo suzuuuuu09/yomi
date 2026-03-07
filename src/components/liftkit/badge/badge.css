@@ -147,3 +147,9 @@
   z-index: 0;
   opacity: 0.1;
 }
+
+[data-lk-badge-color="lk-indigo"] {
+  background-color: color-mix(in srgb, #6366f1 15%, transparent);
+  border: 2px solid color-mix(in srgb, #6366f1 20%, transparent);
+  color: #6366f1;
+}

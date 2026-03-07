@@ -39,6 +39,7 @@ export default function IconButton<
   size = "md",
   fontClass = "body",
   className,
+  disabled,
   ...restProps
 }: LkIconButtonProps<T>) {
   const dataAttrs = useMemo(
@@ -82,8 +83,13 @@ export default function IconButton<
     <button
       data-lk-component="icon-button"
       type="button"
+      disabled={disabled}
       {...dataAttrs}
       {...restProps}
+      onClick={(e) => {
+        e.currentTarget.blur(); // クリックした後にフォーカスが残らないようにする;
+        restProps.onClick?.(e);
+      }}
       className={`${fontClass} ${className || ""}`}
     >
       <div>

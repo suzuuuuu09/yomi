@@ -49,9 +49,10 @@ export default function FeatureCard(props: FeatureCardProps) {
             icon={icon}
             scale="md"
             className={css({
-              bg: "indigo.500/15",
-              border: "2px solid",
-              borderColor: "indigo.500/20",
+              bg: "indigo.500/15!",
+              border: "2px solid!",
+              borderColor: "indigo.500/20!",
+              color: "indigo.500!",
             })}
           />
           <Box>
