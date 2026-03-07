@@ -56,8 +56,7 @@ export function useAddBook(
     onCloseAction();
   };
 
-  const canSubmit =
-    store.mode === "search" ? !!form.title : !!store.selectedResult;
+  const canSubmit = !!form.title || !!store.selectedResult?.title;
 
   return { store, form, setField, handleSelectResult, handleSubmit, canSubmit };
 }
