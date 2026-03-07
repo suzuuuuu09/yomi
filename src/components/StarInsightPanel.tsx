@@ -2,22 +2,21 @@ import {
   BarChart3,
   BookOpen,
   Clock,
-  Pencil,
   Plus,
   StickyNote,
   Trash2,
-  X,
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { css, cva } from "styled-system/css";
 import { Box, Flex, styled as s } from "styled-system/jsx";
 import { token } from "styled-system/tokens";
-import DeleteBookModal from "@/components/DelBookModal";
 import BookEditModal from "@/components/BookEditModal";
+import DeleteBookModal from "@/components/DelBookModal";
 import type { Book, ReadingNote } from "@/types/library";
 import Column from "~liftkit/column";
 import Grid from "~liftkit/grid";
+import IconButton from "~liftkit/icon-button";
 import Row from "~liftkit/row";
 import Text from "~liftkit/text";
 import StatusBadge from "./shares/badge/StatusBadge";
@@ -361,7 +360,13 @@ function ReadingNotes({
               </s.p>
               <Flex align="center" gap={2} mt={1.5}>
                 <s.span fontSize="10px" color="slate.600">
-                  {note.createdAt}
+                  {new Date(note.createdAt).toLocaleString("ja-JP", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </s.span>
                 {note.page !== null && (
                   <s.span
@@ -614,32 +619,18 @@ export default function StarInsightPanel({
         >
           <StatusBadge status={book.status} />
           <Flex gap={1}>
-            <s.button
+            <IconButton
+              icon="pencil"
+              variant="text"
+              aria-label="本の情報を編集"
               onClick={() => setIsEditOpen(true)}
-              p={2}
-              rounded="xl"
-              color="slate.400"
-              cursor="pointer"
-              className={css({
-                transition: "all 0.2s",
-                _hover: { color: "white", bg: "white/10" },
-              })}
-            >
-              <Pencil size={16} />
-            </s.button>
-            <s.button
+            />
+            <IconButton
+              icon="x"
+              variant="text"
+              aria-label="パネルを閉じる"
               onClick={onClose}
-              p={2}
-              rounded="xl"
-              color="slate.400"
-              cursor="pointer"
-              className={css({
-                transition: "all 0.2s",
-                _hover: { color: "white", bg: "white/10" },
-              })}
-            >
-              <X size={16} />
-            </s.button>
+            />
           </Flex>
         </Flex>
 
