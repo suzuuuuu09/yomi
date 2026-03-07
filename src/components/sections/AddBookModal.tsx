@@ -13,6 +13,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import { css } from "styled-system/css";
 import { Box, Flex, Stack, styled as s } from "styled-system/jsx";
+import { ModeButton } from "@/components/ModeButton";
 import { SearchResultItem } from "@/components/SearchResultItem";
 import FeatureCard from "@/components/shares/card/FeatureCard";
 import BookInfoFields from "@/components/shares/field/BookInfoFields";
@@ -21,7 +22,6 @@ import { useAddBook } from "@/hooks/useAddBook";
 import type { BookInfoValues, BookSearchMode } from "@/types/book-search";
 import type { Book } from "@/types/library";
 import TextInput from "~liftkit/text-input";
-import { ModeButton } from "@/components/ModeButton";
 
 const BarcodeScanner = dynamic(
   () => import("@/components/BarCodeScanner").then((m) => m.BarcodeScanner),
@@ -57,7 +57,7 @@ export default function AddBookModal(props: AddBlockModalProps) {
 
   const handleBarcodeScan = (isbn: string) => {
     setScannedIsbn(isbn);
-    setScanStep("scanning");
+    setScanStep("post-confirm");
   };
 
   const confirmScan = () => {

@@ -6,10 +6,10 @@ import {
   DecodeHintType,
 } from "@zxing/library";
 import { useEffect, useRef } from "react";
-import Heading from "~liftkit/heading";
 import { Box, Center, styled as s } from "styled-system/jsx";
+import Column from "~liftkit/column";
+import Heading from "~liftkit/heading";
 import Text from "~liftkit/text";
-import Column from "./liftkit/column";
 
 interface ScannerProps {
   onScan: (isbn: string) => void;
