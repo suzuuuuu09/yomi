@@ -11,6 +11,7 @@ interface LibraryState {
   isLoading: boolean;
   selectedBookId: string | null;
   newlyAddedBookId: string | null;
+  isBottomDockVisible: boolean;
   clearNewlyAdded: () => void;
   fetchBooks: () => Promise<void>;
   addBook: (partial: Partial<Book>) => void;
@@ -21,6 +22,7 @@ interface LibraryState {
   setPageProgress: (bookId: string, page: number) => void;
   addNote: (bookId: string, content: string, page: number | null) => void;
   deleteNote: (bookId: string, noteId: string) => void;
+  setBottomDockVisible: (visible: boolean) => void;
 }
 
 interface FetchBooksResponse {
@@ -405,6 +407,9 @@ const useLibraryStore = create<LibraryState>((set, get) => ({
       method: "DELETE",
     });
   },
+
+  isBottomDockVisible: false,
+  setBottomDockVisible: (visible) => set({ isBottomDockVisible: visible }),
 }));
 
 export default useLibraryStore;

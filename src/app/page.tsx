@@ -44,8 +44,10 @@ const UniverseCanvas = dynamic(() => import("@/components/UniverseCanvas"), {
 
 function AddBookButton({
   setIsAddModalOpen,
+  isBottomDockVisible,
 }: {
   setIsAddModalOpen: (open: boolean) => void;
+  isBottomDockVisible: boolean;
 }) {
   return (
     <IconCardButton
@@ -69,7 +71,7 @@ function AddBookButton({
           right: 6,
         },
         "@media (max-width: 767px)": {
-          bottom: 36,
+          bottom: isBottomDockVisible ? 36 : -6,
           right: 4,
         },
         "@media (prefers-reduced-motion: reduce)": {
@@ -96,6 +98,7 @@ export default function Observatory() {
   const fetchBooks = useLibraryStore((s) => s.fetchBooks);
   const newlyAddedBookId = useLibraryStore((s) => s.newlyAddedBookId);
   const clearNewlyAdded = useLibraryStore((s) => s.clearNewlyAdded);
+  const isBottomDockVisible = useLibraryStore((s) => s.isBottomDockVisible);
 
   // ログインユーザーの本をAPIから取得
   useEffect(() => {
@@ -136,7 +139,10 @@ export default function Observatory() {
         md={{ bottom: 6, right: 6 }}
         zIndex={30}
       >
-        <AddBookButton setIsAddModalOpen={setIsAddModalOpen} />
+        <AddBookButton
+          isBottomDockVisible={isBottomDockVisible}
+          setIsAddModalOpen={setIsAddModalOpen}
+        />
       </Box>
 
       <BottomDock

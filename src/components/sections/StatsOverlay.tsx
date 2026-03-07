@@ -33,6 +33,7 @@ const statsOverlayStyles = sva({
 });
 
 export default function StatsOverlay({ books }: { books: Book[] }) {
+  // statsOverlayを表示しているかのストア
   const styles = statsOverlayStyles();
 
   return (
