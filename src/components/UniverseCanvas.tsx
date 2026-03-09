@@ -96,14 +96,17 @@ function StarSpikes({
 
   return (
     <group ref={groupRef}>
-      {SPIKE_PLANE_RATIOS.map(([, , rotZ], i) => (
-        <mesh
-          key={i}
-          geometry={geos[i]}
-          material={mat}
-          rotation={[0, 0, rotZ]}
-        />
-      ))}
+      {SPIKE_PLANE_RATIOS.map(([, , rotZ], i) => {
+        const key = `spike-${i}`;
+        return (
+          <mesh
+            key={key}
+            geometry={geos[i]}
+            material={mat}
+            rotation={[0, 0, rotZ]}
+          />
+        );
+      })}
     </group>
   );
 }
@@ -256,6 +259,7 @@ function BookStar({
         <OrbitRing color={book.color} radius={coreScale * 3.2} opacity={0.6} />
       )}
 
+      {/* biome-ignore lint: 3D Objects require pointer events for interaction */}
       <mesh
         geometry={hitGeo}
         material={hitMat}
@@ -325,12 +329,15 @@ function ConstellationLines({
 
   return (
     <>
-      {lineObjects.map(({ main, glow }, i) => (
-        <group key={i}>
-          <primitive object={main} />
-          <primitive object={glow} />
-        </group>
-      ))}
+      {lineObjects.map(({ main, glow }, i) => {
+        const key = `line-${i}`;
+        return (
+          <group key={key}>
+            <primitive object={main} />
+            <primitive object={glow} />
+          </group>
+        );
+      })}
     </>
   );
 }
