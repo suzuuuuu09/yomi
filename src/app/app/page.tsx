@@ -46,12 +46,8 @@ function AddBookButton({
       className={css({
         color: "indigo.300",
         shadow: "xl indigo.500/10",
-        _hover: {
-          scale: "105%",
-        },
-        _active: {
-          scale: "95%",
-        },
+        _hover: { scale: "105%" },
+        _active: { scale: "95%" },
         transitionProperty: "transform",
         transitionDuration: "200ms",
         transitionTimingFunction: "ease-in-out",
@@ -84,9 +80,11 @@ function AddBookButton({
 function VrModeButton({
   vrMode,
   onToggle,
+  isBottomDockVisible,
 }: {
   vrMode: boolean;
   onToggle: () => void;
+  isBottomDockVisible: boolean;
 }) {
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
@@ -106,6 +104,7 @@ function VrModeButton({
         shadow: vrMode ? "xl purple.500/20" : "xl indigo.500/10",
         _hover: { scale: "105%" },
         _active: { scale: "95%" },
+        bottom: isBottomDockVisible ? 36 : -6,
         transitionProperty: "transform",
         transitionDuration: "200ms",
         transitionTimingFunction: "ease-in-out",
@@ -180,7 +179,11 @@ export default function Observatory() {
 
       {/* VRモード切り替えボタン（スマホのみ表示） */}
       <Box position="fixed" bottom={16} left={4} zIndex={30}>
-        <VrModeButton vrMode={vrMode} onToggle={() => setVrMode((v) => !v)} />
+        <VrModeButton
+          vrMode={vrMode}
+          onToggle={() => setVrMode((v) => !v)}
+          isBottomDockVisible={isBottomDockVisible}
+        />
       </Box>
 
       <BottomDock
