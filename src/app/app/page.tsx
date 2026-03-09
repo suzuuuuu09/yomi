@@ -91,9 +91,7 @@ function VrModeButton({
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   useEffect(() => {
-    setIsTouchDevice(
-      window.matchMedia("(hover: none) and (pointer: coarse)").matches,
-    );
+    setIsTouchDevice(navigator.maxTouchPoints > 0 || "ontouchstart" in window);
   }, []);
 
   if (!isTouchDevice) return null;
