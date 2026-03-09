@@ -16,13 +16,14 @@ export function middleware(request: NextRequest) {
   if (pathname === "/login") {
     // すでにセッションがある場合はホームへリダイレクト
     if (hasSession) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/app", request.url));
     }
     return NextResponse.next();
   }
 
   if (!hasSession) {
     // セッションがない場合はログインページへリダイレクト
+    // TODO: 本番環境はコメントアウトを外す
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
@@ -31,5 +32,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   // APIルートやNext.jsの内部ソースは除外する
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  // matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  // /appと/loginは/loginへリダイレクトさせる
+  matcher: ["/app/:path*", "/login"],
 };

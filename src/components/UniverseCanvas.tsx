@@ -1,6 +1,10 @@
 "use client";
 
-import { OrbitControls, Stars } from "@react-three/drei";
+import {
+  DeviceOrientationControls,
+  OrbitControls,
+  Stars,
+} from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
@@ -560,6 +564,84 @@ function CameraSetup({
   return null;
 }
 
+function GyroPermissionOverlay({ onGranted }: { onGranted: () => void }) {
+  const [needed, setNeeded] = useState(false);
+
+  useEffect(() => {
+    type DeviceOrientationEventiOS = typeof DeviceOrientationEvent & {
+      requestPermission?: () => Promise<"granted" | "denied">;
+    };
+    const DOE = DeviceOrientationEvent as DeviceOrientationEventiOS;
+
+    if (typeof DOE.requestPermission === "function") {
+      setNeeded(true); // iOS 13+
+    } else {
+      onGranted(); // Android / PC
+    }
+  }, [onGranted]);
+
+  if (!needed) return null;
+
+  const handleRequest = async () => {
+    // iOS 13+ での許可リクエスト
+    type DeviceOrientationEventiOS = typeof DeviceOrientationEvent & {
+      requestPermission?: () => Promise<"granted" | "denied">;
+    };
+    const DOE = DeviceOrientationEvent as DeviceOrientationEventiOS;
+    const result = await DOE.requestPermission?.();
+
+    if (result === "granted") {
+      setNeeded(false);
+      onGranted();
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(2,6,23,0.93)",
+        color: "white",
+        gap: 20,
+      }}
+    >
+      <p
+        style={{
+          fontSize: 18,
+          textAlign: "center",
+          padding: "0 32px",
+          lineHeight: 1.7,
+        }}
+      >
+        🌌 宇宙を見渡すには
+        <br />
+        センサーの許可が必要です
+      </p>
+      <button
+        type="button"
+        onClick={handleRequest}
+        style={{
+          padding: "14px 36px",
+          borderRadius: 9999,
+          background: "linear-gradient(135deg, #6366f1, #a855f7)",
+          border: "none",
+          color: "white",
+          fontSize: 16,
+          cursor: "pointer",
+        }}
+      >
+        センサーを有効にする
+      </button>
+    </div>
+  );
+}
+
 export default function UniverseCanvas({
   books,
   constellationLines: lines,
@@ -567,6 +649,7 @@ export default function UniverseCanvas({
   selectedBookId,
   newlyAddedBookId,
   onBirthEffectComplete,
+  vrMode = false,
 }: {
   books: Book[];
   constellationLines: [string, string][];
@@ -574,12 +657,20 @@ export default function UniverseCanvas({
   selectedBookId: string | null;
   newlyAddedBookId: string | null;
   onBirthEffectComplete: () => void;
+  vrMode?: boolean;
 }) {
   const reducedMotion = useReducedMotion();
   const controlsRef = useRef<{
     target: THREE.Vector3;
     update: () => void;
   } | null>(null);
+  const [gyroGranted, setGyroGranted] = useState(false);
+
+  // VRモードを抜けたらジャイロ許可状態をリセット
+  useEffect(() => {
+    if (!vrMode) setGyroGranted(false);
+  }, [vrMode]);
+
   const newBook = newlyAddedBookId
     ? books.find((b) => b.id === newlyAddedBookId)
     : null;
@@ -594,6 +685,11 @@ export default function UniverseCanvas({
         height: "100%",
       }}
     >
+      {/* iOSジャイロ許可オーバーレイ（VRモード時のみ） */}
+      {vrMode && !gyroGranted && (
+        <GyroPermissionOverlay onGranted={() => setGyroGranted(true)} />
+      )}
+
       <Canvas
         camera={{ position: [0, 2, 20], fov: 60, near: 0.1, far: 100 }}
         style={{ background: "#020617" }}
@@ -664,17 +760,21 @@ export default function UniverseCanvas({
           />
         )}
 
-        <OrbitControls
-          // biome-ignore lint/suspicious/noExplicitAny: drei ref type
-          ref={controlsRef as any}
-          enableDamping
-          dampingFactor={0.05}
-          rotateSpeed={0.5}
-          zoomSpeed={0.8}
-          minDistance={3}
-          maxDistance={40}
-          enablePan
-        />
+        {vrMode && gyroGranted ? (
+          <DeviceOrientationControls makeDefault />
+        ) : (
+          <OrbitControls
+            // biome-ignore lint/suspicious/noExplicitAny: drei ref type
+            ref={controlsRef as any}
+            enableDamping
+            dampingFactor={0.05}
+            rotateSpeed={0.5}
+            zoomSpeed={0.8}
+            minDistance={3}
+            maxDistance={40}
+            enablePan
+          />
+        )}
         <CameraSetup books={books} controlsRef={controlsRef} />
       </Canvas>
     </div>

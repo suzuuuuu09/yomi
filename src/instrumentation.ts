@@ -8,8 +8,8 @@ export async function register() {
         'return import("@cloudflare/next-on-pages/next-dev")',
       )()) as typeof import("@cloudflare/next-on-pages/next-dev");
       await setupDevPlatform();
-    } catch (e) {
-      console.warn("[dev] setupDevPlatform failed:", e);
+    } catch {
+      console.warn("[dev] @cloudflare/next-on-pages/next-devが読み込めません");
     }
   }
 }

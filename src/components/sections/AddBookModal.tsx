@@ -69,7 +69,8 @@ export default function AddBookModal(props: AddBlockModalProps) {
   };
 
   // TODO: APIの総件数からページ数を計算できるようにする
-  const totalPages = Math.ceil(Math.min(store.totalItems, 100));
+  const totalPages =
+    store.mode === "isbn" ? 1 : Math.ceil(store.totalItems / 20);
 
   return (
     <Modal isOpen={isOpen} onClose={onCloseAction}>

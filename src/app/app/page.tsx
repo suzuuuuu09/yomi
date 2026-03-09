@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { css } from "styled-system/css";
 import { Box, Center, Circle, Flex, styled as s } from "styled-system/jsx";
 import BookListDrawer from "@/components/BookListDrawer";
@@ -81,6 +81,49 @@ function AddBookButton({
   );
 }
 
+function VrModeButton({
+  vrMode,
+  onToggle,
+}: {
+  vrMode: boolean;
+  onToggle: () => void;
+}) {
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  useEffect(() => {
+    setIsTouchDevice(
+      window.matchMedia("(hover: none) and (pointer: coarse)").matches,
+    );
+  }, []);
+
+  if (!isTouchDevice) return null;
+
+  return (
+    <IconCardButton
+      icon={vrMode ? "rotate-ccw" : "rotate-3d"}
+      label={vrMode ? "VRモードを終了" : "VRモード（ジャイロ）"}
+      onClick={onToggle}
+      className={css({
+        color: vrMode ? "purple.300" : "indigo.300",
+        shadow: vrMode ? "xl purple.500/20" : "xl indigo.500/10",
+        _hover: { scale: "105%" },
+        _active: { scale: "95%" },
+        transitionProperty: "transform",
+        transitionDuration: "200ms",
+        transitionTimingFunction: "ease-in-out",
+        "@media (prefers-reduced-motion: reduce)": {
+          transitionProperty: "none",
+        },
+      })}
+      materialProps={{
+        thickness: "thin",
+        tint: vrMode ? "secondary" : "primary",
+        tintOpacity: vrMode ? 0.25 : 0.15,
+      }}
+    />
+  );
+}
+
 export default function Observatory() {
   const books = useLibraryStore((s) => s.books);
   const constellationLines = useLibraryStore((s) => s.constellationLines);
@@ -88,6 +131,8 @@ export default function Observatory() {
   const newlyAddedBookId = useLibraryStore((s) => s.newlyAddedBookId);
   const clearNewlyAdded = useLibraryStore((s) => s.clearNewlyAdded);
   const isBottomDockVisible = useLibraryStore((s) => s.isBottomDockVisible);
+
+  const [vrMode, setVrMode] = useState(false);
 
   // ログインユーザーの本をAPIから取得
   useEffect(() => {
@@ -118,6 +163,7 @@ export default function Observatory() {
         selectedBookId={selectedBookId}
         newlyAddedBookId={newlyAddedBookId}
         onBirthEffectComplete={clearNewlyAdded}
+        vrMode={vrMode}
       />
       <TopBar bookCount={bookCount} />
 
@@ -132,6 +178,11 @@ export default function Observatory() {
           isBottomDockVisible={isBottomDockVisible}
           setIsAddModalOpen={setIsAddModalOpen}
         />
+      </Box>
+
+      {/* VRモード切り替えボタン（スマホのみ表示） */}
+      <Box position="fixed" bottom={16} left={4} zIndex={30}>
+        <VrModeButton vrMode={vrMode} onToggle={() => setVrMode((v) => !v)} />
       </Box>
 
       <BottomDock
