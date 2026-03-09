@@ -170,7 +170,7 @@ export default function BookListDrawer() {
         bottom={0}
         left={0}
         right={0}
-        minH="88vh"
+        h="80vh"
         md={{ top: 0, bottom: 0, right: "auto", maxH: "none", w: "80" }}
         display="flex"
         flexDir="column"

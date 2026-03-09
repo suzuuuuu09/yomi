@@ -6,7 +6,7 @@ import {
   Stars,
 } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { Book } from "@/types/library";
 
@@ -391,11 +391,7 @@ function DustCloud({
   return (
     <points ref={ref}>
       <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positions, 3]}
-          count={count}
-        />
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
       <pointsMaterial
         size={size}
@@ -501,21 +497,23 @@ function StarBirthEffect({
 function CameraSetup({
   books,
   controlsRef,
+  vrMode,
+  gyroGranted,
 }: {
   books: Book[];
   controlsRef: React.RefObject<{
     target: THREE.Vector3;
     update: () => void;
   } | null>;
+  vrMode: boolean;
+  gyroGranted: boolean;
 }) {
   const { camera, size } = useThree();
   const initialized = useRef(false);
+  const vrPositioned = useRef(false);
 
-  useEffect(() => {
-    if (initialized.current || books.length === 0) return;
-    initialized.current = true;
-
-    // 全星の重心を計算
+  // 重心と分布半径を計算するユーティリティ
+  const computeBounds = useCallback(() => {
     let cx = 0,
       cy = 0,
       cz = 0;
@@ -527,8 +525,6 @@ function CameraSetup({
     cx /= books.length;
     cy /= books.length;
     cz /= books.length;
-
-    // 重心からの最大距離（境界球の半径）
     let radius = 0;
     for (const b of books) {
       const d = Math.hypot(
@@ -538,28 +534,50 @@ function CameraSetup({
       );
       if (d > radius) radius = d;
     }
-    // 星のグローマージンを追加（最低半径を確保）
-    radius = Math.max(radius + 2.5, 4);
+    return { cx, cy, cz, radius };
+  }, [books]);
 
-    // 縦横のFOVから必要なカメラ距離を計算
+  // 通常モードの初期カメラ配置
+  useEffect(() => {
+    if (initialized.current || books.length === 0) return;
+    initialized.current = true;
+
+    const { cx, cy, cz, radius } = computeBounds();
+    const r = Math.max(radius + 2.5, 4);
+
     const fovRad = ((camera as THREE.PerspectiveCamera).fov * Math.PI) / 180;
     const aspect = size.width / size.height;
     const hFovRad = 2 * Math.atan(Math.tan(fovRad / 2) * aspect);
 
-    const distV = radius / Math.tan(fovRad / 2);
-    const distH = radius / Math.tan(hFovRad / 2);
-    // モバイル縦持ち（aspect < 1）は横FOVが狭いため distH が大きくなる
+    const distV = r / Math.tan(fovRad / 2);
+    const distH = r / Math.tan(hFovRad / 2);
     const distance = Math.min(Math.max(distV, distH) * 1.15, 38);
 
     camera.position.set(cx, cy, cz + distance);
     camera.lookAt(cx, cy, cz);
 
-    // OrbitControlsのターゲットも重心に合わせる
     if (controlsRef.current) {
       controlsRef.current.target.set(cx, cy, cz);
       controlsRef.current.update();
     }
-  }, [books, camera, size, controlsRef]);
+  }, [books, camera, size, controlsRef, computeBounds]);
+
+  // VRモード時のカメラ配置: 全体を適度に俯瞰できる位置へ
+  useEffect(() => {
+    if (!vrMode || !gyroGranted || books.length === 0) {
+      vrPositioned.current = false;
+      return;
+    }
+    if (vrPositioned.current) return;
+    vrPositioned.current = true;
+
+    const { cx, cy, cz, radius } = computeBounds();
+    // 星の分布半径の45%ほどの距離に立つ。
+    // 近すぎず遠すぎない没入感のある位置（最低3、最大12）
+    const vrDist = Math.min(Math.max(radius * 0.45, 3), 12);
+    camera.position.set(cx, cy, cz + vrDist);
+    camera.lookAt(cx, cy, cz);
+  }, [vrMode, gyroGranted, books, camera, computeBounds]);
 
   return null;
 }
@@ -775,7 +793,12 @@ export default function UniverseCanvas({
             enablePan
           />
         )}
-        <CameraSetup books={books} controlsRef={controlsRef} />
+        <CameraSetup
+          books={books}
+          controlsRef={controlsRef}
+          vrMode={vrMode}
+          gyroGranted={gyroGranted}
+        />
       </Canvas>
     </div>
   );
