@@ -9,34 +9,28 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { Book } from "@/types/library";
+import { bookSeed } from "@/utils/universe-helper";
+import { starVisuals } from "@/utils/universe-helper";
+import { useGyroPermission } from "@/hooks/useGyroPermission";
+import { getGlowTex } from "@/lib/universe-texture";
 
-// Glowのテクスチャは全ての星で共通なので，最初の呼び出し時に1回だけ生成してキャッシュする
-let _glowTex: THREE.CanvasTexture | null = null;
-function getGlowTex(): THREE.CanvasTexture {
-  // すでに生成されていればキャッシュを返す
-  if (_glowTex) return _glowTex;
+export const DUST_CLOUDS = [
+  { color: "#6366f1", count: 300, speed: 0.007, size: 0.025 },
+  { color: "#a855f7", count: 200, speed: 0.011, size: 0.018 },
+  { color: "#ec4899", count: 120, speed: 0.005, size: 0.014 },
+  { color: "#3b82f6", count: 180, speed: 0.009, size: 0.02 },
+] as const;
 
-  // グラデーションで中心が白く、外に行くほど透明になるテクスチャを生成
-  const s = 128;
-
-  // キャンバスを作成
-  const c = document.createElement("canvas");
-  c.width = s;
-  c.height = s;
-  const ctx = c.getContext("2d")!;
-  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-  g.addColorStop(0, "rgba(255,255,255,1)");
-  g.addColorStop(0.06, "rgba(255,255,255,0.95)");
-  g.addColorStop(0.2, "rgba(255,255,255,0.55)");
-  g.addColorStop(0.55, "rgba(255,255,255,0.1)");
-  g.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, s, s);
-  // キャンバスからテクスチャを作成してキャッシュ
-  _glowTex = new THREE.CanvasTexture(c);
-
-  return _glowTex;
-}
+// 星の生成エフェクト
+const BIRTH_EFFECT_COUNT = 60;
+const BIRTH_EFFECT_DURATION = 1.5;
+/** スパイク平面の [幅比率, 高さ比率, Z回転角] テーブル */
+export const SPIKE_PLANE_RATIOS = [
+  [1, 0.018, 0],
+  [0.018, 1, 0],
+  [0.6, 0.012, Math.PI / 4],
+  [0.6, 0.012, -Math.PI / 4],
+] as const;
 
 function GlowSprite({
   color,
@@ -84,20 +78,12 @@ function StarSpikes({
       }),
     [color, opacity],
   );
-  const geoH = useMemo(
-    () => new THREE.PlaneGeometry(size, size * 0.018),
-    [size],
-  );
-  const geoV = useMemo(
-    () => new THREE.PlaneGeometry(size * 0.018, size),
-    [size],
-  );
-  const geoD1 = useMemo(
-    () => new THREE.PlaneGeometry(size * 0.6, size * 0.012),
-    [size],
-  );
-  const geoD2 = useMemo(
-    () => new THREE.PlaneGeometry(size * 0.6, size * 0.012),
+
+  const geos = useMemo(
+    () =>
+      SPIKE_PLANE_RATIOS.map(
+        ([w, h]) => new THREE.PlaneGeometry(size * w, size * h),
+      ),
     [size],
   );
 
@@ -110,10 +96,14 @@ function StarSpikes({
 
   return (
     <group ref={groupRef}>
-      <mesh geometry={geoH} material={mat} />
-      <mesh geometry={geoV} material={mat} />
-      <mesh geometry={geoD1} material={mat} rotation={[0, 0, Math.PI / 4]} />
-      <mesh geometry={geoD2} material={mat} rotation={[0, 0, -Math.PI / 4]} />
+      {SPIKE_PLANE_RATIOS.map(([, , rotZ], i) => (
+        <mesh
+          key={i}
+          geometry={geos[i]}
+          material={mat}
+          rotation={[0, 0, rotZ]}
+        />
+      ))}
     </group>
   );
 }
@@ -167,15 +157,18 @@ function BookStar({
   const groupRef = useRef<THREE.Group>(null);
   const coreRef = useRef<THREE.Sprite>(null);
 
-  const isCompleted = book.status === "completed";
   const isReading = book.status === "reading";
   const isUnread = book.status === "unread";
 
-  const coreScale = isCompleted ? 0.24 : isReading ? 0.17 : 0.1;
-  const spikeSize = isCompleted ? 1.2 : isReading ? 0.8 : 0.42;
-  const glow1 = coreScale * 3.5;
-  const glow2 = coreScale * 8.5;
-  const glow3 = coreScale * 20;
+  const {
+    coreScale,
+    spikeSize,
+    glowInner,
+    glowMid,
+    glowOuter,
+    glowOpacity,
+    spikeOpacity,
+  } = starVisuals(book.status);
 
   const coreMat = useMemo(
     () =>
@@ -202,16 +195,18 @@ function BookStar({
   );
   const hitGeo = useMemo(() => new THREE.SphereGeometry(0.2, 8, 8), []);
 
-  useFrame((state) => {
-    if (!groupRef.current || !coreRef.current) return;
-    if (reducedMotion) return;
-    const t = state.clock.elapsedTime;
-    const seed =
-      book.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) * 2.3 + 1;
+  const seed = useMemo(() => bookSeed(book.id), [book.id]);
 
-    if (isReading) {
-      const pulse = 1 + Math.sin(t * 2.2 + seed) * 0.18;
-      groupRef.current.scale.setScalar(pulse);
+  useFrame((state) => {
+    if (!groupRef.current || !coreRef.current || reducedMotion) return;
+
+    const t = state.clock.elapsedTime;
+
+    // selected > reading の優先順位でスケールアニメーション
+    if (isSelected) {
+      groupRef.current.scale.setScalar(1 + Math.sin(t * 4) * 0.12);
+    } else if (isReading) {
+      groupRef.current.scale.setScalar(1 + Math.sin(t * 2.2 + seed) * 0.18);
     }
 
     if (isUnread) {
@@ -221,36 +216,27 @@ function BookStar({
         Math.abs(Math.sin(t * 2.9 + seed * 0.7)) * 0.15;
       (coreRef.current.material as THREE.SpriteMaterial).opacity = flicker;
     }
-
-    if (isSelected) {
-      const pulse = 1 + Math.sin(t * 4) * 0.12;
-      groupRef.current.scale.setScalar(pulse);
-    }
   });
 
   return (
     <group ref={groupRef} position={book.position}>
       <GlowSprite
         color={book.color}
-        scale={glow3}
-        opacity={isUnread ? 0.04 : 0.08}
+        scale={glowOuter}
+        opacity={glowOpacity.outer}
       />
       <GlowSprite
         color={book.color}
-        scale={glow2}
-        opacity={isUnread ? 0.09 : 0.2}
+        scale={glowMid}
+        opacity={glowOpacity.mid}
       />
       <GlowSprite
         color={book.color}
-        scale={glow1}
-        opacity={isUnread ? 0.22 : 0.6}
+        scale={glowInner}
+        opacity={glowOpacity.inner}
       />
 
-      <StarSpikes
-        color={book.color}
-        size={spikeSize}
-        opacity={isUnread ? 0.28 : 0.7}
-      />
+      <StarSpikes color={book.color} size={spikeSize} opacity={spikeOpacity} />
 
       <sprite
         ref={coreRef}
@@ -260,8 +246,8 @@ function BookStar({
 
       {isSelected && (
         <>
-          <GlowSprite color="#ffffff" scale={glow2 * 2.0} opacity={0.22} />
-          <GlowSprite color={book.color} scale={glow2 * 1.3} opacity={0.4} />
+          <GlowSprite color="#ffffff" scale={glowMid * 2.0} opacity={0.22} />
+          <GlowSprite color={book.color} scale={glowMid * 1.3} opacity={0.4} />
           <StarSpikes color="#ffffff" size={spikeSize * 2.0} opacity={0.55} />
         </>
       )}
@@ -297,6 +283,15 @@ function ConstellationLines({
   lines: [string, string][];
 }) {
   const lineObjects = useMemo(() => {
+    const makeLineMat = (color: string, opacity: number) =>
+      new THREE.LineBasicMaterial({
+        color,
+        transparent: true,
+        opacity,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+
     return lines
       .map(([fromId, toId]) => {
         const from = books.find((b) => b.id === fromId);
@@ -309,37 +304,18 @@ function ConstellationLines({
           new THREE.Vector3(...from.position),
           new THREE.Vector3(...to.position),
         ];
-
-        // メイン線
-        const mainGeo = new THREE.BufferGeometry().setFromPoints(pts);
-        const mainMat = new THREE.LineBasicMaterial({
-          color: from.color,
-          transparent: true,
-          opacity: 0.6,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        });
-
-        // グロー線
-        const glowGeo = new THREE.BufferGeometry().setFromPoints(pts);
-        const glowMat = new THREE.LineBasicMaterial({
-          color: from.color,
-          transparent: true,
-          opacity: 0.22,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        });
+        const geo = () => new THREE.BufferGeometry().setFromPoints(pts);
 
         return {
-          main: new THREE.Line(mainGeo, mainMat),
-          glow: new THREE.Line(glowGeo, glowMat),
+          main: new THREE.Line(geo(), makeLineMat(from.color, 0.6)),
+          glow: new THREE.Line(geo(), makeLineMat(from.color, 0.22)),
         };
       })
       .filter(Boolean) as { main: THREE.Line; glow: THREE.Line }[];
   }, [books, lines]);
 
-  useFrame((state) => {
-    const t = state.clock.elapsedTime;
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
     lineObjects.forEach(({ main, glow }, i) => {
       const pulse = 0.48 + Math.sin(t * 0.6 + i * 1.4) * 0.18;
       (main.material as THREE.LineBasicMaterial).opacity = pulse;
@@ -374,17 +350,18 @@ function DustCloud({
   const positions = useMemo(() => {
     const pos = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 28;
+      // biome-ignore format:off
+      pos[i * 3]     = (Math.random() - 0.5) * 28;
       pos[i * 3 + 1] = (Math.random() - 0.5) * 28;
       pos[i * 3 + 2] = (Math.random() - 0.5) * 28;
     }
     return pos;
   }, [count]);
 
-  useFrame((state) => {
+  useFrame(({ clock }) => {
     if (ref.current) {
-      ref.current.rotation.y = state.clock.elapsedTime * speed;
-      ref.current.rotation.x = state.clock.elapsedTime * speed * 0.43;
+      ref.current.rotation.y = clock.elapsedTime * speed;
+      ref.current.rotation.x = clock.elapsedTime * speed * 0.43;
     }
   });
 
@@ -429,12 +406,10 @@ function StarBirthEffect({
 }) {
   const ref = useRef<THREE.Points>(null);
   const startTime = useRef<number | null>(null);
-  const DURATION = 1.5;
-  const COUNT = 60;
 
-  const positions = useMemo(() => {
-    const pos = new Float32Array(COUNT * 3);
-    for (let i = 0; i < COUNT; i++) {
+  const velocities = useMemo(() => {
+    const pos = new Float32Array(BIRTH_EFFECT_COUNT * 3);
+    for (let i = 0; i < BIRTH_EFFECT_COUNT; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       const speed = 0.3 + Math.random() * 0.7;
@@ -445,22 +420,28 @@ function StarBirthEffect({
     return pos;
   }, []);
 
-  const basePositions = useMemo(() => new Float32Array(positions), [positions]);
+  const initialPositions = useMemo(
+    () => new Float32Array(velocities),
+    [velocities],
+  );
 
-  useFrame((state) => {
+  useFrame(({ clock }) => {
     if (!ref.current) return;
-    if (startTime.current === null) startTime.current = state.clock.elapsedTime;
-    const elapsed = state.clock.elapsedTime - startTime.current;
-    const progress = Math.min(elapsed / DURATION, 1);
+    if (startTime.current === null) startTime.current = clock.elapsedTime;
+
+    const progress = Math.min(
+      (clock.elapsedTime - startTime.current) / BIRTH_EFFECT_DURATION,
+      1,
+    );
 
     const posAttr = ref.current.geometry.attributes
       .position as THREE.BufferAttribute;
-    for (let i = 0; i < COUNT; i++) {
+    for (let i = 0; i < BIRTH_EFFECT_COUNT; i++) {
       posAttr.setXYZ(
         i,
-        position[0] + basePositions[i * 3] * progress * 2,
-        position[1] + basePositions[i * 3 + 1] * progress * 2,
-        position[2] + basePositions[i * 3 + 2] * progress * 2,
+        position[0] + initialPositions[i * 3] * progress * 2,
+        position[1] + initialPositions[i * 3 + 1] * progress * 2,
+        position[2] + initialPositions[i * 3 + 2] * progress * 2,
       );
     }
     posAttr.needsUpdate = true;
@@ -475,11 +456,7 @@ function StarBirthEffect({
   return (
     <points ref={ref}>
       <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positions, 3]}
-          count={COUNT}
-        />
+        <bufferAttribute attach="attributes-position" args={[velocities, 3]} />
       </bufferGeometry>
       <pointsMaterial
         size={0.06}
@@ -494,6 +471,11 @@ function StarBirthEffect({
   );
 }
 
+type ControlsRef = React.RefObject<{
+  target: THREE.Vector3;
+  update: () => void;
+} | null>;
+
 function CameraSetup({
   books,
   controlsRef,
@@ -501,10 +483,7 @@ function CameraSetup({
   gyroGranted,
 }: {
   books: Book[];
-  controlsRef: React.RefObject<{
-    target: THREE.Vector3;
-    update: () => void;
-  } | null>;
+  controlsRef: ControlsRef;
   vrMode: boolean;
   gyroGranted: boolean;
 }) {
@@ -514,26 +493,24 @@ function CameraSetup({
 
   // 重心と分布半径を計算するユーティリティ
   const computeBounds = useCallback(() => {
-    let cx = 0,
+    const n = books.length;
+
+    if (n === 0) return { cx: 0, cy: 0, cz: 0, radius: 1 }; // 欲がないときは原点
+
+    const cx = books.reduce((sum, b) => sum + b.position[0], 0) / n;
+    const cy = books.reduce((sum, b) => sum + b.position[1], 0) / n;
+    const cz = books.reduce((sum, b) => sum + b.position[2], 0) / n;
+    /* let cx = 0,
       cy = 0,
-      cz = 0;
-    for (const b of books) {
-      cx += b.position[0];
-      cy += b.position[1];
-      cz += b.position[2];
-    }
-    cx /= books.length;
-    cy /= books.length;
-    cz /= books.length;
-    let radius = 0;
-    for (const b of books) {
+      cz = 0; */
+    const radius = books.reduce((max, b) => {
       const d = Math.hypot(
         b.position[0] - cx,
         b.position[1] - cy,
         b.position[2] - cz,
       );
-      if (d > radius) radius = d;
-    }
+      return Math.max(max, d);
+    }, 0);
     return { cx, cy, cz, radius };
   }, [books]);
 
@@ -544,22 +521,18 @@ function CameraSetup({
 
     const { cx, cy, cz, radius } = computeBounds();
     const r = Math.max(radius + 2.5, 4);
-
     const fovRad = ((camera as THREE.PerspectiveCamera).fov * Math.PI) / 180;
-    const aspect = size.width / size.height;
-    const hFovRad = 2 * Math.atan(Math.tan(fovRad / 2) * aspect);
-
-    const distV = r / Math.tan(fovRad / 2);
-    const distH = r / Math.tan(hFovRad / 2);
-    const distance = Math.min(Math.max(distV, distH) * 1.15, 38);
+    const hFovRad =
+      2 * Math.atan(Math.tan(fovRad / 2) * (size.width / size.height));
+    const distance = Math.min(
+      Math.max(r / Math.tan(fovRad / 2), r / Math.tan(hFovRad / 2)) * 1.15,
+      38,
+    );
 
     camera.position.set(cx, cy, cz + distance);
     camera.lookAt(cx, cy, cz);
-
-    if (controlsRef.current) {
-      controlsRef.current.target.set(cx, cy, cz);
-      controlsRef.current.update();
-    }
+    controlsRef.current?.target.set(cx, cy, cz);
+    controlsRef.current?.update();
   }, [books, camera, size, controlsRef, computeBounds]);
 
   // VRモード時のカメラ配置: 全体を適度に俯瞰できる位置へ
@@ -572,8 +545,6 @@ function CameraSetup({
     vrPositioned.current = true;
 
     const { cx, cy, cz, radius } = computeBounds();
-    // 星の分布半径の45%ほどの距離に立つ。
-    // 近すぎず遠すぎない没入感のある位置（最低3、最大12）
     const vrDist = Math.min(Math.max(radius * 0.45, 3), 12);
     camera.position.set(cx, cy, cz + vrDist);
     camera.lookAt(cx, cy, cz);
@@ -583,35 +554,17 @@ function CameraSetup({
 }
 
 function GyroPermissionOverlay({ onGranted }: { onGranted: () => void }) {
-  const [needed, setNeeded] = useState(false);
+  const { needsPrompt, requestPermission } = useGyroPermission(true);
 
   useEffect(() => {
-    type DeviceOrientationEventiOS = typeof DeviceOrientationEvent & {
-      requestPermission?: () => Promise<"granted" | "denied">;
-    };
-    const DOE = DeviceOrientationEvent as DeviceOrientationEventiOS;
+    if (!needsPrompt) onGranted();
+  }, [needsPrompt, onGranted]);
 
-    if (typeof DOE.requestPermission === "function") {
-      setNeeded(true); // iOS 13+
-    } else {
-      onGranted(); // Android / PC
-    }
-  }, [onGranted]);
+  if (!needsPrompt) return null;
 
-  if (!needed) return null;
-
-  const handleRequest = async () => {
-    // iOS 13+ での許可リクエスト
-    type DeviceOrientationEventiOS = typeof DeviceOrientationEvent & {
-      requestPermission?: () => Promise<"granted" | "denied">;
-    };
-    const DOE = DeviceOrientationEvent as DeviceOrientationEventiOS;
-    const result = await DOE.requestPermission?.();
-
-    if (result === "granted") {
-      setNeeded(false);
-      onGranted();
-    }
+  const handleClick = async () => {
+    await requestPermission();
+    onGranted();
   };
 
   return (
@@ -643,7 +596,7 @@ function GyroPermissionOverlay({ onGranted }: { onGranted: () => void }) {
       </p>
       <button
         type="button"
-        onClick={handleRequest}
+        onClick={handleClick}
         style={{
           padding: "14px 36px",
           borderRadius: 9999,
@@ -660,6 +613,16 @@ function GyroPermissionOverlay({ onGranted }: { onGranted: () => void }) {
   );
 }
 
+interface UniverseCanvasProps {
+  books: Book[];
+  constellationLines: [string, string][];
+  onStarClick: (book: Book) => void;
+  selectedBookId: string | null;
+  newlyAddedBookId: string | null;
+  onBirthEffectComplete: () => void;
+  vrMode?: boolean;
+}
+
 export default function UniverseCanvas({
   books,
   constellationLines: lines,
@@ -668,15 +631,7 @@ export default function UniverseCanvas({
   newlyAddedBookId,
   onBirthEffectComplete,
   vrMode = false,
-}: {
-  books: Book[];
-  constellationLines: [string, string][];
-  onStarClick: (book: Book) => void;
-  selectedBookId: string | null;
-  newlyAddedBookId: string | null;
-  onBirthEffectComplete: () => void;
-  vrMode?: boolean;
-}) {
+}: UniverseCanvasProps) {
   const reducedMotion = useReducedMotion();
   const controlsRef = useRef<{
     target: THREE.Vector3;
@@ -693,6 +648,11 @@ export default function UniverseCanvas({
     ? books.find((b) => b.id === newlyAddedBookId)
     : null;
 
+  const motionSpeed = useCallback(
+    (base: number) => (reducedMotion ? 0 : base),
+    [reducedMotion],
+  );
+
   return (
     <div
       style={{
@@ -703,7 +663,6 @@ export default function UniverseCanvas({
         height: "100%",
       }}
     >
-      {/* iOSジャイロ許可オーバーレイ（VRモード時のみ） */}
       {vrMode && !gyroGranted && (
         <GyroPermissionOverlay onGranted={() => setGyroGranted(true)} />
       )}
@@ -720,7 +679,7 @@ export default function UniverseCanvas({
           factor={4}
           saturation={0.5}
           fade
-          speed={reducedMotion ? 0 : 0.3}
+          speed={motionSpeed(0.3)}
         />
         <Stars
           radius={22}
@@ -729,33 +688,18 @@ export default function UniverseCanvas({
           factor={6}
           saturation={0.9}
           fade
-          speed={reducedMotion ? 0 : 0.6}
+          speed={motionSpeed(0.6)}
         />
 
-        <DustCloud
-          color="#6366f1"
-          count={300}
-          speed={reducedMotion ? 0 : 0.007}
-          size={0.025}
-        />
-        <DustCloud
-          color="#a855f7"
-          count={200}
-          speed={reducedMotion ? 0 : 0.011}
-          size={0.018}
-        />
-        <DustCloud
-          color="#ec4899"
-          count={120}
-          speed={reducedMotion ? 0 : 0.005}
-          size={0.014}
-        />
-        <DustCloud
-          color="#3b82f6"
-          count={180}
-          speed={reducedMotion ? 0 : 0.009}
-          size={0.02}
-        />
+        {DUST_CLOUDS.map(({ color, count, speed, size }) => (
+          <DustCloud
+            key={color}
+            color={color}
+            count={count}
+            speed={motionSpeed(speed)}
+            size={size}
+          />
+        ))}
 
         <ConstellationLines books={books} lines={lines} />
 
@@ -784,6 +728,7 @@ export default function UniverseCanvas({
           <OrbitControls
             // biome-ignore lint/suspicious/noExplicitAny: drei ref type
             ref={controlsRef as any}
+            makeDefault
             enableDamping
             dampingFactor={0.05}
             rotateSpeed={0.5}
@@ -793,6 +738,7 @@ export default function UniverseCanvas({
             enablePan
           />
         )}
+
         <CameraSetup
           books={books}
           controlsRef={controlsRef}
