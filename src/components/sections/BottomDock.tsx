@@ -39,6 +39,110 @@ function MiniProgress({ current, total }: MiniProgressProps) {
   );
 }
 
+function ReadingCard({
+  book,
+  onQuickAdd,
+  onClick,
+}: {
+  book: Book;
+  onQuickAdd: () => void;
+  onClick: () => void;
+}) {
+  return (
+    <Card
+      material="flat"
+      variant="outline"
+      scaleFactor="caption"
+      isClickable
+      onClick={onClick}
+      className={cx(
+        "group",
+        css({
+          w: { base: "40", md: "48" },
+          flexShrink: 0,
+          position: "relative",
+          zIndex: 0,
+          _hover: {
+            bg: "white/4",
+            zIndex: 1,
+          },
+        }),
+      )}
+    >
+      <Stack gap="2" alignItems="stretch">
+        <Flex justify="between" alignItems="center">
+          <Box minWidth={0}>
+            <Text
+              tag="p"
+              fontClass="caption-bold"
+              className={css({ color: "slate.200", truncate: true })}
+            >
+              {book.title}
+            </Text>
+            <Text
+              tag="p"
+              fontClass="capline"
+              className={css({ color: "slate.500", truncate: true })}
+            >
+              {book.author}
+            </Text>
+          </Box>
+          <ChevronRight
+            size={12}
+            className={css({
+              color: "slate.600",
+              transition: "colors",
+              flexShrink: 0,
+              ml: "1",
+              _groupHover: { color: "slate.400" },
+            })}
+          />
+        </Flex>
+
+        <MiniProgress current={book.currentPage} total={book.totalPages} />
+
+        <Flex justify="between" alignItems="center">
+          <Text
+            tag="span"
+            fontClass="capline"
+            className={css({
+              fontVariantNumeric: "tabular-nums",
+              color: "slate.500",
+            })}
+          >
+            {book.currentPage}/{book.totalPages}p
+          </Text>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onQuickAdd();
+            }}
+            className={css({
+              fontSize: "10px",
+              fontWeight: "semibold",
+              color: "indigo.400",
+              px: "2",
+              py: "0.5",
+              rounded: "md",
+              bg: "indigo.500/10",
+              cursor: "pointer",
+              transition: "all",
+              transitionDuration: "200ms",
+              _hover: {
+                color: "indigo.300",
+                bg: "indigo.500/20",
+              },
+            })}
+          >
+            +1P
+          </button>
+        </Flex>
+      </Stack>
+    </Card>
+  );
+}
+
 export default function BottomDock({
   nowReading,
   onQuickAdd,
@@ -107,101 +211,16 @@ export default function BottomDock({
 
           <HStack
             gap={{ base: "2", md: "3" }}
-            overflowX="auto"
             pb="1"
             className={css({ scrollbar: "hidden" })}
           >
             {nowReading.slice(0, 3).map((book) => (
-              <Card
+              <ReadingCard
                 key={book.id}
-                material="flat"
-                variant="outline"
-                scaleFactor="caption"
-                isClickable
+                book={book}
+                onQuickAdd={() => onQuickAdd(book.id)}
                 onClick={() => onBookClick(book)}
-                className={cx(
-                  "group",
-                  css({
-                    w: { base: "40", md: "48" },
-                    flexShrink: 0,
-                    _hover: { bg: "white/4" },
-                  }),
-                )}
-              >
-                <Stack gap="2" alignItems="stretch">
-                  <Flex justify="between" alignItems="center">
-                    <Box minWidth={0}>
-                      <Text
-                        tag="p"
-                        fontClass="caption-bold"
-                        className={css({ color: "slate.200", truncate: true })}
-                      >
-                        {book.title}
-                      </Text>
-                      <Text
-                        tag="p"
-                        fontClass="capline"
-                        className={css({ color: "slate.500", truncate: true })}
-                      >
-                        {book.author}
-                      </Text>
-                    </Box>
-                    <ChevronRight
-                      size={12}
-                      className={css({
-                        color: "slate.600",
-                        transition: "colors",
-                        flexShrink: 0,
-                        ml: "1",
-                        _groupHover: { color: "slate.400" },
-                      })}
-                    />
-                  </Flex>
-
-                  <MiniProgress
-                    current={book.currentPage}
-                    total={book.totalPages}
-                  />
-
-                  <Flex justify="between" alignItems="center">
-                    <Text
-                      tag="span"
-                      fontClass="capline"
-                      className={css({
-                        fontVariantNumeric: "tabular-nums",
-                        color: "slate.500",
-                      })}
-                    >
-                      {book.currentPage}/{book.totalPages}p
-                    </Text>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onQuickAdd(book.id);
-                      }}
-                      className={css({
-                        fontSize: "10px",
-                        fontWeight: "semibold",
-                        color: "indigo.400",
-                        px: "2",
-                        py: "0.5",
-                        rounded: "md",
-                        bg: "indigo.500/10",
-                        cursor: "pointer",
-                        transition: "all",
-                        transitionDuration: "200ms",
-                        _hover: {
-                          color: "indigo.300",
-                          bg: "indigo.500/20",
-                        },
-                      })}
-                    >
-                      +1P
-                    </button>
-                  </Flex>
-                </Stack>
-              </Card>
+              />
             ))}
           </HStack>
         </HStack>

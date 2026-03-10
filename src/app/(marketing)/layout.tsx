@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Fira_Code, Fira_Sans } from "next/font/google";
-import "./globals.css";
+import "@/app/globals.css";
 
 const firaCode = Fira_Code({
   subsets: ["latin"],

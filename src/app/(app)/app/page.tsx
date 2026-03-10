@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { css } from "styled-system/css";
 import { Box, Center, Circle, Flex, styled as s } from "styled-system/jsx";
 import BookListDrawer from "@/components/BookListDrawer";
@@ -17,19 +17,22 @@ import { useStarInsight } from "@/hooks/useStarInsight";
 import useLibraryStore from "@/store/useLibraryStore";
 
 // 動的に UniverseCanvasを読み込む
-const UniverseCanvas = dynamic(() => import("@/components/UniverseCanvas"), {
-  ssr: false,
-  loading: () => (
-    <Center position="fixed" inset={0} bg="#020617">
-      <Flex flexDir="column" align="center" gap="4">
-        <Circle size={6} bg="indigo.500" animation="ping" />
-        <s.p fontSize="xs" color="slate.500" letterSpacing="widest">
-          宇宙を展開中...
-        </s.p>
-      </Flex>
-    </Center>
-  ),
-});
+const UniverseCanvas = dynamic(
+  () => import("@/components/universe/UniverseCanvas"),
+  {
+    ssr: false,
+    loading: () => (
+      <Center position="fixed" inset={0} bg="#020617">
+        <Flex flexDir="column" align="center" gap="4">
+          <Circle size={6} bg="indigo.500" animation="ping" />
+          <s.p fontSize="xs" color="slate.500" letterSpacing="widest">
+            宇宙を展開中...
+          </s.p>
+        </Flex>
+      </Center>
+    ),
+  },
+);
 
 function AddBookButton({
   setIsAddModalOpen,
@@ -46,12 +49,8 @@ function AddBookButton({
       className={css({
         color: "indigo.300",
         shadow: "xl indigo.500/10",
-        _hover: {
-          scale: "105%",
-        },
-        _active: {
-          scale: "95%",
-        },
+        _hover: { scale: "105%" },
+        _active: { scale: "95%" },
         transitionProperty: "transform",
         transitionDuration: "200ms",
         transitionTimingFunction: "ease-in-out",
@@ -81,6 +80,50 @@ function AddBookButton({
   );
 }
 
+function VrModeButton({
+  vrMode,
+  onToggle,
+  isBottomDockVisible,
+}: {
+  vrMode: boolean;
+  onToggle: () => void;
+  isBottomDockVisible: boolean;
+}) {
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  useEffect(() => {
+    setIsTouchDevice(navigator.maxTouchPoints > 0 || "ontouchstart" in window);
+  }, []);
+
+  if (!isTouchDevice) return null;
+
+  return (
+    <IconCardButton
+      icon={vrMode ? "rotate-ccw" : "rotate-3d"}
+      label={vrMode ? "VRモードを終了" : "VRモード（ジャイロ）"}
+      onClick={onToggle}
+      className={css({
+        color: vrMode ? "purple.300" : "indigo.300",
+        shadow: vrMode ? "xl purple.500/20" : "xl indigo.500/10",
+        _hover: { scale: "105%" },
+        _active: { scale: "95%" },
+        bottom: isBottomDockVisible ? 36 : -6,
+        transitionProperty: "transform",
+        transitionDuration: "200ms",
+        transitionTimingFunction: "ease-in-out",
+        "@media (prefers-reduced-motion: reduce)": {
+          transitionProperty: "none",
+        },
+      })}
+      materialProps={{
+        thickness: "thin",
+        tint: vrMode ? "secondary" : "primary",
+        tintOpacity: vrMode ? 0.25 : 0.15,
+      }}
+    />
+  );
+}
+
 export default function Observatory() {
   const books = useLibraryStore((s) => s.books);
   const constellationLines = useLibraryStore((s) => s.constellationLines);
@@ -88,6 +131,8 @@ export default function Observatory() {
   const newlyAddedBookId = useLibraryStore((s) => s.newlyAddedBookId);
   const clearNewlyAdded = useLibraryStore((s) => s.clearNewlyAdded);
   const isBottomDockVisible = useLibraryStore((s) => s.isBottomDockVisible);
+
+  const [vrMode, setVrMode] = useState(false);
 
   // ログインユーザーの本をAPIから取得
   useEffect(() => {
@@ -118,6 +163,7 @@ export default function Observatory() {
         selectedBookId={selectedBookId}
         newlyAddedBookId={newlyAddedBookId}
         onBirthEffectComplete={clearNewlyAdded}
+        vrMode={vrMode}
       />
       <TopBar bookCount={bookCount} />
 
@@ -131,6 +177,15 @@ export default function Observatory() {
         <AddBookButton
           isBottomDockVisible={isBottomDockVisible}
           setIsAddModalOpen={setIsAddModalOpen}
+        />
+      </Box>
+
+      {/* VRモード切り替えボタン（スマホのみ表示） */}
+      <Box position="fixed" bottom={16} left={4} zIndex={30}>
+        <VrModeButton
+          vrMode={vrMode}
+          onToggle={() => setVrMode((v) => !v)}
+          isBottomDockVisible={isBottomDockVisible}
         />
       </Box>
 

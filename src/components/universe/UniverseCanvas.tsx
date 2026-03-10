@@ -5,32 +5,23 @@ import {
   OrbitControls,
   Stars,
 } from "@react-three/drei";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import type { Book } from "@/types/library";
-import { bookSeed } from "@/utils/universe-helper";
-import { starVisuals } from "@/utils/universe-helper";
+import {
+  BIRTH_EFFECT_COUNT,
+  BIRTH_EFFECT_DURATION,
+  DUST_CLOUDS,
+} from "@/consts/universe";
 import { useGyroPermission } from "@/hooks/useGyroPermission";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { getGlowTex } from "@/lib/universe-texture";
-
-export const DUST_CLOUDS = [
-  { color: "#6366f1", count: 300, speed: 0.007, size: 0.025 },
-  { color: "#a855f7", count: 200, speed: 0.011, size: 0.018 },
-  { color: "#ec4899", count: 120, speed: 0.005, size: 0.014 },
-  { color: "#3b82f6", count: 180, speed: 0.009, size: 0.02 },
-] as const;
-
-// 星の生成エフェクト
-const BIRTH_EFFECT_COUNT = 60;
-const BIRTH_EFFECT_DURATION = 1.5;
-/** スパイク平面の [幅比率, 高さ比率, Z回転角] テーブル */
-export const SPIKE_PLANE_RATIOS = [
-  [1, 0.018, 0],
-  [0.018, 1, 0],
-  [0.6, 0.012, Math.PI / 4],
-  [0.6, 0.012, -Math.PI / 4],
-] as const;
+import type { Book } from "@/types/library";
+import { bookSeed, starVisuals } from "@/utils/universe-helper";
+import { CameraSetup } from "./CameraSetup";
+import { DustCloud } from "./DustCloud";
+import NebulaField from "./NebulaField";
+import StarSpikes from "./StarSpikes";
 
 function GlowSprite({
   color,
@@ -54,61 +45,6 @@ function GlowSprite({
     [color, opacity],
   );
   return <sprite material={mat} scale={[scale, scale, 1]} />;
-}
-
-function StarSpikes({
-  color,
-  size,
-  opacity,
-}: {
-  color: string;
-  size: number;
-  opacity: number;
-}) {
-  const groupRef = useRef<THREE.Group>(null);
-  const mat = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-      }),
-    [color, opacity],
-  );
-
-  const geos = useMemo(
-    () =>
-      SPIKE_PLANE_RATIOS.map(
-        ([w, h]) => new THREE.PlaneGeometry(size * w, size * h),
-      ),
-    [size],
-  );
-
-  useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.z =
-        Math.sin(state.clock.elapsedTime * 0.35) * 0.06;
-    }
-  });
-
-  return (
-    <group ref={groupRef}>
-      {SPIKE_PLANE_RATIOS.map(([, , rotZ], i) => {
-        const key = `spike-${i}`;
-        return (
-          <mesh
-            key={key}
-            geometry={geos[i]}
-            material={mat}
-            rotation={[0, 0, rotZ]}
-          />
-        );
-      })}
-    </group>
-  );
 }
 
 function OrbitRing({
@@ -342,66 +278,6 @@ function ConstellationLines({
   );
 }
 
-function DustCloud({
-  color,
-  count,
-  speed,
-  size,
-}: {
-  color: string;
-  count: number;
-  speed: number;
-  size: number;
-}) {
-  const ref = useRef<THREE.Points>(null);
-  const positions = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      // biome-ignore format:off
-      pos[i * 3]     = (Math.random() - 0.5) * 28;
-      pos[i * 3 + 1] = (Math.random() - 0.5) * 28;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 28;
-    }
-    return pos;
-  }, [count]);
-
-  useFrame(({ clock }) => {
-    if (ref.current) {
-      ref.current.rotation.y = clock.elapsedTime * speed;
-      ref.current.rotation.x = clock.elapsedTime * speed * 0.43;
-    }
-  });
-
-  return (
-    <points ref={ref}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-      </bufferGeometry>
-      <pointsMaterial
-        size={size}
-        color={color}
-        transparent
-        opacity={0.4}
-        sizeAttenuation
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-      />
-    </points>
-  );
-}
-
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-  return reduced;
-}
-
 function StarBirthEffect({
   position,
   color,
@@ -476,88 +352,6 @@ function StarBirthEffect({
       />
     </points>
   );
-}
-
-type ControlsRef = React.RefObject<{
-  target: THREE.Vector3;
-  update: () => void;
-} | null>;
-
-function CameraSetup({
-  books,
-  controlsRef,
-  vrMode,
-  gyroGranted,
-}: {
-  books: Book[];
-  controlsRef: ControlsRef;
-  vrMode: boolean;
-  gyroGranted: boolean;
-}) {
-  const { camera, size } = useThree();
-  const initialized = useRef(false);
-  const vrPositioned = useRef(false);
-
-  // 重心と分布半径を計算するユーティリティ
-  const computeBounds = useCallback(() => {
-    const n = books.length;
-
-    if (n === 0) return { cx: 0, cy: 0, cz: 0, radius: 1 }; // 欲がないときは原点
-
-    const cx = books.reduce((sum, b) => sum + b.position[0], 0) / n;
-    const cy = books.reduce((sum, b) => sum + b.position[1], 0) / n;
-    const cz = books.reduce((sum, b) => sum + b.position[2], 0) / n;
-    /* let cx = 0,
-      cy = 0,
-      cz = 0; */
-    const radius = books.reduce((max, b) => {
-      const d = Math.hypot(
-        b.position[0] - cx,
-        b.position[1] - cy,
-        b.position[2] - cz,
-      );
-      return Math.max(max, d);
-    }, 0);
-    return { cx, cy, cz, radius };
-  }, [books]);
-
-  // 通常モードの初期カメラ配置
-  useEffect(() => {
-    if (initialized.current || books.length === 0) return;
-    initialized.current = true;
-
-    const { cx, cy, cz, radius } = computeBounds();
-    const r = Math.max(radius + 2.5, 4);
-    const fovRad = ((camera as THREE.PerspectiveCamera).fov * Math.PI) / 180;
-    const hFovRad =
-      2 * Math.atan(Math.tan(fovRad / 2) * (size.width / size.height));
-    const distance = Math.min(
-      Math.max(r / Math.tan(fovRad / 2), r / Math.tan(hFovRad / 2)) * 1.15,
-      38,
-    );
-
-    camera.position.set(cx, cy, cz + distance);
-    camera.lookAt(cx, cy, cz);
-    controlsRef.current?.target.set(cx, cy, cz);
-    controlsRef.current?.update();
-  }, [books, camera, size, controlsRef, computeBounds]);
-
-  // VRモード時のカメラ配置: 全体を適度に俯瞰できる位置へ
-  useEffect(() => {
-    if (!vrMode || !gyroGranted || books.length === 0) {
-      vrPositioned.current = false;
-      return;
-    }
-    if (vrPositioned.current) return;
-    vrPositioned.current = true;
-
-    const { cx, cy, cz, radius } = computeBounds();
-    const vrDist = Math.min(Math.max(radius * 0.45, 3), 12);
-    camera.position.set(cx, cy, cz + vrDist);
-    camera.lookAt(cx, cy, cz);
-  }, [vrMode, gyroGranted, books, camera, computeBounds]);
-
-  return null;
 }
 
 function GyroPermissionOverlay({ onGranted }: { onGranted: () => void }) {
@@ -697,7 +491,6 @@ export default function UniverseCanvas({
           fade
           speed={motionSpeed(0.6)}
         />
-
         {DUST_CLOUDS.map(({ color, count, speed, size }) => (
           <DustCloud
             key={color}
@@ -707,9 +500,7 @@ export default function UniverseCanvas({
             size={size}
           />
         ))}
-
         <ConstellationLines books={books} lines={lines} />
-
         {books.map((book) => (
           <BookStar
             key={book.id}
@@ -719,7 +510,6 @@ export default function UniverseCanvas({
             reducedMotion={reducedMotion}
           />
         ))}
-
         {newBook && !reducedMotion && (
           <StarBirthEffect
             key={newBook.id}
@@ -728,7 +518,6 @@ export default function UniverseCanvas({
             onComplete={onBirthEffectComplete}
           />
         )}
-
         {vrMode && gyroGranted ? (
           <DeviceOrientationControls makeDefault />
         ) : (
@@ -745,13 +534,14 @@ export default function UniverseCanvas({
             enablePan
           />
         )}
-
         <CameraSetup
           books={books}
           controlsRef={controlsRef}
           vrMode={vrMode}
           gyroGranted={gyroGranted}
         />
+
+        <NebulaField />
       </Canvas>
     </div>
   );

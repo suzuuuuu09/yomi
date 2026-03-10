@@ -15,7 +15,21 @@ export default defineConfig({
 
   // Useful for theme customization
   theme: {
-    extend: {},
+    extend: {
+      keyframes: {
+        twinkle: {
+          "0%, 100%": {
+            opacity: "var(--star-opacity)",
+            filter: "drop-shadow(0 0 var(--star-glow) rgba(255,255,255,0.5))",
+          },
+          "50%": {
+            opacity: "calc(var(--star-opacity) * 0.3)",
+            filter:
+              "drop-shadow(0 0 calc(var(--star-glow) * 0.5) rgba(255,255,255,0.2))",
+          },
+        },
+      },
+    },
   },
 
   // The output directory for your css system
