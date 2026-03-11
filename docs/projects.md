@@ -41,10 +41,10 @@
 - Next.js(App Router)
 - Three.js + React Three Fiber (3D Visualization)
 - PandaCSS + [LiftKit](https://www.chainlift.io/liftkit)(UI Framework)
+- Cloudflare Pages (Hosting)
 
 ### バックエンド
 
-- Cloudflare workers (Hono)
 - Cloudflare D1 (Database)
 - Dizzle ORM
 - Zod (Validation)

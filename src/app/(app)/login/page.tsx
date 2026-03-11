@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
 import { css } from "styled-system/css";
-import { Box, Stack, styled as s } from "styled-system/jsx";
+import { Stack, styled as s } from "styled-system/jsx";
+import StarfieldBackground from "@/components/shares/StarfieldBackground";
 import { signIn } from "@/lib/auth-client";
 import Text from "~liftkit/text";
 
@@ -27,91 +27,6 @@ const GoogleIcon = () => (
   </svg>
 );
 
-// 星の背景
-function StarfieldBackground() {
-  // ランダムな星を生成
-  const stars = useMemo(() => {
-    const starCount =
-      typeof window !== "undefined" && window.innerWidth < 768 ? 80 : 150;
-    return Array.from({ length: starCount }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 2 + 0.5,
-      opacity: Math.random() * 0.7 + 0.2,
-      duration: Math.random() * 4 + 2.5,
-      delay: Math.random() * 3,
-    }));
-  }, []);
-
-  return (
-    <>
-      {/* グロー1 */}
-      <Box
-        position="absolute"
-        top="10%"
-        left="10%"
-        width="400px"
-        height="400px"
-        borderRadius="50%"
-        background="radial-gradient(circle, rgba(129,140,248,0.15) 0%, transparent 70%)"
-        filter="blur(60px)"
-        pointerEvents="none"
-      />
-
-      {/* グロー2 */}
-      <Box
-        style={{
-          position: "absolute",
-          bottom: "10%",
-          right: "10%",
-          width: "350px",
-          height: "350px",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(168,85,247,0.12) 0%, transparent 70%)",
-          filter: "blur(60px)",
-          pointerEvents: "none",
-        }}
-      />
-
-      <Box
-        position="absolute"
-        pointerEvents="none"
-        inset={0}
-        background={`
-					radial-gradient(ellipse 800px 600px at 20% 30%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
-					radial-gradient(ellipse 700px 500px at 80% 70%, rgba(168, 85, 247, 0.06) 0%, transparent 50%),
-					radial-gradient(ellipse 600px 400px at 50% 50%, rgba(236, 72, 153, 0.04) 0%, transparent 50%)
-				`}
-      />
-
-      {/* 星フィールド */}
-      {stars.map((star) => (
-        <Box
-          key={star.id}
-          position="absolute"
-          borderRadius="full"
-          bg="white"
-          pointerEvents="none"
-          animationName="twinkle"
-          animationTimingFunction="ease-in-out"
-          animationIterationCount="infinite"
-          style={{
-            left: `${star.x}%`,
-            top: `${star.y}%`,
-            width: `${star.size}px`,
-            height: `${star.size}px`,
-            opacity: star.opacity,
-            animationDuration: `${star.duration}s`,
-            animationDelay: `${star.delay}s`,
-          }}
-        />
-      ))}
-    </>
-  );
-}
-
 export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     await signIn.social({
@@ -131,10 +46,8 @@ export default function LoginPage() {
       bg="#020617"
       overflow="hidden"
     >
-      {/* 星空背景 */}
       <StarfieldBackground />
 
-      {/* コンテンツ */}
       <Stack
         gap="8"
         alignItems="center"
@@ -153,7 +66,6 @@ export default function LoginPage() {
           shadowColor: "black/50",
         })}
       >
-        {/* ロゴ */}
         <Stack gap="2" alignItems="center">
           <Text
             tag="h1"
@@ -176,7 +88,6 @@ export default function LoginPage() {
           </Text>
         </Stack>
 
-        {/* Googleログインボタン */}
         <button
           type="button"
           onClick={handleGoogleSignIn}
@@ -198,13 +109,8 @@ export default function LoginPage() {
             cursor: "pointer",
             transitionProperty: "all",
             transitionDuration: "200ms",
-            _hover: {
-              bg: "white/10",
-              borderColor: "white/20",
-            },
-            _active: {
-              bg: "white/14",
-            },
+            _hover: { bg: "white/10", borderColor: "white/20" },
+            _active: { bg: "white/14" },
           })}
         >
           <GoogleIcon />
@@ -219,7 +125,6 @@ export default function LoginPage() {
           ログインすることで、読書記録がクラウドに保存されます
         </Text>
 
-        {/* コピーライト */}
         <Text
           tag="p"
           fontClass="caption"

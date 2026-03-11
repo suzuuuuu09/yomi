@@ -16,6 +16,17 @@ export function pageToStatus(
   return "reading";
 }
 
+/**
+ * ステータスの変更に応じて、completedAt を適切に更新する関数。
+ * - newStatus が "completed" で prevStatus が "completed" でない場合、現在の日時を completedAt に設定。
+ * - newStatus が "completed" でない場合、completedAt を null にリセット。
+ * - それ以外の場合は、currentCompletedAt を変更せずに返す。
+ * @param newStatus - 新しいステータス
+ * @param prevStatus - 前のステータス
+ * @param now - 現在の日時（ISO 8601形式）
+ * @param currentCompletedAt - 現在の completedAt の値（ISO 8601形式または null）
+ * @returns 新しい completedAt の値（ISO 8601形式または null）
+ */
 export function resolveCompletedAt(
   newStatus: BookStatus,
   prevStatus: BookStatus,

@@ -30,7 +30,7 @@ export default function Icon({
         name={name}
         width="1em"
         height="1em"
-        color={`var(--lk-${color})`}
+        color={color === "currentColor" ? "currentColor" : `var(--lk-${color})`}
         strokeWidth={strokeWidth}
       />
     </div>

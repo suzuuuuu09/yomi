@@ -57,7 +57,7 @@ export default function Badge({
         <div data-lk-icon-element="wrapper">
           <Icon
             name={icon}
-            color={iconColor}
+            color="currentColor"
             strokeWidth={iconStrokeWidth || defaultIconStrokeWidth}
           ></Icon>
         </div>

@@ -99,6 +99,14 @@ function BookStar({
   const isReading = book.status === "reading";
   const isUnread = book.status === "unread";
 
+  // 読書進捗率: 未読=0.0, 読了=1.0
+  const progress =
+    book.status === "completed"
+      ? 1.0
+      : book.totalPages > 0
+        ? Math.min(book.currentPage / book.totalPages, 1)
+        : 0;
+
   const {
     coreScale,
     spikeSize,
@@ -107,7 +115,7 @@ function BookStar({
     glowOuter,
     glowOpacity,
     spikeOpacity,
-  } = starVisuals(book.status);
+  } = starVisuals(progress);
 
   const coreMat = useMemo(
     () =>
@@ -115,12 +123,14 @@ function BookStar({
         map: getGlowTex(),
         color: "#ffffff",
         transparent: true,
-        opacity: isUnread ? 0.55 : 1.0,
+        // 進捗に応じてコアの明るさを変化させる
+        // 進捗0で0.55、進捗1で1.0になるように調整
+        opacity: 0.55 + progress * 0.45,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isUnread],
+    [progress],
   );
 
   const hitMat = useMemo(
