@@ -128,7 +128,7 @@ export default function MarketingPage() {
                 borderRadius: "18px",
                 filter:
                   "drop-shadow(0 0 16px #6467f28c) drop-shadow(0 0 40px #a855f747)",
-                animation: "logo-float 6s ease-in-out infinite",
+                animation: "float 6s ease-in-out infinite",
               })}
               style={{ objectFit: "contain" }}
               priority

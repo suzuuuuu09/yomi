@@ -27,6 +27,14 @@ export default defineConfig({
             filter: "drop-shadow(0 0 calc(var(--star-glow) * 0.5) #ffffff33)",
           },
         },
+        float: {
+          "0%, 100%": {
+            transform: "translateY(0)",
+          },
+          "50%": {
+            transform: "translateY(-8px)",
+          },
+        },
       },
     },
   },
