@@ -1,14 +1,15 @@
+import type { IconName } from "lucide-react/dynamic";
+import Image from "next/image";
 import Link from "next/link";
 import { css } from "styled-system/css";
-import { Box, Center, Flex, Stack, styled as s } from "styled-system/jsx";
-import StarfieldBackground from "@/components/shares/StarfieldBackground";
-import Text from "~liftkit/text";
-import Heading from "~liftkit/heading";
-import Card from "~liftkit/card";
-import type { IconName } from "lucide-react/dynamic";
-import Badge from "~liftkit/badge";
-import Grid from "~liftkit/grid";
+import { Box, Center, Flex, Grid, Stack, styled as s } from "styled-system/jsx";
 import { token } from "styled-system/tokens";
+import StarfieldBackground from "@/components/shares/StarfieldBackground";
+import Badge from "~liftkit/badge";
+import Button from "~liftkit/button";
+import Card from "~liftkit/card";
+import Heading from "~liftkit/heading";
+import Text from "~liftkit/text";
 
 type FeatureColor = "yellow.400" | "cyan.400" | "indigo.400";
 
@@ -43,7 +44,6 @@ const features: FeatureItemProps[] = [
   },
 ];
 
-// フィーチャーカード（マーケティング用シンプル版）
 function FeatureItem(props: FeatureItemProps) {
   const { icon, title, description, color = "indigo.500" } = props;
 
@@ -65,11 +65,12 @@ function FeatureItem(props: FeatureItemProps) {
             bg: "color-mix(in srgb, var(--feature-color) 15%, transparent)!",
             border: "2px solid!",
             borderColor:
-              "color-mix(in srgb, var(--feature-color) 20%, transparent)!",
+              "color-mix(in srgb, var(--feature-color) 25%, transparent)!",
             color: "var(--feature-color)!",
-            mb: "4",
+            mb: "5",
+            boxShadow:
+              "0 0 20px color-mix(in srgb, var(--feature-color) 28%, transparent)",
           })}
-          style={{}}
         />
         <Box>
           <Heading
@@ -106,7 +107,6 @@ export default function MarketingPage() {
     >
       <StarfieldBackground />
 
-      {/* ============ HERO ============ */}
       <Center
         position="relative"
         zIndex="10"
@@ -117,16 +117,36 @@ export default function MarketingPage() {
       >
         <Stack gap="6" alignItems="center" maxW="2xl" textAlign="center">
           {/* ロゴ */}
+          <Box position="relative">
+            <Image
+              src="/yomi.png"
+              alt="YOMi"
+              width={220}
+              height={220}
+              // className="yomi-logo-img"
+              className={css({
+                borderRadius: "18px",
+                filter:
+                  "drop-shadow(0 0 16px #6467f28c) drop-shadow(0 0 40px #a855f747)",
+                animation: "logo-float 6s ease-in-out infinite",
+              })}
+              style={{ objectFit: "contain" }}
+              priority
+            />
+          </Box>
+
           <Text
             tag="h1"
-            fontClass="display1-bold"
-            className={css({ letterSpacing: "0.25em" })}
+            fontClass="title1-bold"
+            className={css({
+              letterSpacing: "0.08em",
+              lineHeight: "1",
+              background: "linear-gradient(135deg,#c7d2fe,#a78bfa,#f0abfc)",
+              textShadow: "0 0 24px #a855f740",
+            })}
             style={{
-              background:
-                "linear-gradient(135deg, #818cf8 0%, #a855f7 50%, #ec4899 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
-              fontSize: "clamp(3rem, 10vw, 5.5rem)",
             }}
           >
             YOMi
@@ -160,39 +180,37 @@ export default function MarketingPage() {
             本を登録するたびに星が生まれ、同ジャンルの読了本が星座として結ばれていきます。
           </Text>
 
-          {/* CTA ボタン群 */}
           <Flex gap="3" flexWrap="wrap" justifyContent="center" mt="2">
-            <s.a
+            <Link
               href="/app"
-              display="inline-flex"
-              alignItems="center"
-              justifyContent="center"
-              gap="2"
-              px="8"
-              py="3.5"
-              borderRadius="full"
-              fontSize="sm"
-              fontWeight="600"
-              color="white"
-              cursor="pointer"
-              transitionProperty="all"
-              transitionDuration="200ms"
-              _hover={{ scale: "1.04", opacity: "0.92" }}
-              _active={{ scale: "0.97" }}
-              style={{
-                background: "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)",
-                boxShadow: "0 0 32px rgba(99,102,241,0.4)",
-              }}
+              className={css({
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "2",
+                px: "8",
+                py: "3.5",
+                borderRadius: "full",
+                fontSize: "sm",
+                fontWeight: "600",
+                color: "white",
+                cursor: "pointer",
+                transitionProperty: "all",
+                transitionDuration: "200ms",
+                "&:hover": { scale: "1.04", opacity: "0.92" },
+                "&:active": { scale: "0.97" },
+                background: "linear-gradient(135deg, #6467f2 0%, #a855f7 100%)",
+                boxShadow: "0 0 32px #6366f166",
+              })}
             >
               ✦ 宇宙を開く
-            </s.a>
+            </Link>
+            <Button label="宇宙を開く" startIcon="sparkle" variant="outline" />
           </Flex>
         </Stack>
       </Center>
 
-      {/* ============ FEATURES ============ */}
       <Box position="relative" zIndex="10" maxW="6xl" mx="auto" px="6" pb="24">
-        {/* セクションタイトル */}
         <Stack gap="2" alignItems="center" textAlign="center" mb="12">
           <Text
             tag="h2"
@@ -210,19 +228,7 @@ export default function MarketingPage() {
           </Text>
         </Stack>
 
-        {/* 
-        <Flex gap="4" flexWrap="wrap" justifyContent="center">
-          {features.map((f) => (
-            <FeatureItem
-              key={f.title}
-              icon={f.icon}
-              title={f.title}
-              description={f.description}
-            />
-          ))}
-        </Flex>
-				*/}
-        <Grid gap="md" columns={3}>
+        <Grid gap="4" columns={{ base: 1, md: 3 }}>
           {features.map((f) => (
             <FeatureItem
               key={f.title}
@@ -253,7 +259,7 @@ export default function MarketingPage() {
           mb="8"
           style={{
             background:
-              "linear-gradient(90deg, transparent, rgba(129,140,248,0.4), transparent)",
+              "linear-gradient(90deg, transparent, #818cf866, transparent)",
           }}
         />
 
@@ -265,30 +271,30 @@ export default function MarketingPage() {
           さあ、あなたの読書宇宙を育てよう
         </Text>
 
-        <s.a
+        <Link
           href="/app"
-          display="inline-flex"
-          alignItems="center"
-          justifyContent="center"
-          gap="2"
-          px="10"
-          py="4"
-          borderRadius="full"
-          fontSize="sm"
-          fontWeight="600"
-          color="white"
-          cursor="pointer"
-          transitionProperty="all"
-          transitionDuration="200ms"
-          _hover={{ scale: "1.04", opacity: "0.92" }}
-          _active={{ scale: "0.97" }}
-          style={{
+          className={css({
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "2",
+            px: "10",
+            py: "4",
+            borderRadius: "full",
+            fontSize: "sm",
+            fontWeight: "600",
+            color: "white",
+            cursor: "pointer",
+            transitionProperty: "all",
+            transitionDuration: "200ms",
+            "&:hover": { scale: "1.04", opacity: "0.92" },
+            "&:active": { scale: "0.97" },
             background: "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)",
-            boxShadow: "0 0 40px rgba(99,102,241,0.35)",
-          }}
+            boxShadow: "0 0 40px #6366f159",
+          })}
         >
-          ✦ 無料で始める
-        </s.a>
+          ✦ 今すぐ宇宙を開く
+        </Link>
 
         {/* フッター */}
         <Text

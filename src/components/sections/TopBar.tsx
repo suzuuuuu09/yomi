@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { css } from "styled-system/css";
 import { Box, Flex, styled as s } from "styled-system/jsx";
@@ -12,7 +13,6 @@ import useLibraryFilterStore from "@/store/useLibraryFilterStore";
 import Card from "~liftkit/card";
 import Column from "~liftkit/column";
 import Row from "~liftkit/row";
-import Text from "~liftkit/text";
 import TextInput from "~liftkit/text-input";
 
 function SearchOverlay({
@@ -37,6 +37,7 @@ function SearchOverlay({
       <Flex gap="2" align="center">
         <Box flex={1}>
           <TextInput
+            labelPosition="on-input"
             name=""
             placeholder="星を検索..."
             endIcon={query ? "x" : "search"}
@@ -85,33 +86,48 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
       spaceY="2"
     >
       <Column gap="xs">
-        <Row gap="xs">
+        <Row gap="xs" alignItems="center">
           <Card
             material="glass"
             variant="outline"
             scaleFactor="caption"
             materialProps={{ thickness: "thin" }}
             className="shrink-0 shadow-lg shadow-black/20"
+            style={{
+              padding: 0,
+              width: 42,
+              height: 42,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+            }}
           >
-            <Text
-              tag="span"
-              fontClass="callout-bold"
-              className="tracking-widest"
-              style={{
-                background: "linear-gradient(135deg,#818cf8,#a855f7,#ec4899)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              YOMi
-            </Text>
+            <Image
+              src="/yomi.png"
+              alt="YOMi"
+              width={34}
+              height={34}
+              // className="topbar-logo"
+              className={css({
+                rounded: "10px",
+                transform: "scale(2.6)",
+                transformOrigin: "center",
+                filter:
+                  "drop-shadow(0 0 4px #6366f173) drop-shadow(0 0 10px #a855f733)",
+                display: "block",
+              })}
+              priority
+            />
           </Card>
 
           {/* PC*/}
           <Box flex={1} display={{ base: "none", md: "block" }}>
             <TextInput
+              labelPosition="on-input"
               name=""
               placeholder="星を検索..."
+              aria-label="星を検索"
               endIcon={query ? "x" : "search"}
               value={query}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -190,6 +206,7 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
             <Flex gap="2" align="center">
               <Box flex={1}>
                 <TextInput
+                  labelPosition="on-input"
                   name=""
                   placeholder="星を検索..."
                   endIcon={query ? "x" : "search"}

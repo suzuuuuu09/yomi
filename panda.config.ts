@@ -20,12 +20,11 @@ export default defineConfig({
         twinkle: {
           "0%, 100%": {
             opacity: "var(--star-opacity)",
-            filter: "drop-shadow(0 0 var(--star-glow) rgba(255,255,255,0.5))",
+            filter: "drop-shadow(0 0 var(--star-glow) #ffffff80)",
           },
           "50%": {
             opacity: "calc(var(--star-opacity) * 0.3)",
-            filter:
-              "drop-shadow(0 0 calc(var(--star-glow) * 0.5) rgba(255,255,255,0.2))",
+            filter: "drop-shadow(0 0 calc(var(--star-glow) * 0.5) #ffffff33)",
           },
         },
       },
