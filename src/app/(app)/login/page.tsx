@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { css } from "styled-system/css";
-import { Stack, styled as s } from "styled-system/jsx";
+import { Box, Stack, styled as s } from "styled-system/jsx";
 import StarfieldBackground from "@/components/shares/StarfieldBackground";
 import { signIn } from "@/lib/auth-client";
 import Text from "~liftkit/text";
@@ -67,12 +68,33 @@ export default function LoginPage() {
         })}
       >
         <Stack gap="2" alignItems="center">
+          <Box position="relative">
+            <Image
+              src="/yomi.png"
+              alt="YOMi"
+              width={60}
+              height={60}
+              className={css({
+                borderRadius: "18px",
+                filter:
+                  "drop-shadow(0 0 16px #6467f28c) drop-shadow(0 0 40px #a855f747)",
+                animation: "float 6s ease-in-out infinite",
+              })}
+              style={{ objectFit: "contain" }}
+              priority
+            />
+          </Box>
+
           <Text
             tag="h1"
             fontClass="title2-bold"
-            className={css({ letterSpacing: "0.2em" })}
+            className={css({
+              letterSpacing: "0.08em",
+              lineHeight: "1",
+              background: "linear-gradient(135deg,#c7d2fe,#a78bfa,#f0abfc)",
+              textShadow: "0 0 24px #a855f740",
+            })}
             style={{
-              background: "linear-gradient(135deg,#818cf8,#a855f7,#ec4899)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
             }}

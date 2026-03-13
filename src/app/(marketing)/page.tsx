@@ -6,7 +6,6 @@ import { Box, Center, Flex, Grid, Stack, styled as s } from "styled-system/jsx";
 import { token } from "styled-system/tokens";
 import StarfieldBackground from "@/components/shares/StarfieldBackground";
 import Badge from "~liftkit/badge";
-import Button from "~liftkit/button";
 import Card from "~liftkit/card";
 import Heading from "~liftkit/heading";
 import Text from "~liftkit/text";
@@ -205,7 +204,9 @@ export default function MarketingPage() {
             >
               ✦ 宇宙を開く
             </Link>
-            <Button label="宇宙を開く" startIcon="sparkle" variant="outline" />
+            {/* 
+							<Button label="宇宙を開く" startIcon="sparkle" variant="outline" />
+						*/}
           </Flex>
         </Stack>
       </Center>
