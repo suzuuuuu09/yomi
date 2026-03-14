@@ -13,10 +13,10 @@ importers:
         version: 12.1.1
       '@hono/swagger-ui':
         specifier: ^0.5.3
-        version: 0.5.3(hono@4.12.4)
+        version: 0.5.3(hono@4.12.7)
       '@hono/zod-openapi':
         specifier: ^1.2.2
-        version: 1.2.2(hono@4.12.4)(zod@4.3.6)
+        version: 1.2.2(hono@4.12.7)(zod@4.3.6)
       '@material/material-color-utilities':
         specifier: ^0.4.0
         version: 0.4.0
@@ -45,8 +45,8 @@ importers:
         specifier: ^0.45.1
         version: 0.45.1(@electric-sql/pglite@0.3.15)(@prisma/client@7.4.2(prisma@7.4.2(@types/react@19.2.14)(better-sqlite3@12.6.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3))(typescript@5.9.3))(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)(kysely@0.28.11)(mysql2@3.15.3)(postgres@3.4.7)(prisma@7.4.2(@types/react@19.2.14)(better-sqlite3@12.6.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3))
       hono:
-        specifier: ^4.12.4
-        version: 4.12.4
+        specifier: ^4.12.7
+        version: 4.12.7
       lucide-react:
         specifier: ^0.575.0
         version: 0.575.0(react@19.2.3)
@@ -2253,8 +2253,8 @@ packages:
     resolution: {integrity: sha512-U7tt8JsyrxSRKspfhtLET79pU8K+tInj5QZXs1jSugO1Vq5dFj3kmZsRldo29mTBfcjDRVRXrEZ6LS63Cog9ZA==}
     engines: {node: '>=16.9.0'}
 
-  hono@4.12.4:
-    resolution: {integrity: sha512-ooiZW1Xy8rQ4oELQ++otI2T9DsKpV0M6c6cO6JGx4RTfav9poFFLlet9UMXHZnoM1yG0HWGlQLswBGX3RZmHtg==}
+  hono@4.12.7:
+    resolution: {integrity: sha512-jq9l1DM0zVIvsm3lv9Nw9nlJnMNPOcAtsbsgiUhWcFzPE99Gvo6yRTlszSLLYacMeQ6quHD6hMfId8crVHvexw==}
     engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
@@ -3850,25 +3850,25 @@ snapshots:
     dependencies:
       hono: 4.11.4
 
-  '@hono/node-server@1.19.9(hono@4.12.4)':
+  '@hono/node-server@1.19.9(hono@4.12.7)':
     dependencies:
-      hono: 4.12.4
+      hono: 4.12.7
 
-  '@hono/swagger-ui@0.5.3(hono@4.12.4)':
+  '@hono/swagger-ui@0.5.3(hono@4.12.7)':
     dependencies:
-      hono: 4.12.4
+      hono: 4.12.7
 
-  '@hono/zod-openapi@1.2.2(hono@4.12.4)(zod@4.3.6)':
+  '@hono/zod-openapi@1.2.2(hono@4.12.7)(zod@4.3.6)':
     dependencies:
       '@asteasolutions/zod-to-openapi': 8.4.1(zod@4.3.6)
-      '@hono/zod-validator': 0.7.6(hono@4.12.4)(zod@4.3.6)
-      hono: 4.12.4
+      '@hono/zod-validator': 0.7.6(hono@4.12.7)(zod@4.3.6)
+      hono: 4.12.7
       openapi3-ts: 4.5.0
       zod: 4.3.6
 
-  '@hono/zod-validator@0.7.6(hono@4.12.4)(zod@4.3.6)':
+  '@hono/zod-validator@0.7.6(hono@4.12.7)(zod@4.3.6)':
     dependencies:
-      hono: 4.12.4
+      hono: 4.12.7
       zod: 4.3.6
 
   '@img/colour@1.0.0': {}
@@ -3984,7 +3984,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.27.1(zod@4.3.6)':
     dependencies:
-      '@hono/node-server': 1.19.9(hono@4.12.4)
+      '@hono/node-server': 1.19.9(hono@4.12.7)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5
@@ -3994,7 +3994,7 @@ snapshots:
       eventsource-parser: 3.0.6
       express: 5.2.1
       express-rate-limit: 8.2.1(express@5.2.1)
-      hono: 4.12.4
+      hono: 4.12.7
       jose: 6.1.3
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
@@ -5275,7 +5275,7 @@ snapshots:
 
   hono@4.11.4: {}
 
-  hono@4.12.4: {}
+  hono@4.12.7: {}
 
   hookable@5.5.3: {}
 
