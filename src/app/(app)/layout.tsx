@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     url: "https://yomi.suzuuuuu09.com",
     siteName: "YOMi",
     images: {
-      url: "/ogp.png",
+      url: "https://yomi.suzuuuuu09.com/ogp.png",
       width: 1200,
       height: 630,
       type: "image/png",
