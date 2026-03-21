@@ -2,6 +2,11 @@
   "name": "yomi-web",
   "version": "0.1.0",
   "private": true,
+  "pnpm": {
+    "overrides": {
+      "kysely": "0.28.12"
+    }
+  },
   "scripts": {
     "prepare": "panda codegen",
     "dev": "next dev",
