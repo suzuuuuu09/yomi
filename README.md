@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# YOMi ー 読書を宇宙に
+## 概要
+**技育CAMPハッカソン2026 vol.1 第2部 最優秀賞**
 
-## Getting Started
+「YOMi​（ヨミ）」は​一冊の​本を​一つの​「星」に​見立てて​記録し、​自分だけの​星空を​作る​読書管理アプリです。
+<img width="1200" height="675" alt="image" src="https://github.com/user-attachments/assets/ee5b2ad9-4b83-4a4f-86f6-bfef15aa9255" />
 
-First, run the development server:
+読書を​している​人なら​一度は​経験したことがある​「本を​買ったのに​結局​読んでいない」​「読書の​モチベーションが​続かない」​「読書記録アプリで​記録するのが​面倒」​「知識を​身に​付いている​実感が​湧かない」と​いう​悩み。
+これらの​悩みを​解決し、​楽しく​読書管理を​して​もらう​ために​この​アプリを​制作しました。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 技術スタック
+- フロントエンド
+	- **フレームワーク**: Next.js
+	- **CSS フレームワーク**: PandaCSS
+	- **UI フレームワーク**: LIftKit
+	- **3D グラフィック**: Three.js
+	- **ホスティング**: Cloudflare Pages
+- バックエンド
+	- **フレームワーク**: Hono
+	- **バリデーション**: Zod
+	- **ユーザー認証**: Better Auth
+	- **ORM**: Drizzle ORM
+	- **データベース**: Cloudflare D1
+	- **書籍情報**: Google Books API
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## リンク
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [アプリのリンク](https://yomi.suzuuuuu09.com/)
+- [紹介記事](https://suzuuuuu09.com/product/yomi/)
