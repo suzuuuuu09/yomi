@@ -42,7 +42,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.0",
+    "@biomejs/biome": "2.4.13",
     "@chainlift/liftkit": "^0.2.0",
     "@cloudflare/next-on-pages": "^1.13.16",
     "@pandacss/dev": "^1.8.2",
