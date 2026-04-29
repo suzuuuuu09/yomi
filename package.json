@@ -4,7 +4,7 @@
   "private": true,
   "pnpm": {
     "overrides": {
-      "kysely": "0.28.14"
+      "kysely": "0.28.16"
     }
   },
   "scripts": {
