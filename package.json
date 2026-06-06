@@ -27,7 +27,7 @@
     "@react-three/fiber": "^9.5.0",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
-    "better-auth": "^1.5.1",
+    "better-auth": "^1.6.11",
     "better-sqlite3": "^12.6.2",
     "dotenv": "^17.3.1",
     "drizzle-orm": "^0.45.2",
