@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  kysely: 0.28.14
-
 importers:
 
   .:
@@ -15,8 +12,8 @@ importers:
         specifier: ^12.1.1
         version: 12.1.1
       '@hono/swagger-ui':
-        specifier: ^0.5.3
-        version: 0.5.3(hono@4.12.25)
+        specifier: ^0.6.0
+        version: 0.6.1(hono@4.12.25)
       '@hono/zod-openapi':
         specifier: ^1.2.2
         version: 1.2.2(hono@4.12.25)(zod@4.3.6)
@@ -148,7 +145,7 @@ packages:
       '@cloudflare/workers-types': '>=4'
       better-call: 1.3.2
       jose: ^6.1.0
-      kysely: 0.28.14
+      kysely: ^0.28.5
       nanostores: ^1.0.1
     peerDependenciesMeta:
       '@cloudflare/workers-types':
@@ -166,7 +163,7 @@ packages:
     peerDependencies:
       '@better-auth/core': 1.5.1
       '@better-auth/utils': ^0.3.0
-      kysely: 0.28.14
+      kysely: ^0.27.0 || ^0.28.0
 
   '@better-auth/memory-adapter@1.5.1':
     resolution: {integrity: sha512-FSacaykLJXEizbnShF2FWZtWk5j0f87iq5Esjfd/7XHcF9nZeXn9Ju8jItDKeOWbEasOdfErEBqWSn30hmueRQ==}
@@ -882,8 +879,8 @@ packages:
     peerDependencies:
       hono: ^4
 
-  '@hono/swagger-ui@0.5.3':
-    resolution: {integrity: sha512-Hn90DOOJ62ICJQplQvCDVpi9Jcn6EhtRaiffyJIS53wA5RmRLtMCDQGVc0bor8vQD7JIwpkweWjs+3cycp+IvA==}
+  '@hono/swagger-ui@0.6.1':
+    resolution: {integrity: sha512-sJTvldu1GPeEPfyeLG7gRj+W4vEuD+JDi+JjJ3TJs/DvMUtBLs0KJO5yokGegWWdy5qrbdnQGekbhgNRmPmYKQ==}
     peerDependencies:
       hono: '>=4.0.0'
 
@@ -1843,7 +1840,7 @@ packages:
       expo-sqlite: '>=14.0.0'
       gel: '>=2'
       knex: '*'
-      kysely: 0.28.14
+      kysely: '*'
       mysql2: '>=2'
       pg: '>=8'
       postgres: '>=3'
@@ -3902,7 +3899,7 @@ snapshots:
     dependencies:
       hono: 4.12.25
 
-  '@hono/swagger-ui@0.5.3(hono@4.12.25)':
+  '@hono/swagger-ui@0.6.1(hono@4.12.25)':
     dependencies:
       hono: 4.12.25
 
