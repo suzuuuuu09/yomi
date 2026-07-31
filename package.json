@@ -2,11 +2,6 @@
   "name": "yomi-web",
   "version": "0.1.0",
   "private": true,
-  "pnpm": {
-    "overrides": {
-      "kysely": "0.28.14"
-    }
-  },
   "scripts": {
     "prepare": "panda codegen",
     "dev": "next dev",
@@ -20,38 +15,38 @@
   },
   "dependencies": {
     "@csstools/normalize.css": "^12.1.1",
-    "@hono/swagger-ui": "^0.5.3",
-    "@hono/zod-openapi": "^1.2.2",
+    "@hono/swagger-ui": "^0.6.1",
+    "@hono/zod-openapi": "^1.5.1",
     "@material/material-color-utilities": "^0.4.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
-    "better-auth": "^1.6.13",
+    "better-auth": "^1.6.25",
     "better-sqlite3": "^12.6.2",
     "dotenv": "^17.3.1",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.25",
+    "hono": "^4.12.32",
     "lucide-react": "^0.575.0",
     "material-dynamic-colors": "^1.1.4",
-    "next": "16.2.6",
+    "next": "16.2.12",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "three": "^0.183.2",
-    "wrangler": "^4.69.0",
+    "wrangler": "^4.115.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
     "@chainlift/liftkit": "^0.2.0",
     "@cloudflare/next-on-pages": "^1.13.16",
-    "@pandacss/dev": "^1.8.2",
+    "@pandacss/dev": "^1.12.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.183.1",
-    "drizzle-kit": "^0.31.9",
+    "drizzle-kit": "^0.31.10",
     "tsx": "^4.21.0",
     "typescript": "^5"
   }

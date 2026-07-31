@@ -1,7 +1,68 @@
+allowBuilds:
+  '@prisma/engines': set this to true or false
+  better-sqlite3: set this to true or false
+  esbuild: set this to true or false
+  prisma: set this to true or false
+  workerd: set this to true or false
+
 ignoredBuiltDependencies:
   - prisma
   - sharp
   - unrs-resolver
 
+minimumReleaseAgeExclude:
+  - esbuild@0.25.0 || 0.28.1
+  - cookie@0.7.0
+  - undici@6.23.0 || 6.24.0 || 6.27.0
+  - hono@4.11.7 || 4.11.10 || 4.12.4 || 4.12.7 || 4.12.12 || 4.12.14 || 4.12.16 || 4.12.18 || 4.12.21 || 4.12.25 || 4.12.27
+  - '@hono/node-server@1.19.10 || 1.19.13 || 2.0.5'
+  - effect@3.20.0
+  - picomatch@2.3.2
+  - lodash@4.17.23 || 4.17.24
+  - postcss@8.5.10 || 8.5.12 || 8.5.18
+  - ws@8.20.1 || 8.21.0
+  - js-yaml@4.1.2 || 4.3.0
+  - sharp@0.35.0
+  - valibot@1.4.2
+
 onlyBuiltDependencies:
   - better-sqlite3
+
+overrides:
+  '@hono/node-server@<1.19.10': ^1.19.10
+  '@hono/node-server@<1.19.13': ^1.19.13
+  '@hono/node-server@<2.0.5': ^2.0.5
+  cookie@<0.7.0: ^0.7.0
+  effect@<3.20.0: ^3.20.0
+  esbuild@<=0.24.2: ^0.25.0
+  esbuild@>=0.27.3 <0.28.1: ^0.28.1
+  hono@<4.11.10: ^4.11.10
+  hono@<4.11.7: ^4.11.7
+  hono@<4.12.12: ^4.12.12
+  hono@<4.12.14: ^4.12.14
+  hono@<4.12.16: ^4.12.16
+  hono@<4.12.18: ^4.12.18
+  hono@<4.12.21: ^4.12.21
+  hono@<4.12.25: ^4.12.25
+  hono@<4.12.4: ^4.12.4
+  hono@<4.12.7: ^4.12.7
+  hono@>=4.0.0 <4.12.27: ^4.12.27
+  hono@>=4.0.0 <=4.12.11: ^4.12.12
+  hono@>=4.3.3 <4.12.27: ^4.12.27
+  js-yaml@>=4.0.0 <4.3.0: ^4.3.0
+  js-yaml@>=4.0.0 <=4.1.1: ^4.1.2
+  kysely: 0.28.17
+  lodash@<=4.17.23: ^4.17.24
+  lodash@>=4.0.0 <=4.17.22: ^4.17.23
+  lodash@>=4.0.0 <=4.17.23: ^4.17.24
+  picomatch@<2.3.2: ^2.3.2
+  postcss@<8.5.10: ^8.5.10
+  postcss@<=8.5.11: ^8.5.12
+  postcss@<=8.5.17: ^8.5.18
+  sharp@<0.35.0: ^0.35.0
+  undici@<6.23.0: ^6.23.0
+  undici@<6.24.0: ^6.24.0
+  undici@<6.27.0: ^6.27.0
+  valibot@<=1.4.1: ^1.4.2
+  ws@>=8.0.0 <8.20.1: ^8.20.1
+  ws@>=8.0.0 <8.21.0: ^8.21.0
