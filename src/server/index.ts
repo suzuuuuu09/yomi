@@ -1,5 +1,6 @@
 import { swaggerUI } from "@hono/swagger-ui";
 import { OpenAPIHono } from "@hono/zod-openapi";
+import { apiError } from "@/server/lib/api-error";
 import authApp from "@/server/routes/auth";
 import booksApp from "@/server/routes/books";
 import searchApp from "@/server/routes/search";
@@ -7,6 +8,16 @@ import searchApp from "@/server/routes/search";
 const app = new OpenAPIHono().basePath("/api");
 
 // NOTE: 同じドメインなのでCORSは必要ない
+
+app.onError((error, c) => {
+  console.error("Unhandled API error", error);
+  return apiError(
+    c,
+    500,
+    "INTERNAL_ERROR",
+    "サーバー内部でエラーが発生しました",
+  );
+});
 
 app.route("/auth", authApp);
 app.route("/search", searchApp);

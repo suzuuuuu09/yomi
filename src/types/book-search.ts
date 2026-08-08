@@ -24,6 +24,7 @@ export interface BookSearchState {
   totalItems: number;
   currentPage: number;
   isSearching: boolean;
+  error: string | null;
   hasSearched: boolean;
   selectedResult: BookSearchResult | null;
 

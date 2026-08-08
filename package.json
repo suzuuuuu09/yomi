@@ -2,6 +2,7 @@
   "name": "yomi-web",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.18.0",
   "scripts": {
     "prepare": "panda codegen",
     "dev": "next dev",
@@ -9,6 +10,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "biome check",
+    "lint:app": "biome check src/app src/hooks src/lib/api-client.ts src/lib/api.ts src/server src/store src/types tests vitest.config.mts src/components/SessionGuard.tsx src/components/sections/AddBookModal.tsx src/components/shares/UserMenu.tsx",
+    "typecheck": "tsc --noEmit --incremental false",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "fix": "biome check --write",
     "format": "biome format --write",
     "add": "liftkit add"
@@ -48,6 +53,7 @@
     "@types/three": "^0.183.1",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

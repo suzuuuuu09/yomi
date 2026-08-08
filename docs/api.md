@@ -2,29 +2,34 @@
 
 ## 共通仕様
 
-- ベースURL: `https://api.yomi.example.com` (本番) / `http://localhost:8787` (開発)
+- ベースURL: アプリと同一オリジンの`/api`（ローカル: `http://localhost:3000/api`）
 - レスポンス形式: `application/json`
 - 認証方式: Cookie ベースのセッション認証
-- OpenAPI ドキュメント: `GET /openapi.json`
-- Swagger UI: `GET /docs`
+- OpenAPI ドキュメント: `GET /api/openapi.json`
+- Swagger UI: `GET /api/docs`
 
 ### エラーレスポンス
 
-すべてのエラーは以下の形式で返却する。
+APIが返すエラーは以下の形式で統一する。
 
 ```json
 {
-  "error": "エラーコード",
-  "message": "人間が読めるエラーメッセージ"
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "入力値が不正です",
+    "issues": [{ "path": ["title"], "message": "必須です" }]
+  }
 }
 ```
 
-| ステータス | error | 説明 |
+| ステータス | code | 説明 |
 |---|---|---|
-| 400 | `bad_request` | リクエストパラメータ不正 |
-| 401 | `unauthorized` | 未認証（セッションなし or 期限切れ） |
-| 404 | `not_found` | リソースが見つからない |
-| 500 | `internal_error` | サーバー内部エラー |
+| 400 | `INVALID_REQUEST` | リクエストパラメータ不正 |
+| 401 | `UNAUTHORIZED` | 未認証（セッションなし or 期限切れ） |
+| 404 | `NOT_FOUND` | リソースが見つからない |
+| 500 | `INTERNAL_ERROR` | サーバー内部エラー |
+| 502 | `UPSTREAM_ERROR` | Google Books APIの障害または不正応答 |
+| 504 | `UPSTREAM_TIMEOUT` | Google Books APIのタイムアウト |
 
 ---
 
@@ -69,7 +74,7 @@ Better Auth はすべての認証フロー（OAuth リダイレクト、コー�
     |                             |-- session 作成 (D1)           |
     |                             |                              |
     |<-- Set-Cookie: better-auth  |                              |
-    |<-- 302 redirect to /        |                              |
+    |<-- 302 redirect to /app     |                              |
 ```
 
 ---
@@ -78,7 +83,7 @@ Better Auth はすべての認証フロー（OAuth リダイレクト、コー�
 
 | メソッド | パス | 説明 |
 |---|---|---|
-| POST | `/api/auth/sign-in/social` | ソーシャルログイン開始 (`{ provider: "google", callbackURL: "/" }`) |
+| POST | `/api/auth/sign-in/social` | ソーシャルログイン開始 (`{ provider: "google", callbackURL: "/app" }`) |
 | GET | `/api/auth/callback/google` | Google OAuth コールバック（自動処理） |
 | GET | `/api/auth/get-session` | 現在のセッション・ユーザー情報取得 |
 | POST | `/api/auth/sign-out` | ログアウト（セッション破棄） |
@@ -90,7 +95,7 @@ Better Auth はすべての認証フロー（OAuth リダイレクト、コー�
 ```json
 {
   "provider": "google",
-  "callbackURL": "/"
+  "callbackURL": "/app"
 }
 ```
 
@@ -148,7 +153,7 @@ app.use("*", async (c, next) => {
 ```ts
 type AppEnv = {
   Bindings: {
-    DB: D1Database;
+    yomi_db: D1Database;
     GOOGLE_CLIENT_ID: string;
     GOOGLE_CLIENT_SECRET: string;
     BETTER_AUTH_SECRET: string;
@@ -174,20 +179,26 @@ type AppEnv = {
 | `GOOGLE_CLIENT_ID` | Google OAuth クライアントID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth クライアントシークレット |
 | `BETTER_AUTH_SECRET` | Better Auth のセッション署名用シークレット（ランダム文字列） |
-| `BETTER_AUTH_URL` | APIのベースURL (`https://api.yomi.example.com`) |
+| `BETTER_AUTH_URL` | Better Authが動作するアプリの公開URL（例: `https://yomi.suzuuuuu09.com`） |
 | `FRONTEND_URL` | フロントエンドのURL（OAuth後のリダイレクト先） |
 
 ---
 
 ## エンドポイント
 
-### 本の検索 (`GET /search`)
+### 本の検索 (`GET /api/search`)
+
+ログイン済みセッションが必要です。匿名リクエストは`401 UNAUTHORIZED`になります。
 
 クエリパラメータ:
-- `q` (任意): 検索キーワード
-- `isbn` (任意): ISBNコードでの検索（`q` と同時指定時は `isbn` 優先）
-- `index` (任意): 結果の開始位置 (デフォルト: 0)
-- `results` (任意): 返却する結果の最大数 (デフォルト: 10, 最大: 40)
+- `q` (条件付き必須): 検索キーワード（最大200文字）
+- `isbn` (条件付き必須): ISBNコードでの検索（`q` と同時指定時は `isbn` 優先）
+- `index` (任意): 結果の開始位置（0以上の整数、デフォルト: 0）
+- `results` (任意): 返却する結果の最大数（1〜40の整数、デフォルト: 10）
+
+`q`と`isbn`の少なくとも一方を指定してください。上流障害時は502、タイムアウト時は504を返します。
+
+OpenAPIドキュメントには現在、スキーマ定義済みの検索エンドポイントが登録されています。本の管理エンドポイントはこの文書の下記一覧を参照してください。
 
 #### レスポンス
 
@@ -211,3 +222,19 @@ type AppEnv = {
   ]
 }
 ```
+
+### 本 (`/api/books`)
+
+すべてのエンドポイントでログイン済みセッションが必要です。書籍の作成・編集・ノート作成では入力スキーマを検証し、失敗時は`400 INVALID_REQUEST`を返します。
+
+| メソッド | パス | 説明 |
+|---|---|---|
+| GET | `/api/books` | 自分の書籍と星座線を取得 |
+| POST | `/api/books` | 書籍を作成。作成後の完全な`book`を返す |
+| PUT | `/api/books/:id` | 書誌情報を更新。更新後の完全な`book`を返す |
+| POST | `/api/books/:id/progress` | `{ "delta": 1 }`または`{ "page": 42 }`で進捗を更新。更新後の完全な`book`を返す |
+| DELETE | `/api/books/:id` | 自分の書籍を削除 |
+| POST | `/api/books/:id/notes` | ノートを作成 |
+| DELETE | `/api/books/:bookId/notes/:noteId` | 指定した書籍に属する自分のノートを削除 |
+
+`delta`による現在ページの加算は、複数タブから同時に送信されてもサーバー側で原子的に適用されます。`page`を指定する場合、`totalPages`が0より大きければ総ページ数を超える値は`400 INVALID_REQUEST`になります。`totalPages`が0の場合は総ページ数不明として上限を設けません。

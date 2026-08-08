@@ -150,15 +150,16 @@ export default function UserMenu() {
   }
 
   const unauthStyles = userMenuStyles({ status: "idle" });
+  const handleLogin = async () => {
+    // Better Auth側でHttpOnlyのセッションCookieを失効させてからログイン画面へ進む。
+    await authClient.signOut().catch(() => undefined);
+    window.location.href = "/login";
+  };
+
   return (
     <Box
       as="button"
-      onClick={() => {
-        document.cookie = "better-auth.session_token=; Max-Age=0; path=/;"; // クッキーを削除（ローカル）
-        document.cookie =
-          "__Secure-better-auth.session_token=; Max-Age=0; path=/; Secure;"; // クッキーを削除（本番）
-        window.location.href = "/login";
-      }}
+      onClick={handleLogin}
       aria-label="Googleでログイン"
       className={unauthStyles.loginButton}
     >

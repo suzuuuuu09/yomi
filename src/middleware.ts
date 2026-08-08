@@ -14,16 +14,13 @@ export function middleware(request: NextRequest) {
 
   // ログインページへのアクセス
   if (pathname === "/login") {
-    // すでにセッションがある場合はホームへリダイレクト
-    if (hasSession) {
-      return NextResponse.redirect(new URL("/app", request.url));
-    }
+    // Cookieの存在だけでは有効なセッションと判断しない。
+    // Session Guardが実セッションを確認し、無効なら復旧させる。
     return NextResponse.next();
   }
 
   if (!hasSession) {
     // セッションがない場合はログインページへリダイレクト
-    // TODO: 本番環境はコメントアウトを外す
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

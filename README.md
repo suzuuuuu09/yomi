@@ -28,3 +28,21 @@
 
 - [アプリのリンク](https://yomi.suzuuuuu09.com/)
 - [紹介記事](https://suzuuuuu09.com/product/yomi/)
+
+## 開発
+
+```bash
+pnpm install
+pnpm dev
+```
+
+品質確認は次のコマンドで実行できます。
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm lint:app
+pnpm build
+```
+
+書籍APIと認証はCloudflare D1およびBetter Authの環境変数が必要です。デプロイ設定の詳細は`wrangler.jsonc`と`docs/api.md`を参照してください。

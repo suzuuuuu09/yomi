@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { css } from "styled-system/css";
 import { Box, Center, Circle, Flex, styled as s } from "styled-system/jsx";
 import BookListDrawer from "@/components/BookListDrawer";
+import SessionGuard from "@/components/SessionGuard";
 import StarInsightPanel from "@/components/StarInsightPanel";
 import AddBookModal from "@/components/sections/AddBookModal";
 import BottomDock from "@/components/sections/BottomDock";
@@ -124,12 +125,14 @@ function VrModeButton({
   );
 }
 
-export default function Observatory() {
+function ObservatoryContent() {
   const books = useLibraryStore((s) => s.books);
   const constellationLines = useLibraryStore((s) => s.constellationLines);
   const fetchBooks = useLibraryStore((s) => s.fetchBooks);
   const newlyAddedBookId = useLibraryStore((s) => s.newlyAddedBookId);
   const clearNewlyAdded = useLibraryStore((s) => s.clearNewlyAdded);
+  const lastError = useLibraryStore((s) => s.lastError);
+  const clearMutationError = useLibraryStore((s) => s.clearMutationError);
   const isBottomDockVisible = useLibraryStore((s) => s.isBottomDockVisible);
 
   const [vrMode, setVrMode] = useState(false);
@@ -156,6 +159,39 @@ export default function Observatory() {
 
   return (
     <s.main position="relative" w="screen" h="screen" overflow="hidden">
+      {lastError && (
+        <Box
+          role="alert"
+          position="fixed"
+          top={4}
+          left="50%"
+          transform="translateX(-50%)"
+          zIndex={100}
+          display="flex"
+          alignItems="center"
+          gap={3}
+          maxW="calc(100vw - 2rem)"
+          px={4}
+          py={3}
+          rounded="xl"
+          bg="red.950/90"
+          border="1px solid"
+          borderColor="red.500/30"
+          color="red.200"
+          fontSize="sm"
+        >
+          <s.span>{lastError}</s.span>
+          <s.button
+            type="button"
+            onClick={clearMutationError}
+            color="red.300"
+            fontSize="xs"
+            textDecoration="underline"
+          >
+            閉じる
+          </s.button>
+        </Box>
+      )}
       <UniverseCanvas
         books={filteredBooks}
         constellationLines={constellationLines}
@@ -209,5 +245,13 @@ export default function Observatory() {
 
       <TutorialOverlay />
     </s.main>
+  );
+}
+
+export default function Observatory() {
+  return (
+    <SessionGuard>
+      <ObservatoryContent />
+    </SessionGuard>
   );
 }

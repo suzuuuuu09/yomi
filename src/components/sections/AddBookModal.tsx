@@ -40,6 +40,11 @@ export default function AddBookModal(props: AddBlockModalProps) {
   const { store, form, setField, handleSelectResult, handleSubmit, canSubmit } =
     useAddBook(onAddAction, onCloseAction);
 
+  const handleClose = () => {
+    store.reset();
+    onCloseAction();
+  };
+
   type ScanStep = "idle" | "scanning" | "post-confirm";
   const [scanStep, setScanStep] = useState<ScanStep>("idle");
   const [scannedIsbn, setScannedIsbn] = useState<string | null>(null);
@@ -73,12 +78,12 @@ export default function AddBookModal(props: AddBlockModalProps) {
     store.mode === "isbn" ? 1 : Math.ceil(store.totalItems / 20);
 
   return (
-    <Modal isOpen={isOpen} onClose={onCloseAction}>
+    <Modal isOpen={isOpen} onClose={handleClose}>
       <FeatureCard
         title="新しい星を生む"
         description="本を登録して宇宙に星を追加"
         icon="sparkles"
-        onCloseAction={onCloseAction}
+        onCloseAction={handleClose}
       >
         <Flex
           gap={1}
@@ -135,6 +140,11 @@ export default function AddBookModal(props: AddBlockModalProps) {
                     : undefined
                 }
               />
+              {store.error && (
+                <s.p role="alert" fontSize="xs" color="red.300" mt={2}>
+                  {store.error}
+                </s.p>
+              )}
               {store.mode === "isbn" && (
                 <s.button
                   type="button"

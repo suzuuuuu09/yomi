@@ -1,5 +1,7 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { apiError } from "@/server/lib/api-error";
+import { toBookResponse } from "@/server/lib/book-response";
 import { pageToStatus, resolveCompletedAt } from "@/server/lib/book-status";
 import { getDBFromContext } from "@/server/lib/db";
 import {
@@ -9,30 +11,79 @@ import {
   computePosition,
 } from "@/server/lib/star-formation";
 import { authMiddleware } from "@/server/middleware/auth";
+import {
+  CreateBookSchema,
+  NoteCreateSchema,
+  ProgressUpdateSchema,
+  UpdateBookSchema,
+} from "@/server/schemas/books";
 import { books, readingNotes } from "@/server/schemas/db";
 import type { AppEnv } from "@/server/types";
 
 const booksApp = new OpenAPIHono<AppEnv>();
+type Database = ReturnType<typeof getDBFromContext>;
 
 // 全ルートに認証ミドルウェアを適用
 booksApp.use("/*", authMiddleware);
 
+function invalidRequest(
+  c: Parameters<typeof apiError>[0],
+  error: { issues: { path: PropertyKey[]; message: string }[] },
+) {
+  return apiError(
+    c,
+    400,
+    "INVALID_REQUEST",
+    "入力値が不正です",
+    error.issues.map((issue) => ({
+      path: issue.path.map(String),
+      message: issue.message,
+    })),
+  );
+}
+
+async function readBookWithNotes(db: Database, userId: string, bookId: string) {
+  const rows = await db
+    .select()
+    .from(books)
+    .where(and(eq(books.id, bookId), eq(books.userId, userId)))
+    .limit(1);
+
+  const book = rows[0];
+  if (!book) return null;
+
+  const notes = await db
+    .select()
+    .from(readingNotes)
+    .where(
+      and(eq(readingNotes.bookId, bookId), eq(readingNotes.userId, userId)),
+    );
+
+  return { book, notes };
+}
+
+async function readJson(c: Parameters<typeof apiError>[0]) {
+  try {
+    return await c.req.json();
+  } catch {
+    return null;
+  }
+}
+
 // ユーザーの本一覧を取得
 booksApp.get("/", async (c) => {
   const user = c.get("user");
-  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
 
   const db = getDBFromContext();
-
   const userBooks = await db
     .select()
     .from(books)
     .where(eq(books.userId, user.id));
 
-  // 各本のノートを取得
-  const bookIds = userBooks.map((b) => b.id);
-  type NoteRow = typeof readingNotes.$inferSelect;
-  const notesByBookId: Record<string, NoteRow[]> = {};
+  const bookIds = userBooks.map((book) => book.id);
+  const notesByBookId: Record<string, (typeof readingNotes.$inferSelect)[]> =
+    {};
 
   if (bookIds.length > 0) {
     const notesRows = await db
@@ -41,60 +92,37 @@ booksApp.get("/", async (c) => {
       .where(eq(readingNotes.userId, user.id));
 
     for (const note of notesRows) {
-      if (!notesByBookId[note.bookId]) {
-        notesByBookId[note.bookId] = [];
-      }
-      notesByBookId[note.bookId].push(note);
+      const notes = notesByBookId[note.bookId] ?? [];
+      notes.push(note);
+      notesByBookId[note.bookId] = notes;
     }
   }
 
-  const result = userBooks.map((b) => ({
-    id: b.id,
-    title: b.title,
-    author: b.author,
-    isbn: b.isbn ?? "",
-    totalPages: b.totalPages,
-    currentPage: b.currentPage,
-    status: b.status,
-    genre: b.genre,
-    coverUrl: b.coverUrl ?? "",
-    registeredAt: b.registeredAt,
-    completedAt: b.completedAt,
-    position: [b.positionX, b.positionY, b.positionZ] as [
-      number,
-      number,
-      number,
-    ],
-    brightness: b.brightness,
-    color: b.color,
-    notes: (notesByBookId[b.id] ?? []).map((n) => ({
-      id: n.id,
-      content: n.content,
-      page: n.page,
-      createdAt: n.createdAt,
-    })),
-  }));
+  const result = userBooks.map((book) =>
+    toBookResponse(book, notesByBookId[book.id] ?? []),
+  );
 
-  // 星座線を計算
-  const constellationLines = computeConstellationLines(userBooks);
-
-  return c.json({ books: result, constellationLines });
+  return c.json({
+    books: result,
+    constellationLines: computeConstellationLines(userBooks),
+  });
 });
 
 // 本を追加
 booksApp.post("/", async (c) => {
   const user = c.get("user");
-  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
 
-  const body = await c.req.json();
+  const rawBody = await readJson(c);
+  const parsed = CreateBookSchema.safeParse(rawBody);
+  if (!parsed.success) return invalidRequest(c, parsed.error);
+
+  const input = parsed.data;
   const db = getDBFromContext();
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
-  const genre: string = body.genre ?? "";
-  const currentPage: number = body.currentPage ?? 0;
-  const totalPages: number = body.totalPages ?? 0;
+  const status = pageToStatus(input.currentPage, input.totalPages);
 
-  // 既存の星の座標を取得（オーバーラップ防止用）
   const existingBooks = await db
     .select({
       positionX: books.positionX,
@@ -105,117 +133,228 @@ booksApp.post("/", async (c) => {
     .where(eq(books.userId, user.id));
 
   const existingPositions = existingBooks.map(
-    (b) => [b.positionX, b.positionY, b.positionZ] as [number, number, number],
+    (book) =>
+      [book.positionX, book.positionY, book.positionZ] as [
+        number,
+        number,
+        number,
+      ],
   );
+  const [positionX, positionY, positionZ] = computePosition(
+    input.genre,
+    existingPositions,
+  );
+  const brightness = computeBrightness(input.currentPage, input.totalPages);
+  const color = computeColor(input.genre, brightness);
 
-  // 星の配置・色を計算（docs/star-formation.md に基づく）
-  const [px, py, pz] = computePosition(genre, existingPositions);
-  const brightness = computeBrightness(currentPage, totalPages);
-  const color = computeColor(genre, brightness);
-
-  await db.insert(books).values({
-    id,
-    userId: user.id,
-    title: body.title ?? "",
-    author: body.author ?? "",
-    isbn: body.isbn ?? "",
-    totalPages,
-    currentPage,
-    status: body.status ?? "unread",
-    genre,
-    coverUrl: body.coverUrl ?? "",
-    positionX: px,
-    positionY: py,
-    positionZ: pz,
-    brightness,
-    color,
-    registeredAt: now,
-    completedAt: null,
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  return c.json({ id, position: [px, py, pz], brightness, color }, 201);
-});
-
-// PUT /api/books/:id — 本を更新
-booksApp.put("/:id", async (c) => {
-  const user = c.get("user");
-  if (!user) return c.json({ error: "Unauthorized" }, 401);
-
-  const bookId = c.req.param("id");
-  const body = await c.req.json();
-  const db = getDBFromContext();
-  const now = new Date().toISOString();
-
-  // ユーザー所有の本か確認
-  const existing = await db
-    .select()
-    .from(books)
-    .where(and(eq(books.id, bookId), eq(books.userId, user.id)))
-    .limit(1);
-
-  if (existing.length === 0) {
-    return c.json({ error: "本が見つかりません" }, 404);
+  try {
+    await db.insert(books).values({
+      id,
+      userId: user.id,
+      title: input.title,
+      author: input.author,
+      isbn: input.isbn,
+      totalPages: input.totalPages,
+      currentPage: input.currentPage,
+      status,
+      genre: input.genre,
+      coverUrl: input.coverUrl,
+      positionX,
+      positionY,
+      positionZ,
+      brightness,
+      color,
+      registeredAt: now,
+      completedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  } catch (error) {
+    console.error("Book creation failed", error);
+    return apiError(c, 500, "INTERNAL_ERROR", "本を登録できませんでした");
   }
 
-  const book = existing[0];
-  const updates: Record<string, unknown> = { updatedAt: now };
-  if (body.title !== undefined) updates.title = body.title;
-  if (body.author !== undefined) updates.author = body.author;
-  if (body.isbn !== undefined) updates.isbn = body.isbn;
-  if (body.totalPages !== undefined) updates.totalPages = body.totalPages;
-  if (body.currentPage !== undefined) updates.currentPage = body.currentPage;
-  if (body.status !== undefined) updates.status = body.status;
-  if (body.genre !== undefined) updates.genre = body.genre;
-  if (body.coverUrl !== undefined) updates.coverUrl = body.coverUrl;
-  if (body.completedAt !== undefined) updates.completedAt = body.completedAt;
+  const created = await readBookWithNotes(db, user.id, id);
+  if (!created) {
+    return apiError(
+      c,
+      500,
+      "INTERNAL_ERROR",
+      "登録した本を取得できませんでした",
+    );
+  }
 
-  // currentPage / totalPages / status が変わった場合は brightness と color を再計算
-  const newCurrentPage =
-    (updates.currentPage as number | undefined) ?? book.currentPage;
-  const newTotalPages =
-    (updates.totalPages as number | undefined) ?? book.totalPages;
-  const newGenre = (updates.genre as string | undefined) ?? book.genre;
-  const newBrightness = computeBrightness(newCurrentPage, newTotalPages);
-  const newColor = computeColor(newGenre, newBrightness);
-  const newStatus = pageToStatus(newCurrentPage, newTotalPages);
-
-  updates.brightness = newBrightness;
-  updates.color = newColor;
-  updates.status = newStatus;
-  updates.completedAt = resolveCompletedAt(
-    newStatus,
-    book.status,
-    now,
-    book.completedAt,
+  return c.json(
+    {
+      id,
+      position: [positionX, positionY, positionZ] as [number, number, number],
+      brightness,
+      color,
+      book: toBookResponse(created.book, created.notes),
+    },
+    201,
   );
+});
 
+// currentPageの更新をSQL式で行う。deltaは複数タブからの同時更新にも対応する。
+booksApp.post("/:id/progress", async (c) => {
+  const user = c.get("user");
+  if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
+
+  const rawBody = await readJson(c);
+  const parsed = ProgressUpdateSchema.safeParse(rawBody);
+  if (!parsed.success) return invalidRequest(c, parsed.error);
+
+  const bookId = c.req.param("id");
+  const db = getDBFromContext();
+  const existing = await readBookWithNotes(db, user.id, bookId);
+  if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
+
+  const { delta, page } = parsed.data;
+  if (
+    page !== undefined &&
+    existing.book.totalPages > 0 &&
+    page > existing.book.totalPages
+  ) {
+    return apiError(
+      c,
+      400,
+      "INVALID_REQUEST",
+      "ページ数は総ページ数以下で指定してください",
+    );
+  }
+
+  const nextPage =
+    delta === undefined
+      ? page
+      : sql<number>`CASE WHEN ${books.totalPages} > 0 THEN min(${books.totalPages}, max(0, ${books.currentPage} + ${delta})) ELSE max(0, ${books.currentPage} + ${delta}) END`;
+
+  const now = new Date().toISOString();
   await db
     .update(books)
-    .set(updates)
+    .set({ currentPage: nextPage, updatedAt: now })
     .where(and(eq(books.id, bookId), eq(books.userId, user.id)));
+
+  const updated = await readBookWithNotes(db, user.id, bookId);
+  if (!updated) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
+
+  const status = pageToStatus(
+    updated.book.currentPage,
+    updated.book.totalPages,
+  );
+  const completedAt = resolveCompletedAt(
+    status,
+    updated.book.status,
+    now,
+    updated.book.completedAt,
+  );
+  const brightness = computeBrightness(
+    updated.book.currentPage,
+    updated.book.totalPages,
+  );
+  const color = computeColor(updated.book.genre, brightness);
+
+  // ページがさらに進んでいた場合は、古いリクエストが派生状態を上書きしない。
+  await db
+    .update(books)
+    .set({ status, completedAt, brightness, color, updatedAt: now })
+    .where(
+      and(
+        eq(books.id, bookId),
+        eq(books.userId, user.id),
+        eq(books.currentPage, updated.book.currentPage),
+        eq(books.totalPages, updated.book.totalPages),
+        eq(books.genre, updated.book.genre),
+        eq(books.status, updated.book.status),
+      ),
+    );
+
+  const current = await readBookWithNotes(db, user.id, bookId);
+  if (!current) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
 
   return c.json({
     ok: true,
-    brightness: newBrightness,
-    color: newColor,
-    status: newStatus,
-    completedAt: updates.completedAt,
+    book: toBookResponse(current.book, current.notes),
   });
 });
 
-// TODO: 他人のIDを指定して更新・削除できないようにする
+// 本を編集
+booksApp.put("/:id", async (c) => {
+  const user = c.get("user");
+  if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
+
+  const rawBody = await readJson(c);
+  const parsed = UpdateBookSchema.safeParse(rawBody);
+  if (!parsed.success) return invalidRequest(c, parsed.error);
+
+  const bookId = c.req.param("id");
+  const db = getDBFromContext();
+  const existing = await readBookWithNotes(db, user.id, bookId);
+  if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
+
+  const input = parsed.data;
+  const newTotalPages = input.totalPages ?? existing.book.totalPages;
+  if (newTotalPages > 0 && existing.book.currentPage > newTotalPages) {
+    return apiError(
+      c,
+      400,
+      "INVALID_REQUEST",
+      "総ページ数は現在のページ数以上で指定してください",
+    );
+  }
+
+  const newGenre = input.genre ?? existing.book.genre;
+  const newBrightness = computeBrightness(
+    existing.book.currentPage,
+    newTotalPages,
+  );
+  const newColor = computeColor(newGenre, newBrightness);
+  const newStatus = pageToStatus(existing.book.currentPage, newTotalPages);
+  const now = new Date().toISOString();
+
+  try {
+    await db
+      .update(books)
+      .set({
+        ...input,
+        totalPages: newTotalPages,
+        brightness: newBrightness,
+        color: newColor,
+        status: newStatus,
+        completedAt: resolveCompletedAt(
+          newStatus,
+          existing.book.status,
+          now,
+          existing.book.completedAt,
+        ),
+        updatedAt: now,
+      })
+      .where(and(eq(books.id, bookId), eq(books.userId, user.id)));
+  } catch (error) {
+    console.error("Book update failed", error);
+    return apiError(c, 500, "INTERNAL_ERROR", "本を更新できませんでした");
+  }
+
+  const current = await readBookWithNotes(db, user.id, bookId);
+  if (!current) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
+
+  return c.json({
+    ok: true,
+    book: toBookResponse(current.book, current.notes),
+  });
+});
 
 // 本を削除
 booksApp.delete("/:id", async (c) => {
   const user = c.get("user");
-  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
 
   const bookId = c.req.param("id");
   const db = getDBFromContext();
+  const existing = await readBookWithNotes(db, user.id, bookId);
+  if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
 
-  const result = await db
+  await db
     .delete(books)
     .where(and(eq(books.id, bookId), eq(books.userId, user.id)));
 
@@ -225,34 +364,33 @@ booksApp.delete("/:id", async (c) => {
 // ノートの追加
 booksApp.post("/:id/notes", async (c) => {
   const user = c.get("user");
-  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
+
+  const rawBody = await readJson(c);
+  const parsed = NoteCreateSchema.safeParse(rawBody);
+  if (!parsed.success) return invalidRequest(c, parsed.error);
 
   const bookId = c.req.param("id");
-  const body = await c.req.json();
   const db = getDBFromContext();
-
-  // ユーザー所有の本か確認
-  const existing = await db
-    .select({ id: books.id })
-    .from(books)
-    .where(and(eq(books.id, bookId), eq(books.userId, user.id)))
-    .limit(1);
-
-  if (existing.length === 0) {
-    return c.json({ error: "本が見つかりません" }, 404);
-  }
+  const existing = await readBookWithNotes(db, user.id, bookId);
+  if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
 
   const noteId = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  await db.insert(readingNotes).values({
-    id: noteId,
-    bookId,
-    userId: user.id,
-    content: body.content ?? "",
-    page: body.page ?? null,
-    createdAt: now,
-  });
+  try {
+    await db.insert(readingNotes).values({
+      id: noteId,
+      bookId,
+      userId: user.id,
+      content: parsed.data.content,
+      page: parsed.data.page ?? null,
+      createdAt: now,
+    });
+  } catch (error) {
+    console.error("Note creation failed", error);
+    return apiError(c, 500, "INTERNAL_ERROR", "ノートを追加できませんでした");
+  }
 
   return c.json({ id: noteId }, 201);
 });
@@ -260,14 +398,35 @@ booksApp.post("/:id/notes", async (c) => {
 // ノートを削除
 booksApp.delete("/:bookId/notes/:noteId", async (c) => {
   const user = c.get("user");
-  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
 
+  const bookId = c.req.param("bookId");
   const noteId = c.req.param("noteId");
   const db = getDBFromContext();
+  const note = await db
+    .select({ id: readingNotes.id })
+    .from(readingNotes)
+    .where(
+      and(
+        eq(readingNotes.id, noteId),
+        eq(readingNotes.bookId, bookId),
+        eq(readingNotes.userId, user.id),
+      ),
+    )
+    .limit(1);
+  if (note.length === 0) {
+    return apiError(c, 404, "NOT_FOUND", "ノートが見つかりません");
+  }
 
   await db
     .delete(readingNotes)
-    .where(and(eq(readingNotes.id, noteId), eq(readingNotes.userId, user.id)));
+    .where(
+      and(
+        eq(readingNotes.id, noteId),
+        eq(readingNotes.bookId, bookId),
+        eq(readingNotes.userId, user.id),
+      ),
+    );
 
   return c.json({ ok: true });
 });

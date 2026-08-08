@@ -1,12 +1,28 @@
 import { z } from "@hono/zod-openapi";
 
 // 検索時のクエリ
-export const SearchQuerySchema = z.object({
-  q: z.string().optional().openapi({ example: "TypeScript" }),
-  isbn: z.string().optional().openapi({ example: "9784000000000" }),
-  index: z.coerce.number().default(0).openapi({ example: 0 }),
-  results: z.coerce.number().default(10).openapi({ example: 10 }),
-});
+export const SearchQuerySchema = z
+  .object({
+    q: z.string().trim().max(200).optional().openapi({ example: "TypeScript" }),
+    isbn: z
+      .string()
+      .trim()
+      .regex(/^[0-9Xx -]{10,17}$/)
+      .optional()
+      .openapi({ example: "9784000000000" }),
+    index: z.coerce.number().int().min(0).default(0).openapi({ example: 0 }),
+    results: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(40)
+      .default(10)
+      .openapi({ example: 10 }),
+  })
+  .refine(({ q, isbn }) => Boolean(q || isbn), {
+    message: "qまたはisbnを指定してください",
+    path: ["q"],
+  });
 
 // Google Books APIのレスポンスのスキーマ
 const IndustryIdentifierSchema = z.object({
@@ -73,5 +89,20 @@ export const FinalResponseSchema = z
     books: z.array(BookDataSchema).optional(),
   })
   .openapi("BookResponse");
+
+export const SearchErrorSchema = z.object({
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    issues: z
+      .array(
+        z.object({
+          path: z.array(z.string()),
+          message: z.string(),
+        }),
+      )
+      .optional(),
+  }),
+});
 
 export type BookItem = z.infer<typeof BookResponseSchema>;
