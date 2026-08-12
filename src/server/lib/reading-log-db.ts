@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, type SQL, sql } from "drizzle-orm";
 import type { getDBFromContext } from "@/server/lib/db";
 import {
   dateInTimeZone,
@@ -13,10 +13,40 @@ type Database = Pick<
   "select" | "update" | "insert" | "delete"
 >;
 
+function changedRows(result: unknown): number | undefined {
+  return (result as { meta?: { changes?: number } } | undefined)?.meta?.changes;
+}
+
 export interface ReadingSettings {
   readingTimezone: string | null;
   readingDayOffset: number;
   readingTimezoneRevision: number;
+}
+
+interface ReadingSettingsRow {
+  readingTimezone: string | null;
+  readingDayOffset: number;
+  readingTimezoneRevision: number;
+}
+
+function normalizeReadingSettings(
+  row: ReadingSettingsRow | undefined,
+): ReadingSettings {
+  const value = row?.readingTimezone ?? null;
+  return {
+    readingTimezone: value && isValidTimeZone(value) ? value : null,
+    readingDayOffset:
+      typeof row?.readingDayOffset === "number" &&
+      Number.isInteger(row.readingDayOffset)
+        ? row.readingDayOffset
+        : 0,
+    readingTimezoneRevision:
+      typeof row?.readingTimezoneRevision === "number" &&
+      Number.isSafeInteger(row.readingTimezoneRevision) &&
+      row.readingTimezoneRevision >= 0
+        ? row.readingTimezoneRevision
+        : 0,
+  };
 }
 
 export class MissingReadingTimezoneError extends Error {
@@ -38,6 +68,11 @@ export async function getReadingSettings(
   db: Database,
   userId: string,
 ): Promise<ReadingSettings> {
+  const row = await readReadingSettingsRow(db, userId);
+  return normalizeReadingSettings(row);
+}
+
+async function readReadingSettingsRow(db: Database, userId: string) {
   const rows = await db
     .select({
       readingTimezone: user.readingTimezone,
@@ -47,28 +82,7 @@ export async function getReadingSettings(
     .from(user)
     .where(eq(user.id, userId))
     .limit(1);
-  const row = rows[0] as
-    | {
-        readingTimezone?: string | null;
-        readingDayOffset?: number | null;
-        readingTimezoneRevision?: number | null;
-      }
-    | undefined;
-  const value = row?.readingTimezone ?? null;
-  return {
-    readingTimezone: value && isValidTimeZone(value) ? value : null,
-    readingDayOffset:
-      typeof row?.readingDayOffset === "number" &&
-      Number.isInteger(row.readingDayOffset)
-        ? row.readingDayOffset
-        : 0,
-    readingTimezoneRevision:
-      typeof row?.readingTimezoneRevision === "number" &&
-      Number.isSafeInteger(row.readingTimezoneRevision) &&
-      row.readingTimezoneRevision >= 0
-        ? row.readingTimezoneRevision
-        : 0,
-  };
+  return rows[0] as ReadingSettingsRow | undefined;
 }
 
 export async function ensureReadingSettings(
@@ -76,7 +90,8 @@ export async function ensureReadingSettings(
   userId: string,
   candidate?: string,
 ): Promise<ReadingSettings & { readingTimezone: string }> {
-  const saved = await getReadingSettings(db, userId);
+  const raw = await readReadingSettingsRow(db, userId);
+  const saved = normalizeReadingSettings(raw);
   if (saved.readingTimezone)
     return saved as ReadingSettings & {
       readingTimezone: string;
@@ -86,10 +101,20 @@ export async function ensureReadingSettings(
     throw new MissingReadingTimezoneError();
   }
   const next = candidate;
-  await db
+  const timezonePredicate = raw?.readingTimezone
+    ? eq(user.readingTimezone, raw.readingTimezone)
+    : isNull(user.readingTimezone);
+  const result = await db
     .update(user)
     .set({ readingTimezone: next, readingDayOffset: 0, updatedAt: new Date() })
-    .where(eq(user.id, userId));
+    .where(and(eq(user.id, userId), timezonePredicate));
+  if (changedRows(result) === 0) {
+    const current = await getReadingSettings(db, userId);
+    if (current.readingTimezone) {
+      return current as ReadingSettings & { readingTimezone: string };
+    }
+    throw new MissingReadingTimezoneError();
+  }
   return {
     readingTimezone: next,
     readingDayOffset: 0,
@@ -104,35 +129,49 @@ export async function saveReadingTimezone(
   now = new Date(),
 ): Promise<string> {
   if (!isValidTimeZone(timeZone)) throw new Error("Invalid timezone");
-  const current = await getReadingSettings(db, userId);
-  const currentOffset = current.readingDayOffset;
-  const sameTimeZone = current.readingTimezone === timeZone;
-  const nextOffset = current.readingTimezone
-    ? preserveReadingDayOffset(
-        currentOffset,
-        now,
-        current.readingTimezone,
-        timeZone,
-      )
-    : 0;
-  const nextRevision = sameTimeZone
-    ? current.readingTimezoneRevision
-    : current.readingTimezone
-      ? current.readingTimezoneRevision + 1
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const raw = await readReadingSettingsRow(db, userId);
+    const current = normalizeReadingSettings(raw);
+    const sameTimeZone = current.readingTimezone === timeZone;
+    const nextOffset = current.readingTimezone
+      ? preserveReadingDayOffset(
+          current.readingDayOffset,
+          now,
+          current.readingTimezone,
+          timeZone,
+        )
       : 0;
-  await db
-    .update(user)
-    .set({
-      readingTimezone: timeZone,
-      readingDayOffset: nextOffset,
-      readingTimezoneRevision: nextRevision,
-      updatedAt: now,
-    })
-    .where(eq(user.id, userId));
-  return timeZone;
+    const nextRevision = sameTimeZone
+      ? current.readingTimezoneRevision
+      : current.readingTimezone
+        ? current.readingTimezoneRevision + 1
+        : 0;
+    const timezonePredicate = raw?.readingTimezone
+      ? eq(user.readingTimezone, raw.readingTimezone)
+      : isNull(user.readingTimezone);
+    const result = await db
+      .update(user)
+      .set({
+        readingTimezone: timeZone,
+        readingDayOffset: nextOffset,
+        readingTimezoneRevision: nextRevision,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(user.id, userId),
+          timezonePredicate,
+          eq(user.readingDayOffset, current.readingDayOffset),
+          eq(user.readingTimezoneRevision, current.readingTimezoneRevision),
+        ),
+      );
+    const changes = changedRows(result);
+    if (changes === undefined || changes === 1) return timeZone;
+  }
+  throw new Error("Concurrent reading timezone update could not be applied");
 }
 
-export async function applyReadingLogDelta(
+export function buildReadingLogDeltaQueries(
   db: Database,
   input: {
     bookId: string;
@@ -143,24 +182,18 @@ export async function applyReadingLogDelta(
     readingDayOffset: number;
     readingTimezoneRevision: number;
   },
+  applied: SQL,
 ) {
-  if (input.delta === 0) return;
+  if (input.delta === 0) return [];
   const date = dateInTimeZone(input.now, input.timeZone);
   const readingDay = dateToDayNumber(date) + input.readingDayOffset;
 
   if (input.delta > 0) {
-    await db
+    const insert = db
       .insert(readingLogs)
-      .values({
-        id: crypto.randomUUID(),
-        bookId: input.bookId,
-        userId: input.userId,
-        pagesRead: input.delta,
-        date,
-        readingDay,
-        readingTimezoneRevision: input.readingTimezoneRevision,
-        createdAt: input.now.toISOString(),
-      })
+      .select(
+        sql`select ${crypto.randomUUID()}, ${input.bookId}, ${input.userId}, ${input.delta}, ${date}, ${readingDay}, ${input.readingTimezoneRevision}, ${input.now.toISOString()} where ${applied}`,
+      )
       .onConflictDoUpdate({
         target: [
           readingLogs.bookId,
@@ -171,13 +204,13 @@ export async function applyReadingLogDelta(
           pagesRead: sql`${readingLogs.pagesRead} + ${input.delta}`,
         },
       });
-    return;
+    return [insert];
   }
 
-  // 呼び出し元の進捗トランザクション内で実行する。制約上0ページの行を
-  // 保持できないため、削除と残量減算を同じトランザクションに含める。
+  // 制約上0ページの行を保持できないため、削除と残量減算を呼び出し元の
+  // D1 batchへ含め、進捗更新とまとめて原子的に適用する。
   const correction = Math.abs(input.delta);
-  await db
+  const removeConsumedLog = db
     .delete(readingLogs)
     .where(
       and(
@@ -186,11 +219,12 @@ export async function applyReadingLogDelta(
         eq(readingLogs.readingDay, readingDay),
         eq(readingLogs.readingTimezoneRevision, input.readingTimezoneRevision),
         eq(readingLogs.date, date),
+        applied,
         sql`${readingLogs.pagesRead} <= ${correction}`,
       ),
     );
 
-  await db
+  const subtractCorrection = db
     .update(readingLogs)
     .set({ pagesRead: sql`${readingLogs.pagesRead} + ${input.delta}` })
     .where(
@@ -200,7 +234,9 @@ export async function applyReadingLogDelta(
         eq(readingLogs.readingDay, readingDay),
         eq(readingLogs.readingTimezoneRevision, input.readingTimezoneRevision),
         eq(readingLogs.date, date),
+        applied,
         sql`${readingLogs.pagesRead} > ${correction}`,
       ),
     );
+  return [removeConsumedLog, subtractCorrection];
 }

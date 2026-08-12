@@ -1,14 +1,15 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, exists, isNotNull, isNull } from "drizzle-orm";
 import { apiError } from "@/server/lib/api-error";
 import { toBookResponse } from "@/server/lib/book-response";
 import { pageToStatus, resolveCompletedAt } from "@/server/lib/book-status";
 import { getDBFromContext } from "@/server/lib/db";
 import { isValidTimeZone } from "@/server/lib/reading-log";
 import {
-  applyReadingLogDelta,
+  buildReadingLogDeltaQueries,
   ensureReadingSettings,
   MissingReadingTimezoneError,
+  type ReadingSettings,
 } from "@/server/lib/reading-log-db";
 import {
   computeBrightness,
@@ -29,7 +30,7 @@ import type { AppEnv } from "@/server/types";
 const booksApp = new OpenAPIHono<AppEnv>();
 type Database = Pick<
   ReturnType<typeof getDBFromContext>,
-  "select" | "update" | "insert" | "delete"
+  "select" | "update" | "insert" | "delete" | "batch"
 >;
 
 // 全ルートに認証ミドルウェアを適用
@@ -86,12 +87,20 @@ async function readJson(c: Parameters<typeof apiError>[0]) {
   }
 }
 
-async function updateCurrentPage(
+function uniqueOperationTimestamp(now: Date) {
+  const suffix = Number.parseInt(crypto.randomUUID().slice(0, 8), 16)
+    .toString()
+    .padStart(10, "0");
+  return `${now.toISOString().slice(0, -1)}${suffix}Z`;
+}
+
+async function updateProgressAndReadingLog(
   db: Database,
   userId: string,
   bookId: string,
   input: { delta?: number; page?: number },
-  now: string,
+  settings: ReadingSettings & { readingTimezone: string },
+  nowDate: Date,
 ) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const current = await readBookWithNotes(db, userId, bookId, {
@@ -114,17 +123,64 @@ async function updateCurrentPage(
     const delta = targetPage - current.book.currentPage;
     if (delta === 0) return { current, delta: 0 };
 
-    const result = await db
+    const status = pageToStatus(targetPage, current.book.totalPages);
+    const now = uniqueOperationTimestamp(nowDate);
+    const completedAt = resolveCompletedAt(
+      status,
+      current.book.status,
+      now,
+      current.book.completedAt,
+    );
+    const brightness = computeBrightness(targetPage, current.book.totalPages);
+    const color = computeColor(current.book.genre, brightness);
+    const updateBook = db
       .update(books)
-      .set({ currentPage: targetPage, updatedAt: now })
+      .set({
+        currentPage: targetPage,
+        status,
+        completedAt,
+        brightness,
+        color,
+        updatedAt: now,
+      })
       .where(
         and(
           eq(books.id, bookId),
           eq(books.userId, userId),
           isNull(books.archivedAt),
           eq(books.currentPage, current.book.currentPage),
+          eq(books.totalPages, current.book.totalPages),
+          eq(books.genre, current.book.genre),
+          eq(books.status, current.book.status),
         ),
       );
+    const applied = exists(
+      db
+        .select({ id: books.id })
+        .from(books)
+        .where(
+          and(
+            eq(books.id, bookId),
+            eq(books.userId, userId),
+            eq(books.currentPage, targetPage),
+            eq(books.updatedAt, now),
+          ),
+        ),
+    );
+    const logQueries = buildReadingLogDeltaQueries(
+      db,
+      {
+        bookId,
+        userId,
+        delta,
+        now: nowDate,
+        timeZone: settings.readingTimezone,
+        readingDayOffset: settings.readingDayOffset,
+        readingTimezoneRevision: settings.readingTimezoneRevision,
+      },
+      applied,
+    );
+    const [result] = await db.batch([updateBook, ...logQueries]);
     const changes = (result as { meta?: { changes?: number } } | undefined)
       ?.meta?.changes;
     if (changes === undefined || changes === 1) {
@@ -334,66 +390,17 @@ booksApp.post("/:id/progress", async (c) => {
   }
 
   const nowDate = new Date();
-  const now = nowDate.toISOString();
-  let progress: Awaited<ReturnType<typeof updateCurrentPage>>;
+  let progress: Awaited<ReturnType<typeof updateProgressAndReadingLog>>;
   try {
-    progress = await db.transaction(async (tx) => {
-      const settings = await ensureReadingSettings(
-        tx,
-        user.id,
-        readingTimezone,
-      );
-      const next = await updateCurrentPage(
-        tx,
-        user.id,
-        bookId,
-        { delta, page },
-        now,
-      );
-      if (!next) return null;
-
-      await applyReadingLogDelta(tx, {
-        bookId,
-        userId: user.id,
-        delta: next.delta,
-        now: nowDate,
-        timeZone: settings.readingTimezone,
-        readingDayOffset: settings.readingDayOffset,
-        readingTimezoneRevision: settings.readingTimezoneRevision,
-      });
-
-      const status = pageToStatus(
-        next.current.book.currentPage,
-        next.current.book.totalPages,
-      );
-      const completedAt = resolveCompletedAt(
-        status,
-        next.current.book.status,
-        now,
-        next.current.book.completedAt,
-      );
-      const brightness = computeBrightness(
-        next.current.book.currentPage,
-        next.current.book.totalPages,
-      );
-      const color = computeColor(next.current.book.genre, brightness);
-
-      await tx
-        .update(books)
-        .set({ status, completedAt, brightness, color, updatedAt: now })
-        .where(
-          and(
-            eq(books.id, bookId),
-            eq(books.userId, user.id),
-            eq(books.currentPage, next.current.book.currentPage),
-            eq(books.totalPages, next.current.book.totalPages),
-            eq(books.genre, next.current.book.genre),
-            eq(books.status, next.current.book.status),
-          ),
-        );
-
-      return next;
-    });
+    const settings = await ensureReadingSettings(db, user.id, readingTimezone);
+    progress = await updateProgressAndReadingLog(
+      db,
+      user.id,
+      bookId,
+      { delta, page },
+      settings,
+      nowDate,
+    );
   } catch (error) {
     if (error instanceof MissingReadingTimezoneError) {
       return apiError(

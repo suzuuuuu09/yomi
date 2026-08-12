@@ -44,6 +44,7 @@ const row = {
 let timezone: string | null = null;
 let nextProgressDelta = 1;
 let nextProgressUpdateChanges = 1;
+let lastProgressUpdateApplied = false;
 const logs: Array<{
   id: string;
   bookId: string;
@@ -52,12 +53,11 @@ const logs: Array<{
   date: string;
   createdAt: string;
 }> = [];
-function fakeTransaction<T>(callback: (tx: typeof fakeDb) => Promise<T>) {
-  return callback(fakeDb);
-}
-
 const fakeDb = {
-  transaction: fakeTransaction,
+  transaction: () => {
+    throw new Error("D1 does not support SQL BEGIN");
+  },
+  batch: (queries: Promise<unknown>[]) => Promise.all(queries),
   select: () => ({
     from: (table: unknown) => ({
       where: () => {
@@ -76,7 +76,7 @@ const fakeDb = {
       },
     }),
   }),
-  update: () => ({
+  update: (table: unknown) => ({
     set: (values: Record<string, unknown>) => ({
       where: () => {
         const apply = () => {
@@ -105,6 +105,9 @@ const fakeDb = {
           Promise.resolve().then(() => {
             const changes =
               "currentPage" in values ? nextProgressUpdateChanges : 1;
+            if (table === books && "currentPage" in values) {
+              lastProgressUpdateApplied = changes === 1;
+            }
             if ("currentPage" in values && changes === 0) {
               nextProgressUpdateChanges = 1;
             } else {
@@ -136,11 +139,32 @@ const fakeDb = {
         onConflictDoUpdate: () => Promise.resolve().then(apply),
       };
     },
+    select: () => ({
+      onConflictDoUpdate: () =>
+        Promise.resolve().then(() => {
+          if (table !== readingLogs || !lastProgressUpdateApplied) return;
+          const existing = logs[0];
+          if (existing) existing.pagesRead += nextProgressDelta;
+          else {
+            logs.push({
+              id: "log-1",
+              bookId: row.id,
+              userId: row.userId,
+              pagesRead: nextProgressDelta,
+              date: "2026-08-12",
+              createdAt: "2026-08-12T00:00:00.000Z",
+            });
+          }
+        }),
+    }),
   }),
   delete: (table: unknown) => ({
     where: () => {
-      if (table === readingLogs) logs.splice(0, logs.length);
-      return Promise.resolve();
+      return Promise.resolve().then(() => {
+        if (table === readingLogs && lastProgressUpdateApplied) {
+          logs.splice(0, logs.length);
+        }
+      });
     },
   }),
 };
@@ -157,6 +181,7 @@ describe("progress HTTP route", () => {
     timezone = null;
     nextProgressDelta = 1;
     nextProgressUpdateChanges = 1;
+    lastProgressUpdateApplied = false;
     logs.splice(0, logs.length);
     row.currentPage = 10;
     row.totalPages = 100;

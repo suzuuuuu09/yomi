@@ -154,8 +154,10 @@ readingLogsApp.put("/settings", async (c) => {
 
   const db = getDBFromContext();
   try {
-    const readingTimezone = await db.transaction((tx) =>
-      saveReadingTimezone(tx, user.id, parsed.data.readingTimezone),
+    const readingTimezone = await saveReadingTimezone(
+      db,
+      user.id,
+      parsed.data.readingTimezone,
     );
     return c.json({ readingTimezone });
   } catch (error) {

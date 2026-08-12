@@ -28,8 +28,9 @@ let logs: Array<{
 }> = [];
 
 const fakeDb = {
-  transaction: <T>(callback: (tx: Record<string, unknown>) => Promise<T>) =>
-    callback(fakeDb as unknown as Record<string, unknown>),
+  transaction: () => {
+    throw new Error("D1 does not support SQL BEGIN");
+  },
   select: () => ({
     from: (table: unknown) => {
       const rows =
