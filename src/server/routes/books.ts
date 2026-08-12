@@ -1,9 +1,15 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { apiError } from "@/server/lib/api-error";
 import { toBookResponse } from "@/server/lib/book-response";
 import { pageToStatus, resolveCompletedAt } from "@/server/lib/book-status";
 import { getDBFromContext } from "@/server/lib/db";
+import { isValidTimeZone } from "@/server/lib/reading-log";
+import {
+  applyReadingLogDelta,
+  ensureReadingSettings,
+  MissingReadingTimezoneError,
+} from "@/server/lib/reading-log-db";
 import {
   computeBrightness,
   computeColor,
@@ -21,7 +27,10 @@ import { books, readingNotes } from "@/server/schemas/db";
 import type { AppEnv } from "@/server/types";
 
 const booksApp = new OpenAPIHono<AppEnv>();
-type Database = ReturnType<typeof getDBFromContext>;
+type Database = Pick<
+  ReturnType<typeof getDBFromContext>,
+  "select" | "update" | "insert" | "delete"
+>;
 
 // 全ルートに認証ミドルウェアを適用
 booksApp.use("/*", authMiddleware);
@@ -42,11 +51,18 @@ function invalidRequest(
   );
 }
 
-async function readBookWithNotes(db: Database, userId: string, bookId: string) {
+async function readBookWithNotes(
+  db: Database,
+  userId: string,
+  bookId: string,
+  options?: { activeOnly?: boolean },
+) {
+  const predicates = [eq(books.id, bookId), eq(books.userId, userId)];
+  if (options?.activeOnly) predicates.push(isNull(books.archivedAt));
   const rows = await db
     .select()
     .from(books)
-    .where(and(eq(books.id, bookId), eq(books.userId, userId)))
+    .where(and(...predicates))
     .limit(1);
 
   const book = rows[0];
@@ -70,6 +86,59 @@ async function readJson(c: Parameters<typeof apiError>[0]) {
   }
 }
 
+async function updateCurrentPage(
+  db: Database,
+  userId: string,
+  bookId: string,
+  input: { delta?: number; page?: number },
+  now: string,
+) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const current = await readBookWithNotes(db, userId, bookId, {
+      activeOnly: true,
+    });
+    if (!current) return null;
+
+    const targetPage =
+      input.delta === undefined
+        ? (input.page ?? current.book.currentPage)
+        : Math.max(
+            0,
+            current.book.totalPages > 0
+              ? Math.min(
+                  current.book.totalPages,
+                  current.book.currentPage + input.delta,
+                )
+              : current.book.currentPage + input.delta,
+          );
+    const delta = targetPage - current.book.currentPage;
+    if (delta === 0) return { current, delta: 0 };
+
+    const result = await db
+      .update(books)
+      .set({ currentPage: targetPage, updatedAt: now })
+      .where(
+        and(
+          eq(books.id, bookId),
+          eq(books.userId, userId),
+          isNull(books.archivedAt),
+          eq(books.currentPage, current.book.currentPage),
+        ),
+      );
+    const changes = (result as { meta?: { changes?: number } } | undefined)
+      ?.meta?.changes;
+    if (changes === undefined || changes === 1) {
+      const updated = await readBookWithNotes(db, userId, bookId, {
+        activeOnly: true,
+      });
+      if (!updated) return null;
+      return { current: updated, delta };
+    }
+  }
+
+  throw new Error("Concurrent progress update could not be applied");
+}
+
 // ユーザーの本一覧を取得
 booksApp.get("/", async (c) => {
   const user = c.get("user");
@@ -79,7 +148,7 @@ booksApp.get("/", async (c) => {
   const userBooks = await db
     .select()
     .from(books)
-    .where(eq(books.userId, user.id));
+    .where(and(eq(books.userId, user.id), isNull(books.archivedAt)));
 
   const bookIds = userBooks.map((book) => book.id);
   const notesByBookId: Record<string, (typeof readingNotes.$inferSelect)[]> =
@@ -105,6 +174,33 @@ booksApp.get("/", async (c) => {
   return c.json({
     books: result,
     constellationLines: computeConstellationLines(userBooks),
+  });
+});
+
+// アーカイブ済みの本を復元用に取得
+booksApp.get("/archived", async (c) => {
+  const user = c.get("user");
+  if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
+
+  const db = getDBFromContext();
+  const archivedBooks = await db
+    .select()
+    .from(books)
+    .where(and(eq(books.userId, user.id), isNotNull(books.archivedAt)));
+  const notes = await db
+    .select()
+    .from(readingNotes)
+    .where(eq(readingNotes.userId, user.id));
+  const notesByBookId = new Map<string, (typeof readingNotes.$inferSelect)[]>();
+  for (const note of notes) {
+    const list = notesByBookId.get(note.bookId) ?? [];
+    list.push(note);
+    notesByBookId.set(note.bookId, list);
+  }
+  return c.json({
+    books: archivedBooks.map((book) =>
+      toBookResponse(book, notesByBookId.get(book.id) ?? []),
+    ),
   });
 });
 
@@ -166,6 +262,7 @@ booksApp.post("/", async (c) => {
       color,
       registeredAt: now,
       completedAt: null,
+      archivedAt: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -196,7 +293,7 @@ booksApp.post("/", async (c) => {
   );
 });
 
-// currentPageの更新をSQL式で行う。deltaは複数タブからの同時更新にも対応する。
+// currentPageは比較更新で適用し、競合時は最新値を読み直して再試行する。
 booksApp.post("/:id/progress", async (c) => {
   const user = c.get("user");
   if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
@@ -207,10 +304,22 @@ booksApp.post("/:id/progress", async (c) => {
 
   const bookId = c.req.param("id");
   const db = getDBFromContext();
-  const existing = await readBookWithNotes(db, user.id, bookId);
+  const existing = await readBookWithNotes(db, user.id, bookId, {
+    activeOnly: true,
+  });
   if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
 
-  const { delta, page } = parsed.data;
+  const { delta, page, readingTimezone } = parsed.data;
+  if (readingTimezone !== undefined && !isValidTimeZone(readingTimezone)) {
+    return invalidRequest(c, {
+      issues: [
+        {
+          path: ["readingTimezone"],
+          message: "IANAタイムゾーンを指定してください",
+        },
+      ],
+    });
+  }
   if (
     page !== undefined &&
     existing.book.totalPages > 0 &&
@@ -224,50 +333,85 @@ booksApp.post("/:id/progress", async (c) => {
     );
   }
 
-  const nextPage =
-    delta === undefined
-      ? page
-      : sql<number>`CASE WHEN ${books.totalPages} > 0 THEN min(${books.totalPages}, max(0, ${books.currentPage} + ${delta})) ELSE max(0, ${books.currentPage} + ${delta}) END`;
+  const nowDate = new Date();
+  const now = nowDate.toISOString();
+  let progress: Awaited<ReturnType<typeof updateCurrentPage>>;
+  try {
+    progress = await db.transaction(async (tx) => {
+      const settings = await ensureReadingSettings(
+        tx,
+        user.id,
+        readingTimezone,
+      );
+      const next = await updateCurrentPage(
+        tx,
+        user.id,
+        bookId,
+        { delta, page },
+        now,
+      );
+      if (!next) return null;
 
-  const now = new Date().toISOString();
-  await db
-    .update(books)
-    .set({ currentPage: nextPage, updatedAt: now })
-    .where(and(eq(books.id, bookId), eq(books.userId, user.id)));
+      await applyReadingLogDelta(tx, {
+        bookId,
+        userId: user.id,
+        delta: next.delta,
+        now: nowDate,
+        timeZone: settings.readingTimezone,
+        readingDayOffset: settings.readingDayOffset,
+        readingTimezoneRevision: settings.readingTimezoneRevision,
+      });
 
-  const updated = await readBookWithNotes(db, user.id, bookId);
-  if (!updated) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
+      const status = pageToStatus(
+        next.current.book.currentPage,
+        next.current.book.totalPages,
+      );
+      const completedAt = resolveCompletedAt(
+        status,
+        next.current.book.status,
+        now,
+        next.current.book.completedAt,
+      );
+      const brightness = computeBrightness(
+        next.current.book.currentPage,
+        next.current.book.totalPages,
+      );
+      const color = computeColor(next.current.book.genre, brightness);
 
-  const status = pageToStatus(
-    updated.book.currentPage,
-    updated.book.totalPages,
-  );
-  const completedAt = resolveCompletedAt(
-    status,
-    updated.book.status,
-    now,
-    updated.book.completedAt,
-  );
-  const brightness = computeBrightness(
-    updated.book.currentPage,
-    updated.book.totalPages,
-  );
-  const color = computeColor(updated.book.genre, brightness);
+      await tx
+        .update(books)
+        .set({ status, completedAt, brightness, color, updatedAt: now })
+        .where(
+          and(
+            eq(books.id, bookId),
+            eq(books.userId, user.id),
+            eq(books.currentPage, next.current.book.currentPage),
+            eq(books.totalPages, next.current.book.totalPages),
+            eq(books.genre, next.current.book.genre),
+            eq(books.status, next.current.book.status),
+          ),
+        );
 
-  // ページがさらに進んでいた場合は、古いリクエストが派生状態を上書きしない。
-  await db
-    .update(books)
-    .set({ status, completedAt, brightness, color, updatedAt: now })
-    .where(
-      and(
-        eq(books.id, bookId),
-        eq(books.userId, user.id),
-        eq(books.currentPage, updated.book.currentPage),
-        eq(books.totalPages, updated.book.totalPages),
-        eq(books.genre, updated.book.genre),
-        eq(books.status, updated.book.status),
-      ),
+      return next;
+    });
+  } catch (error) {
+    if (error instanceof MissingReadingTimezoneError) {
+      return apiError(
+        c,
+        400,
+        "INVALID_REQUEST",
+        "初回の進捗更新には読書タイムゾーンが必要です",
+      );
+    }
+    console.error("Book progress update failed", error);
+    return apiError(
+      c,
+      500,
+      "INTERNAL_ERROR",
+      "進捗と読書ログを更新できませんでした",
     );
+  }
+  if (!progress) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
 
   const current = await readBookWithNotes(db, user.id, bookId);
   if (!current) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
@@ -289,7 +433,9 @@ booksApp.put("/:id", async (c) => {
 
   const bookId = c.req.param("id");
   const db = getDBFromContext();
-  const existing = await readBookWithNotes(db, user.id, bookId);
+  const existing = await readBookWithNotes(db, user.id, bookId, {
+    activeOnly: true,
+  });
   if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
 
   const input = parsed.data;
@@ -344,7 +490,7 @@ booksApp.put("/:id", async (c) => {
   });
 });
 
-// 本を削除
+// 本をアーカイブ
 booksApp.delete("/:id", async (c) => {
   const user = c.get("user");
   if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
@@ -354,10 +500,66 @@ booksApp.delete("/:id", async (c) => {
   const existing = await readBookWithNotes(db, user.id, bookId);
   if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
 
+  const now = new Date().toISOString();
+  await db
+    .update(books)
+    .set({
+      archivedAt: existing.book.archivedAt ?? now,
+      updatedAt: now,
+    })
+    .where(and(eq(books.id, bookId), eq(books.userId, user.id)));
+
+  return c.json({ ok: true });
+});
+
+// 明示的なアーカイブ操作（DELETE /:id と同じ意味で、クライアントから利用する）
+booksApp.post("/:id/archive", async (c) => {
+  const user = c.get("user");
+  if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
+  const bookId = c.req.param("id");
+  const db = getDBFromContext();
+  const existing = await readBookWithNotes(db, user.id, bookId);
+  if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
+  const now = new Date().toISOString();
+  await db
+    .update(books)
+    .set({ archivedAt: existing.book.archivedAt ?? now, updatedAt: now })
+    .where(and(eq(books.id, bookId), eq(books.userId, user.id)));
+  return c.json({ ok: true });
+});
+
+// アーカイブ済みの本を復元
+booksApp.post("/:id/restore", async (c) => {
+  const user = c.get("user");
+  if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
+  const bookId = c.req.param("id");
+  const db = getDBFromContext();
+  const existing = await readBookWithNotes(db, user.id, bookId);
+  if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
+  const now = new Date().toISOString();
+  await db
+    .update(books)
+    .set({ archivedAt: null, updatedAt: now })
+    .where(and(eq(books.id, bookId), eq(books.userId, user.id)));
+  const restored = await readBookWithNotes(db, user.id, bookId);
+  if (!restored) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
+  return c.json({
+    ok: true,
+    book: toBookResponse(restored.book, restored.notes),
+  });
+});
+
+// 本と履歴を完全削除
+booksApp.delete("/:id/permanent", async (c) => {
+  const user = c.get("user");
+  if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
+  const bookId = c.req.param("id");
+  const db = getDBFromContext();
+  const existing = await readBookWithNotes(db, user.id, bookId);
+  if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
   await db
     .delete(books)
     .where(and(eq(books.id, bookId), eq(books.userId, user.id)));
-
   return c.json({ ok: true });
 });
 

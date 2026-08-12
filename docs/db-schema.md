@@ -34,6 +34,9 @@ Better Auth が自動的にマイグレーション・管理するテーブル�
 | `email` | TEXT | UNIQUE NOT NULL | メールアドレス |
 | `emailVerified` | INTEGER | NOT NULL DEFAULT 0 | メール検証済みフラグ |
 | `image` | TEXT | | アバター画像URL |
+| `reading_timezone` | TEXT | | 読書日の境界に使うIANAタイムゾーン（未設定可） |
+| `reading_day_offset` | INTEGER | NOT NULL DEFAULT 0 | タイムゾーン変更後も連続する論理読書日の補正値 |
+| `reading_timezone_revision` | INTEGER | NOT NULL DEFAULT 0 | タイムゾーン設定の世代番号 |
 | `createdAt` | TEXT | NOT NULL | ISO 8601 |
 | `updatedAt` | TEXT | NOT NULL | ISO 8601 |
 
@@ -110,10 +113,11 @@ Better Auth が自動的にマイグレーション・管理するテーブル�
 | `color` | TEXT | NOT NULL DEFAULT '#FFFFFF' | 星の色 (HEXまたはHSL) |
 | `registered_at` | TEXT | NOT NULL | 登録日 (ISO 8601) |
 | `completed_at` | TEXT | | 読了日 (nullable, ISO 8601) |
+| `archived_at` | TEXT | | アーカイブ日時 (nullable, ISO 8601) |
 | `created_at` | TEXT | NOT NULL | ISO 8601 |
 | `updated_at` | TEXT | NOT NULL | ISO 8601 |
 
-**インデックス**: `user_id`, `(user_id, status)`, `(user_id, genre)`
+**インデックス**: `user_id`, `(user_id, status)`, `(user_id, genre)`, `(user_id, archived_at)`
 
 **備考**:
 - `position_x/y/z`, `brightness`, `color` はAPI側で計算してDBに保存（[star-formation.md](./star-formation.md) 参照）
@@ -145,13 +149,17 @@ Better Auth が自動的にマイグレーション・管理するテーブル�
 | `user_id` | TEXT | NOT NULL, FK → user.id ON DELETE CASCADE | 所有ユーザー |
 | `pages_read` | INTEGER | NOT NULL | その日に読んだページ数 |
 | `date` | TEXT | NOT NULL | 記録日 (YYYY-MM-DD) |
+| `reading_day` | INTEGER | | タイムゾーン変更をまたいでも不変な論理読書日番号 |
+| `reading_timezone_revision` | INTEGER | NOT NULL DEFAULT 0 | 記録時のタイムゾーン設定世代 |
 | `created_at` | TEXT | NOT NULL | ISO 8601 |
 
-**インデックス**: `(book_id, date)` UNIQUE（1日1レコードにUPSERT）, `(user_id, date)`
+**インデックス**: `(book_id, reading_timezone_revision, date)` UNIQUE（設定世代と表示日ごとに1レコード）, `(user_id, date)`
 
 **備考**:
-- +1Pやページ更新のたびに `UPSERT` で当日分を加算
+- +1Pやページ更新のたびに、記録時の設定世代と表示日の組み合わせへ `UPSERT` で加算
 - Reading Graph（過去14日）の描画に使用
+- `date` は記録時のタイムゾーンで表示する日付として保持し、タイムゾーン変更後も再計算しない
+- 統計では複数世代のログを `reading_day` で合算する
 
 ---
 
@@ -275,4 +283,21 @@ CREATE TABLE IF NOT EXISTS reading_logs (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reading_logs_book_date ON reading_logs(book_id, date);
 CREATE INDEX IF NOT EXISTS idx_reading_logs_user_date ON reading_logs(user_id, date);
+
+-- 0001_reading_log_settings.sql
+ALTER TABLE users ADD COLUMN reading_timezone TEXT;
+ALTER TABLE books ADD COLUMN archived_at TEXT;
+CREATE INDEX IF NOT EXISTS idx_books_user_archived ON books(user_id, archived_at);
+
+-- 0002_stable_reading_days.sql
+DROP INDEX idx_reading_logs_book_date;
+ALTER TABLE users ADD COLUMN reading_day_offset INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN reading_timezone_revision INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE reading_logs ADD COLUMN reading_day INTEGER;
+ALTER TABLE reading_logs ADD COLUMN reading_timezone_revision INTEGER NOT NULL DEFAULT 0;
+UPDATE reading_logs
+SET reading_day = CAST(strftime('%s', date || ' 00:00:00') / 86400 AS INTEGER) +
+  COALESCE((SELECT reading_day_offset FROM users WHERE users.id = reading_logs.user_id), 0)
+WHERE reading_day IS NULL;
+CREATE UNIQUE INDEX idx_reading_logs_book_revision_date ON reading_logs(book_id, reading_timezone_revision, date);
 ```

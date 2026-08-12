@@ -17,6 +17,7 @@ export function toBookResponse(book: BookRow, notes: NoteRow[] = []): Book {
     coverUrl: book.coverUrl ?? "",
     registeredAt: book.registeredAt,
     completedAt: book.completedAt,
+    archivedAt: book.archivedAt ?? null,
     position: [book.positionX, book.positionY, book.positionZ],
     brightness: book.brightness,
     color: book.color,

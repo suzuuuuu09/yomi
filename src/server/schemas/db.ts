@@ -25,6 +25,11 @@ export const user = sqliteTable("users", {
     .notNull()
     .default(false),
   image: text("image"),
+  readingTimezone: text("reading_timezone"),
+  readingDayOffset: integer("reading_day_offset").notNull().default(0),
+  readingTimezoneRevision: integer("reading_timezone_revision")
+    .notNull()
+    .default(0),
   createdAt: integer("createdAt", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -113,6 +118,7 @@ export const books = sqliteTable(
     color: text("color").notNull().default("#FFFFFF"),
     registeredAt: text("registered_at").notNull(),
     completedAt: text("completed_at"),
+    archivedAt: text("archived_at"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -124,6 +130,7 @@ export const books = sqliteTable(
     // 進捗関連のインデックス
     index("idx_books_user_current_page").on(t.userId, t.currentPage),
     index("idx_books_user_total_pages").on(t.userId, t.totalPages),
+    index("idx_books_user_archived").on(t.userId, t.archivedAt),
 
     // ページの値が0以上であることを保証
     check("chk_books_total_pages", sql`${t.totalPages} >= 0`),
@@ -177,10 +184,18 @@ export const readingLogs = sqliteTable(
       .references(() => user.id, { onDelete: "cascade" }),
     pagesRead: integer("pages_read").notNull(),
     date: text("date").notNull(),
+    readingDay: integer("reading_day"),
+    readingTimezoneRevision: integer("reading_timezone_revision")
+      .notNull()
+      .default(0),
     createdAt: text("created_at").notNull(),
   },
   (t) => [
-    uniqueIndex("idx_reading_logs_book_date").on(t.bookId, t.date),
+    uniqueIndex("idx_reading_logs_book_revision_date").on(
+      t.bookId,
+      t.readingTimezoneRevision,
+      t.date,
+    ),
     index("idx_reading_logs_user_date").on(t.userId, t.date),
     index("idx_reading_logs_user_book").on(t.userId, t.bookId),
     check("chk_logs_pages_read", sql`${t.pagesRead} >= 1`),

@@ -14,6 +14,7 @@ const baseBook: Book = {
   coverUrl: "",
   registeredAt: "2026-01-01T00:00:00.000Z",
   completedAt: null,
+  archivedAt: null,
   position: [0, 0, 0],
   brightness: 0.5,
   color: "#ffffff",
@@ -25,6 +26,17 @@ function response(book: Book) {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+function statsResponse() {
+  return new Response(
+    JSON.stringify({
+      days: [],
+      streak: 0,
+      readingTimezone: "UTC",
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
 }
 
 function resetStore() {
@@ -47,18 +59,24 @@ describe("useLibraryStore progress actions", () => {
     resetStore();
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(response({ ...baseBook, currentPage: 11 }));
+      .mockImplementation((input: RequestInfo | URL) =>
+        String(input) === "/api/reading-logs"
+          ? statsResponse()
+          : response({ ...baseBook, currentPage: 11 }),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
     await useLibraryStore.getState().updatePageProgress("book-1", 1);
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/books/book-1/progress",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ delta: 1 }),
-      }),
+      expect.objectContaining({ method: "POST" }),
     );
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(request.body))).toMatchObject({
+      delta: 1,
+      readingTimezone: expect.any(String),
+    });
     expect(useLibraryStore.getState().books[0].currentPage).toBe(11);
   });
 
@@ -67,12 +85,12 @@ describe("useLibraryStore progress actions", () => {
     const pending: Array<{
       resolve: (value: Response) => void;
     }> = [];
-    const fetchMock = vi.fn().mockImplementation(
-      () =>
-        new Promise<Response>((resolve) => {
-          pending.push({ resolve });
-        }),
-    );
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === "/api/reading-logs") return statsResponse();
+      return new Promise<Response>((resolve) => {
+        pending.push({ resolve });
+      });
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     const first = useLibraryStore.getState().updatePageProgress("book-1", 1);

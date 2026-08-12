@@ -134,6 +134,7 @@ function ObservatoryContent() {
   const lastError = useLibraryStore((s) => s.lastError);
   const clearMutationError = useLibraryStore((s) => s.clearMutationError);
   const isBottomDockVisible = useLibraryStore((s) => s.isBottomDockVisible);
+  const readingStreak = useLibraryStore((s) => s.readingStats.streak);
 
   const [vrMode, setVrMode] = useState(false);
 
@@ -241,7 +242,7 @@ function ObservatoryContent() {
 
       <StarInsightPanel {...starInsight} />
 
-      <StatsOverlay books={books} />
+      <StatsOverlay books={books} readingStreak={readingStreak} />
 
       <TutorialOverlay />
     </s.main>

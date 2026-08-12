@@ -233,8 +233,28 @@ OpenAPIドキュメントには現在、スキーマ定義済みの検索エン�
 | POST | `/api/books` | 書籍を作成。作成後の完全な`book`を返す |
 | PUT | `/api/books/:id` | 書誌情報を更新。更新後の完全な`book`を返す |
 | POST | `/api/books/:id/progress` | `{ "delta": 1 }`または`{ "page": 42 }`で進捗を更新。更新後の完全な`book`を返す |
-| DELETE | `/api/books/:id` | 自分の書籍を削除 |
+| DELETE | `/api/books/:id` | 自分の書籍をアーカイブ。読書履歴は保持する |
+| POST | `/api/books/:id/archive` | 書籍をアーカイブ |
+| POST | `/api/books/:id/restore` | アーカイブ済み書籍を復元 |
+| GET | `/api/books/archived` | アーカイブ済み書籍を取得 |
+| DELETE | `/api/books/:id/permanent` | 書籍、ノート、読書ログを完全削除 |
 | POST | `/api/books/:id/notes` | ノートを作成 |
 | DELETE | `/api/books/:bookId/notes/:noteId` | 指定した書籍に属する自分のノートを削除 |
 
 `delta`による現在ページの加算は、複数タブから同時に送信されてもサーバー側で原子的に適用されます。`page`を指定する場合、`totalPages`が0より大きければ総ページ数を超える値は`400 INVALID_REQUEST`になります。`totalPages`が0の場合は総ページ数不明として上限を設けません。
+
+### 読書ログ (`/api/reading-logs`)
+
+| メソッド | パス | 説明 |
+|---|---|---|
+| GET | `/api/reading-logs` | 全冊を集計した過去14日の読書量、連続読書日数、タイムゾーンを取得 |
+| GET | `/api/reading-logs/:bookId` | 本ごとの日別読書ログを取得 |
+| PUT | `/api/reading-logs/:bookId/:date` | 対象日をページ数で明示的に訂正。`pagesRead: 0`は削除。複数世代が同じ表示日にある場合は`readingDay`と`readingTimezoneRevision`を指定 |
+| DELETE | `/api/reading-logs/:bookId/:date?readingDay=...&readingTimezoneRevision=...` | 対象日の読書ログを削除。複数世代が同じ表示日にある場合は論理読書日と設定世代を指定 |
+| GET | `/api/reading-logs/settings` | 保存済みの読書タイムゾーンを取得 |
+| PUT | `/api/reading-logs/settings` | IANAタイムゾーンを保存 |
+
+進捗更新時は保存済みタイムゾーンで暦日を決定し、同じ本と論理読書日のページ量へ増減を反映します。
+保存済みタイムゾーンがない初回更新では、クライアントが検出した有効なIANAタイムゾーンをリクエストの`readingTimezone`として必ず指定し、その値を初期値として保存します。値がない場合は`400 INVALID_REQUEST`になります。
+既存ログの日付はタイムゾーン変更後も再集計しません。
+タイムゾーン変更時は論理読書日の連続性を保つための補正値と設定世代だけを更新し、既存ログの`date`と`readingDay`は変更しません。新しい世代のログは既存世代と別レコードに保存し、統計では論理読書日単位に合算します。Reading Graphの棒ラベルは現在の読書タイムゾーンの論理日軸から生成します。

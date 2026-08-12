@@ -8,6 +8,16 @@ const isbnSchema = z.string().trim().max(32);
 const genreSchema = z.string().trim().max(100);
 const coverUrlSchema = z.string().trim().max(2048);
 const pagesSchema = z.number().int().min(0).max(MAX_PAGE);
+const readingDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "日付はYYYY-MM-DD形式で指定してください")
+  .refine((value) => {
+    const date = new Date(`${value}T00:00:00.000Z`);
+    return (
+      !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+    );
+  }, "存在する日付を指定してください");
+const timeZoneSchema = z.string().trim().min(1).max(100);
 
 const progressRelation = ({
   currentPage,
@@ -55,6 +65,7 @@ export const ProgressUpdateSchema = z
   .object({
     delta: z.number().int().min(-MAX_PAGE).max(MAX_PAGE).optional(),
     page: pagesSchema.optional(),
+    readingTimezone: timeZoneSchema.optional(),
   })
   .refine(({ delta, page }) => (delta === undefined) !== (page === undefined), {
     message: "deltaまたはpageのどちらか一方を指定してください",
@@ -64,3 +75,29 @@ export type CreateBookInput = z.infer<typeof CreateBookSchema>;
 export type UpdateBookInput = z.infer<typeof UpdateBookSchema>;
 export type NoteCreateInput = z.infer<typeof NoteCreateSchema>;
 export type ProgressUpdateInput = z.infer<typeof ProgressUpdateSchema>;
+
+export const ReadingLogUpdateSchema = z.object({
+  pagesRead: pagesSchema,
+  readingDay: z
+    .number()
+    .int()
+    .refine(Number.isSafeInteger)
+    .nullable()
+    .optional(),
+  readingTimezoneRevision: z
+    .number()
+    .int()
+    .min(0)
+    .refine(Number.isSafeInteger)
+    .nullable()
+    .optional(),
+});
+
+export const ReadingLogDateSchema = z.object({ date: readingDateSchema });
+
+export const ReadingTimezoneSchema = z.object({
+  readingTimezone: timeZoneSchema,
+});
+
+export type ReadingLogUpdateInput = z.infer<typeof ReadingLogUpdateSchema>;
+export type ReadingTimezoneInput = z.infer<typeof ReadingTimezoneSchema>;

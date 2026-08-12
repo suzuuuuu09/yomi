@@ -19,6 +19,7 @@ export interface Book {
   coverUrl: string;
   registeredAt: string;
   completedAt: string | null;
+  archivedAt: string | null;
   position: [number, number, number];
   brightness: number;
   color: string;
@@ -26,6 +27,21 @@ export interface Book {
 }
 
 export interface ReadingLog {
+  id: string;
   date: string;
   pagesRead: number;
+  readingDay?: number | null;
+  readingTimezoneRevision?: number;
+}
+
+export interface ReadingDay {
+  date: string;
+  pagesRead: number;
+  readingDay?: number;
+}
+
+export interface ReadingStats {
+  days: ReadingDay[];
+  streak: number;
+  readingTimezone: string | null;
 }

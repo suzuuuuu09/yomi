@@ -32,7 +32,13 @@ const statsOverlayStyles = sva({
   },
 });
 
-export default function StatsOverlay({ books }: { books: Book[] }) {
+export default function StatsOverlay({
+  books,
+  readingStreak,
+}: {
+  books: Book[];
+  readingStreak: number;
+}) {
   // statsOverlayを表示しているかのストア
   const styles = statsOverlayStyles();
 
@@ -51,6 +57,8 @@ export default function StatsOverlay({ books }: { books: Book[] }) {
             {books.filter((b) => b.status === "completed").length}{" "}
             constellations
           </span>
+          <span className={styles.divider} />
+          <span>{readingStreak} day streak</span>
         </Row>
       </Card>
     </section>

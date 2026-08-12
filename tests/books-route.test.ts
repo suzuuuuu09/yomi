@@ -57,4 +57,36 @@ describe("books HTTP route", () => {
     expect(response.status).toBe(400);
     expect(vi.isMockFunction(fetch)).toBe(false);
   });
+
+  it("rejects an invalid reading timezone before a database lookup", async () => {
+    const response = await app.request("/api/reading-logs/settings", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-test-user": "user-1",
+      },
+      body: JSON.stringify({ readingTimezone: "Not/A/Timezone" }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "INVALID_REQUEST" },
+    });
+  });
+
+  it("rejects impossible dates when correcting a reading log", async () => {
+    const response = await app.request("/api/reading-logs/book-1/2026-02-30", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-test-user": "user-1",
+      },
+      body: JSON.stringify({ pagesRead: 10 }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "INVALID_REQUEST" },
+    });
+  });
 });

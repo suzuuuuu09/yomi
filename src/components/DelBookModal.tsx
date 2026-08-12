@@ -1,22 +1,51 @@
 "use client";
 
+import { useState } from "react";
 import { Box, Flex, styled as s } from "styled-system/jsx";
 import Modal from "@/components/shares/modal/Modal";
-import { useDelBook } from "@/hooks/useDelBook";
 
 interface DeleteBookModalProps {
   isOpen: boolean;
   bookId: string;
   onCloseAction: () => void;
-  onDeleteAction: (bookId: string) => void;
+  onArchiveAction: (bookId: string) => void;
+  onPermanentDeleteAction: (bookId: string) => void;
 }
 
 export default function DeleteBookModal(props: DeleteBookModalProps) {
-  const { isOpen, bookId, onCloseAction, onDeleteAction } = props;
-  const { handleDelete, handleCancel } = useDelBook(
-    onDeleteAction,
+  const {
+    isOpen,
+    bookId,
     onCloseAction,
+    onArchiveAction,
+    onPermanentDeleteAction,
+  } = props;
+  const [confirming, setConfirming] = useState<"archive" | "permanent" | null>(
+    null,
   );
+
+  const handleCancel = () => {
+    setConfirming(null);
+    onCloseAction();
+  };
+
+  const handleArchive = () => {
+    if (confirming !== "archive") {
+      setConfirming("archive");
+      return;
+    }
+    onArchiveAction(bookId);
+    setConfirming(null);
+  };
+
+  const handlePermanentDelete = () => {
+    if (confirming !== "permanent") {
+      setConfirming("permanent");
+      return;
+    }
+    onPermanentDeleteAction(bookId);
+    setConfirming(null);
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={handleCancel}>
@@ -29,9 +58,17 @@ export default function DeleteBookModal(props: DeleteBookModalProps) {
         animation="fadeIn 0.15s ease-out"
       >
         <s.p fontSize="xs" color="red.300" mb={3} textAlign="center">
-          この本を削除しますか？
+          {confirming === "permanent"
+            ? "本と読書履歴を完全削除しますか？"
+            : confirming === "archive"
+              ? "本をアーカイブしますか？"
+              : "この本をどうしますか？"}
           <br />
-          <s.span color="slate.500">この操作は取り消せません</s.span>
+          <s.span color="slate.500">
+            {confirming === "permanent"
+              ? "この操作は取り消せません"
+              : "アーカイブなら読書履歴を残して後から復元できます"}
+          </s.span>
         </s.p>
         <Flex gap={2}>
           <s.button
@@ -64,11 +101,28 @@ export default function DeleteBookModal(props: DeleteBookModalProps) {
             color="red.400"
             transition="all 0.15s"
             _hover={{ bg: "red.500/25", color: "red.300" }}
-            onClick={() => handleDelete(bookId)}
+            onClick={handleArchive}
           >
-            削除する
+            {confirming === "archive"
+              ? "もう一度押してアーカイブ"
+              : "アーカイブ"}
           </s.button>
         </Flex>
+        <s.button
+          type="button"
+          mt={2}
+          w="full"
+          py={2}
+          rounded="xl"
+          fontSize="10px"
+          color="red.400"
+          cursor="pointer"
+          onClick={handlePermanentDelete}
+        >
+          {confirming === "permanent"
+            ? "もう一度押して完全削除"
+            : "完全削除（復元できません）"}
+        </s.button>
       </Box>
     </Modal>
   );
