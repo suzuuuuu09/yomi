@@ -72,6 +72,42 @@ export async function getReadingSettings(
   return normalizeReadingSettings(row);
 }
 
+export async function getReadingLogCorrections(
+  db: Database,
+  input: {
+    bookId: string;
+    userId: string;
+    readingDay: number;
+  },
+) {
+  const rows = await db
+    .select({
+      id: readingLogs.id,
+      pagesRead: readingLogs.pagesRead,
+      date: readingLogs.date,
+      readingTimezoneRevision: readingLogs.readingTimezoneRevision,
+    })
+    .from(readingLogs)
+    .where(
+      and(
+        eq(readingLogs.bookId, input.bookId),
+        eq(readingLogs.userId, input.userId),
+        eq(readingLogs.readingDay, input.readingDay),
+      ),
+    );
+
+  // Prefer the newest timezone generation, then use a stable order for the
+  // remaining rows. A correction has no row identity, so this order keeps the
+  // current generation intact whenever possible while still allowing the
+  // correction to consume older generations when necessary.
+  return rows.sort(
+    (left, right) =>
+      right.readingTimezoneRevision - left.readingTimezoneRevision ||
+      right.date.localeCompare(left.date) ||
+      left.id.localeCompare(right.id),
+  );
+}
+
 async function readReadingSettingsRow(db: Database, userId: string) {
   const rows = await db
     .select({
@@ -83,43 +119,6 @@ async function readReadingSettingsRow(db: Database, userId: string) {
     .where(eq(user.id, userId))
     .limit(1);
   return rows[0] as ReadingSettingsRow | undefined;
-}
-
-export async function ensureReadingSettings(
-  db: Database,
-  userId: string,
-  candidate?: string,
-): Promise<ReadingSettings & { readingTimezone: string }> {
-  const raw = await readReadingSettingsRow(db, userId);
-  const saved = normalizeReadingSettings(raw);
-  if (saved.readingTimezone)
-    return saved as ReadingSettings & {
-      readingTimezone: string;
-    };
-
-  if (!candidate || !isValidTimeZone(candidate)) {
-    throw new MissingReadingTimezoneError();
-  }
-  const next = candidate;
-  const timezonePredicate = raw?.readingTimezone
-    ? eq(user.readingTimezone, raw.readingTimezone)
-    : isNull(user.readingTimezone);
-  const result = await db
-    .update(user)
-    .set({ readingTimezone: next, readingDayOffset: 0, updatedAt: new Date() })
-    .where(and(eq(user.id, userId), timezonePredicate));
-  if (changedRows(result) === 0) {
-    const current = await getReadingSettings(db, userId);
-    if (current.readingTimezone) {
-      return current as ReadingSettings & { readingTimezone: string };
-    }
-    throw new MissingReadingTimezoneError();
-  }
-  return {
-    readingTimezone: next,
-    readingDayOffset: 0,
-    readingTimezoneRevision: 0,
-  };
 }
 
 export async function saveReadingTimezone(
@@ -183,6 +182,7 @@ export function buildReadingLogDeltaQueries(
     readingTimezoneRevision: number;
   },
   applied: SQL,
+  correctionLogs: ReadonlyArray<{ id: string; pagesRead: number }> = [],
 ) {
   if (input.delta === 0) return [];
   const date = dateInTimeZone(input.now, input.timeZone);
@@ -208,35 +208,39 @@ export function buildReadingLogDeltaQueries(
   }
 
   // 制約上0ページの行を保持できないため、削除と残量減算を呼び出し元の
-  // D1 batchへ含め、進捗更新とまとめて原子的に適用する。
+  // D1 batchへ含め、進捗更新とまとめて原子的に適用する。タイムゾーン
+  // 世代をまたぐと同じ論理読書日に複数行が存在し得るため、先に読み取った
+  // 行へ訂正量を配分し、合計が0未満にならないようにする。
   const correction = Math.abs(input.delta);
-  const removeConsumedLog = db
-    .delete(readingLogs)
-    .where(
-      and(
-        eq(readingLogs.bookId, input.bookId),
-        eq(readingLogs.userId, input.userId),
-        eq(readingLogs.readingDay, readingDay),
-        eq(readingLogs.readingTimezoneRevision, input.readingTimezoneRevision),
-        eq(readingLogs.date, date),
-        applied,
-        sql`${readingLogs.pagesRead} <= ${correction}`,
-      ),
-    );
+  const queries = [];
+  let remaining = correction;
+  for (const log of correctionLogs) {
+    if (remaining <= 0) break;
+    const amount = Math.min(remaining, log.pagesRead);
+    if (amount <= 0) continue;
 
-  const subtractCorrection = db
-    .update(readingLogs)
-    .set({ pagesRead: sql`${readingLogs.pagesRead} + ${input.delta}` })
-    .where(
-      and(
-        eq(readingLogs.bookId, input.bookId),
-        eq(readingLogs.userId, input.userId),
-        eq(readingLogs.readingDay, readingDay),
-        eq(readingLogs.readingTimezoneRevision, input.readingTimezoneRevision),
-        eq(readingLogs.date, date),
-        applied,
-        sql`${readingLogs.pagesRead} > ${correction}`,
-      ),
+    const predicate = and(
+      eq(readingLogs.id, log.id),
+      eq(readingLogs.bookId, input.bookId),
+      eq(readingLogs.userId, input.userId),
+      eq(readingLogs.pagesRead, log.pagesRead),
+      applied,
     );
-  return [removeConsumedLog, subtractCorrection];
+    if (amount === log.pagesRead) {
+      queries.push(
+        db
+          .delete(readingLogs)
+          .where(and(predicate, sql`${readingLogs.pagesRead} <= ${amount}`)),
+      );
+    } else {
+      queries.push(
+        db
+          .update(readingLogs)
+          .set({ pagesRead: sql`${readingLogs.pagesRead} - ${amount}` })
+          .where(and(predicate, sql`${readingLogs.pagesRead} > ${amount}`)),
+      );
+    }
+    remaining -= amount;
+  }
+  return queries;
 }

@@ -6,6 +6,11 @@ Cloudflare D1 write statements should be treated as returning execution metadata
 **Cloudflare D1 atomic writes**
 With the repository's Drizzle D1 adapter, `db.transaction()` emits SQL `BEGIN`, which D1 rejects. Use D1/Drizzle `batch()` for related statements that must commit or roll back together, and use compare-and-set predicates when reads are needed before constructing the batch.
 
+When a batch is built from pre-read dependent rows, include each row's expected
+value in the primary mutation's compare-and-set predicate as well as in the
+dependent statements. This prevents a concurrent edit from applying the
+primary update while the dependent correction is skipped.
+
 *Avoid*: Calling Drizzle `db.transaction()` on a D1-backed database.
 
 **pnpm lifecycle build approvals**

@@ -427,59 +427,79 @@ function restoreBook(books: Book[], book: Book, index: number) {
   return withoutBook;
 }
 
-type ProgressRequest = { kind: "delta"; delta: number } | { kind: "page" };
+type ProgressRequest =
+  | { kind: "delta"; delta: number }
+  | { kind: "page"; page: number };
 
 const useLibraryStore = create<LibraryState>((set, get) => {
-  const mutateProgress = async (
-    bookId: string,
-    targetPage: number,
-    request: ProgressRequest,
-  ) => {
-    const book = get().books.find((item) => item.id === bookId);
-    if (!book) return;
+  const progressQueues = new Map<string, Promise<void>>();
 
-    const previous = book;
-    const revision = nextRevision(bookId);
-    const optimistic = progressBook(book, targetPage);
+  const mutateProgress = async (bookId: string, request: ProgressRequest) => {
+    const previous = progressQueues.get(bookId) ?? Promise.resolve();
+    const operation = previous
+      .catch(() => undefined)
+      .then(async () => {
+        const book = get().books.find((item) => item.id === bookId);
+        if (!book) return;
 
-    set((state) => ({
-      ...withLines(replaceBook(state.books, optimistic)),
-      lastError: null,
-    }));
+        const previousBook = book;
+        const targetPage =
+          request.kind === "delta"
+            ? book.currentPage + request.delta
+            : request.page;
+        const revision = nextRevision(bookId);
+        const optimistic = progressBook(book, targetPage);
 
+        set((state) => ({
+          ...withLines(replaceBook(state.books, optimistic)),
+          lastError: null,
+        }));
+
+        try {
+          const progressBody =
+            request.kind === "delta"
+              ? { delta: request.delta }
+              : { page: optimistic.currentPage };
+          const body = {
+            ...progressBody,
+            readingTimezone: get().readingTimezone ?? browserTimeZone(),
+          };
+          const data = await requestJson(
+            `${API_BASE}/${bookId}/progress`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            },
+            parseMutationBookResponse,
+          );
+          if (!isLatest(bookId, revision)) return;
+          set((state) => ({
+            ...withLines(replaceBook(state.books, data.book)),
+            lastError: null,
+          }));
+          void get().fetchReadingStats();
+          if (get().readingLogsByBookId[bookId]) {
+            void get().fetchReadingLogs(bookId);
+          }
+        } catch (error) {
+          if (!isLatest(bookId, revision)) return;
+          set((state) => ({
+            ...withLines(replaceBook(state.books, previousBook)),
+            lastError: getApiErrorMessage(
+              error,
+              "進捗を更新できませんでした。",
+            ),
+          }));
+        }
+      });
+    progressQueues.set(bookId, operation);
     try {
-      const progressBody =
-        request.kind === "delta"
-          ? { delta: request.delta }
-          : { page: optimistic.currentPage };
-      const body = {
-        ...progressBody,
-        readingTimezone: get().readingTimezone ?? browserTimeZone(),
-      };
-      const data = await requestJson(
-        `${API_BASE}/${bookId}/progress`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-        parseMutationBookResponse,
-      );
-      if (!isLatest(bookId, revision)) return;
-      set((state) => ({
-        ...withLines(replaceBook(state.books, data.book)),
-        lastError: null,
-      }));
-      void get().fetchReadingStats();
-      if (get().readingLogsByBookId[bookId]) {
-        void get().fetchReadingLogs(bookId);
+      await operation;
+    } finally {
+      if (progressQueues.get(bookId) === operation) {
+        progressQueues.delete(bookId);
       }
-    } catch (error) {
-      if (!isLatest(bookId, revision)) return;
-      set((state) => ({
-        ...withLines(replaceBook(state.books, previous)),
-        lastError: getApiErrorMessage(error, "進捗を更新できませんでした。"),
-      }));
     }
   };
 
@@ -829,18 +849,13 @@ const useLibraryStore = create<LibraryState>((set, get) => {
     },
 
     updatePageProgress: async (bookId, delta) => {
-      const book = get().books.find((item) => item.id === bookId);
-      if (!book || !Number.isInteger(delta)) return;
-      await mutateProgress(bookId, book.currentPage + delta, {
-        kind: "delta",
-        delta,
-      });
+      if (!Number.isInteger(delta)) return;
+      await mutateProgress(bookId, { kind: "delta", delta });
     },
 
     setPageProgress: async (bookId, page) => {
-      const book = get().books.find((item) => item.id === bookId);
-      if (!book || !Number.isInteger(page)) return;
-      await mutateProgress(bookId, page, { kind: "page" });
+      if (!Number.isInteger(page)) return;
+      await mutateProgress(bookId, { kind: "page", page });
     },
 
     addNote: async (bookId, content, page) => {

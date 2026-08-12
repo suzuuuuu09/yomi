@@ -80,7 +80,7 @@ describe("useLibraryStore progress actions", () => {
     expect(useLibraryStore.getState().books[0].currentPage).toBe(11);
   });
 
-  it("does not let an older response overwrite a newer progress response", async () => {
+  it("serializes progress requests for the same book", async () => {
     resetStore();
     const pending: Array<{
       resolve: (value: Response) => void;
@@ -96,10 +96,18 @@ describe("useLibraryStore progress actions", () => {
     const first = useLibraryStore.getState().updatePageProgress("book-1", 1);
     const second = useLibraryStore.getState().updatePageProgress("book-1", 1);
 
-    pending[1].resolve(response({ ...baseBook, currentPage: 12 }));
-    await second;
+    for (let attempt = 0; attempt < 5 && pending.length < 1; attempt += 1) {
+      await Promise.resolve();
+    }
+    expect(pending).toHaveLength(1);
     pending[0].resolve(response({ ...baseBook, currentPage: 11 }));
     await first;
+    for (let attempt = 0; attempt < 5 && pending.length < 2; attempt += 1) {
+      await Promise.resolve();
+    }
+    expect(pending).toHaveLength(2);
+    pending[1].resolve(response({ ...baseBook, currentPage: 12 }));
+    await second;
 
     expect(useLibraryStore.getState().books[0].currentPage).toBe(12);
   });

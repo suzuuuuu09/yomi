@@ -4,10 +4,15 @@ import { apiError } from "@/server/lib/api-error";
 import { toBookResponse } from "@/server/lib/book-response";
 import { pageToStatus, resolveCompletedAt } from "@/server/lib/book-status";
 import { getDBFromContext } from "@/server/lib/db";
-import { isValidTimeZone } from "@/server/lib/reading-log";
+import {
+  dateInTimeZone,
+  dateToDayNumber,
+  isValidTimeZone,
+} from "@/server/lib/reading-log";
 import {
   buildReadingLogDeltaQueries,
-  ensureReadingSettings,
+  getReadingLogCorrections,
+  getReadingSettings,
   MissingReadingTimezoneError,
   type ReadingSettings,
 } from "@/server/lib/reading-log-db";
@@ -24,7 +29,7 @@ import {
   ProgressUpdateSchema,
   UpdateBookSchema,
 } from "@/server/schemas/books";
-import { books, readingNotes } from "@/server/schemas/db";
+import { books, readingLogs, readingNotes, user } from "@/server/schemas/db";
 import type { AppEnv } from "@/server/types";
 
 const booksApp = new OpenAPIHono<AppEnv>();
@@ -94,12 +99,18 @@ function uniqueOperationTimestamp(now: Date) {
   return `${now.toISOString().slice(0, -1)}${suffix}Z`;
 }
 
+class ProgressPageOutOfRangeError extends Error {
+  constructor() {
+    super("Progress page exceeds the current total pages");
+    this.name = "ProgressPageOutOfRangeError";
+  }
+}
+
 async function updateProgressAndReadingLog(
   db: Database,
   userId: string,
   bookId: string,
-  input: { delta?: number; page?: number },
-  settings: ReadingSettings & { readingTimezone: string },
+  input: { delta?: number; page?: number; readingTimezone?: string },
   nowDate: Date,
 ) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -107,6 +118,31 @@ async function updateProgressAndReadingLog(
       activeOnly: true,
     });
     if (!current) return null;
+
+    const savedSettings = await getReadingSettings(db, userId);
+    let settings: ReadingSettings & { readingTimezone: string };
+    let initializeSettings = false;
+    if (savedSettings.readingTimezone) {
+      settings = savedSettings as ReadingSettings & {
+        readingTimezone: string;
+      };
+    } else {
+      if (!input.readingTimezone) throw new MissingReadingTimezoneError();
+      settings = {
+        readingTimezone: input.readingTimezone,
+        readingDayOffset: 0,
+        readingTimezoneRevision: 0,
+      };
+      initializeSettings = true;
+    }
+
+    if (
+      input.page !== undefined &&
+      current.book.totalPages > 0 &&
+      input.page > current.book.totalPages
+    ) {
+      throw new ProgressPageOutOfRangeError();
+    }
 
     const targetPage =
       input.delta === undefined
@@ -121,7 +157,49 @@ async function updateProgressAndReadingLog(
               : current.book.currentPage + input.delta,
           );
     const delta = targetPage - current.book.currentPage;
-    if (delta === 0) return { current, delta: 0 };
+    const readingDate = dateInTimeZone(nowDate, settings.readingTimezone);
+    const readingDay = dateToDayNumber(readingDate) + settings.readingDayOffset;
+    const correctionLogs =
+      delta < 0
+        ? await getReadingLogCorrections(db, {
+            bookId,
+            userId,
+            readingDay,
+          })
+        : [];
+
+    const initializeSettingsQuery = initializeSettings
+      ? db
+          .update(user)
+          .set({
+            readingTimezone: settings.readingTimezone,
+            readingDayOffset: 0,
+            readingTimezoneRevision: 0,
+            updatedAt: nowDate,
+          })
+          .where(
+            and(
+              eq(user.id, userId),
+              isNull(user.readingTimezone),
+              eq(user.readingDayOffset, savedSettings.readingDayOffset),
+              eq(
+                user.readingTimezoneRevision,
+                savedSettings.readingTimezoneRevision,
+              ),
+            ),
+          )
+      : null;
+
+    if (delta === 0) {
+      if (initializeSettingsQuery) {
+        await db.batch([initializeSettingsQuery]);
+        const updated = await readBookWithNotes(db, userId, bookId, {
+          activeOnly: true,
+        });
+        return updated ? { current: updated, delta: 0 } : null;
+      }
+      return { current, delta: 0 };
+    }
 
     const status = pageToStatus(targetPage, current.book.totalPages);
     const now = uniqueOperationTimestamp(nowDate);
@@ -152,6 +230,37 @@ async function updateProgressAndReadingLog(
           eq(books.totalPages, current.book.totalPages),
           eq(books.genre, current.book.genre),
           eq(books.status, current.book.status),
+          exists(
+            db
+              .select({ id: user.id })
+              .from(user)
+              .where(
+                and(
+                  eq(user.id, userId),
+                  eq(user.readingTimezone, settings.readingTimezone),
+                  eq(user.readingDayOffset, settings.readingDayOffset),
+                  eq(
+                    user.readingTimezoneRevision,
+                    settings.readingTimezoneRevision,
+                  ),
+                ),
+              ),
+          ),
+          ...correctionLogs.map((log) =>
+            exists(
+              db
+                .select({ id: readingLogs.id })
+                .from(readingLogs)
+                .where(
+                  and(
+                    eq(readingLogs.id, log.id),
+                    eq(readingLogs.bookId, bookId),
+                    eq(readingLogs.userId, userId),
+                    eq(readingLogs.pagesRead, log.pagesRead),
+                  ),
+                ),
+            ),
+          ),
         ),
       );
     const applied = exists(
@@ -179,8 +288,12 @@ async function updateProgressAndReadingLog(
         readingTimezoneRevision: settings.readingTimezoneRevision,
       },
       applied,
+      correctionLogs,
     );
-    const [result] = await db.batch([updateBook, ...logQueries]);
+    const results = initializeSettingsQuery
+      ? await db.batch([initializeSettingsQuery, updateBook, ...logQueries])
+      : await db.batch([updateBook, ...logQueries]);
+    const result = results[initializeSettingsQuery ? 1 : 0];
     const changes = (result as { meta?: { changes?: number } } | undefined)
       ?.meta?.changes;
     if (changes === undefined || changes === 1) {
@@ -392,13 +505,11 @@ booksApp.post("/:id/progress", async (c) => {
   const nowDate = new Date();
   let progress: Awaited<ReturnType<typeof updateProgressAndReadingLog>>;
   try {
-    const settings = await ensureReadingSettings(db, user.id, readingTimezone);
     progress = await updateProgressAndReadingLog(
       db,
       user.id,
       bookId,
-      { delta, page },
-      settings,
+      { delta, page, readingTimezone },
       nowDate,
     );
   } catch (error) {
@@ -408,6 +519,14 @@ booksApp.post("/:id/progress", async (c) => {
         400,
         "INVALID_REQUEST",
         "初回の進捗更新には読書タイムゾーンが必要です",
+      );
+    }
+    if (error instanceof ProgressPageOutOfRangeError) {
+      return apiError(
+        c,
+        400,
+        "INVALID_REQUEST",
+        "ページ数は総ページ数以下で指定してください",
       );
     }
     console.error("Book progress update failed", error);
