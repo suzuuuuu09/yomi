@@ -8,7 +8,8 @@
     {
       "binding": "yomi_db",
       "database_name": "yomi-db",
-      "database_id": "0652fb68-4d3e-4fab-bc93-e2f5ed717389"
+      "database_id": "0652fb68-4d3e-4fab-bc93-e2f5ed717389",
+      "migrations_dir": "drizzle"
     }
   ]
 }

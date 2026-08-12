@@ -5,3 +5,6 @@ Cloudflare D1 write statements should be treated as returning execution metadata
 
 **pnpm lifecycle build approvals**
 With pnpm 11, every dependency listed under `allowBuilds` must have an explicit boolean value. Placeholder values such as `set this to true or false` make a clean `pnpm install --frozen-lockfile` fail with `ERR_PNPM_IGNORED_BUILDS`. Keep native dependencies that the application needs, such as `better-sqlite3`, explicitly allowed and keep unused transitive tooling dependencies explicitly denied.
+
+**D1 migration execution**
+The checked-in D1 migrations live in `drizzle/`, so the D1 binding in `wrangler.jsonc` must set `migrations_dir` to `drizzle`. `pnpm dev` does not apply migrations automatically; run `pnpm db:migrate:local` before using a schema change locally. Legacy D1 instances initialized with SQL files may lack Wrangler's migration ledger; `scripts/migrate-d1.sh` bootstraps the baseline entry when its tables are present and later entries only when their final schema is already present before applying the remaining migrations.

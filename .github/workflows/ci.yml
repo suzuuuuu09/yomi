@@ -31,6 +31,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Apply local D1 migrations
+        run: pnpm db:migrate:local
+
+      - name: Verify local D1 schema
+        run: pnpm db:check-schema:local
+
       - name: Typecheck
         run: pnpm typecheck
 
