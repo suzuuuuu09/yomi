@@ -41,7 +41,7 @@ export default function AppLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
+    <html lang="ja" data-yomi-theme="dark">
       <body className={`${firaCode.variable} ${firaSans.variable}`}>
         {children}
       </body>

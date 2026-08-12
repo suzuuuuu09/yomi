@@ -2,3 +2,75 @@
 
 @import "../lib/liftkit/css/liftkitvars.css";
 @import "../lib/liftkit/css/typography.css";
+
+/*
+ * YOMi's product surfaces intentionally use a dark, cosmic theme. LiftKit's
+ * semantic tokens follow prefers-color-scheme by default, which made glass
+ * cards switch to light surfaces when the operating system used light mode.
+ * Keep the app's visual contract explicit while leaving LiftKit reusable for
+ * other consumers.
+ */
+html[data-yomi-theme="dark"] {
+  color-scheme: dark;
+
+  --lk-onprimary: var(--dark__onprimary_lkv);
+  --lk-primarycontainer: var(--dark__primarycontainer_lkv);
+  --lk-onprimarycontainer: var(--dark__onprimarycontainer_lkv);
+  --lk-secondary: var(--dark__secondary_lkv);
+  --lk-onsecondary: var(--dark__onsecondary_lkv);
+  --lk-secondarycontainer: var(--dark__secondarycontainer_lkv);
+  --lk-onsecondarycontainer: var(--dark__onsecondarycontainer_lkv);
+  --lk-tertiary: var(--dark__tertiary_lkv);
+  --lk-ontertiary: var(--dark__ontertiary_lkv);
+  --lk-tertiarycontainer: var(--dark__tertiarycontainer_lkv);
+  --lk-ontertiarycontainer: var(--dark__ontertiarycontainer_lkv);
+  --lk-onerror: var(--dark__onerror_lkv);
+  --lk-errorcontainer: var(--dark__errorcontainer_lkv);
+  --lk-onerrorcontainer: var(--dark__onerrorcontainer_lkv);
+  --lk-background: var(--dark__background_lkv);
+  --lk-onbackground: var(--dark__onbackground_lkv);
+  --lk-surface: var(--dark__surface_lkv);
+  --lk-onsurface: var(--dark__onsurface_lkv);
+  --lk-onsurfacevariant: var(--dark__onsurfacevariant_lkv);
+  --lk-surfacevariant: var(--dark__surfacevariant_lkv);
+  --lk-shadow: var(--dark__shadow_lkv);
+  --lk-inversesurface: var(--dark__inversesurface_lkv);
+  --lk-scrim: var(--dark__scrim_lkv);
+  --lk-inverseonsurface: var(--dark__inverseonsurface_lkv);
+  --lk-inverseprimary: var(--dark__inverseprimary_lkv);
+  --lk-success: var(--dark__success_lkv);
+  --lk-onsuccess: var(--dark__onsuccess_lkv);
+  --lk-successcontainer: var(--dark__successcontainer_lkv);
+  --lk-onsuccesscontainer: var(--dark__onsuccesscontainer_lkv);
+  --lk-warning: var(--dark__warning_lkv);
+  --lk-onwarning: var(--dark__onwarning_lkv);
+  --lk-warningcontainer: var(--dark__warningcontainer_lkv);
+  --lk-onwarningcontainer: var(--dark__onwarningcontainer_lkv);
+  --lk-info: var(--dark__info_lkv);
+  --lk-oninfo: var(--dark__oninfo_lkv);
+  --lk-infocontainer: var(--dark__infocontainer_lkv);
+  --lk-oninfocontainer: var(--dark__oninfocontainer_lkv);
+  --lk-primaryfixed: var(--dark__primaryfixed_lkv);
+  --lk-onprimaryfixed: var(--dark__onprimaryfixed_lkv);
+  --lk-primaryfixeddim: var(--dark__primaryfixeddim_lkv);
+  --lk-onprimaryfixedvariant: var(--dark__onprimaryfixedvariant_lkv);
+  --lk-secondaryfixed: var(--dark__secondaryfixed_lkv);
+  --lk-secondaryfixeddim: var(--dark__secondaryfixeddim_lkv);
+  --lk-onsecondaryfixed: var(--dark__onsecondaryfixed_lkv);
+  --lk-onsecondaryfixedvariant: var(--dark__onsecondaryfixedvariant_lkv);
+  --lk-tertiaryfixed: var(--dark__tertiaryfixed_lkv);
+  --lk-ontertiaryfixed: var(--dark__ontertiaryfixed_lkv);
+  --lk-tertiaryfixeddim: var(--dark__tertiaryfixeddim_lkv);
+  --lk-ontertiaryfixedvariant: var(--dark__ontertiaryfixedvariant_lkv);
+  --lk-surfacedim: var(--dark__surfacedim_lkv);
+  --lk-surfacebright: var(--dark__surfacebright_lkv);
+  --lk-surfacecontainerlowest: var(--dark__surfacecontainerlowest_lkv);
+  --lk-surfacecontainer: var(--dark__surfacecontainer_lkv);
+  --lk-surfacecontainerhigh: var(--dark__surfacecontainerhigh_lkv);
+  --lk-surfacecontainerhighest: var(--dark__surfacecontainerhighest_lkv);
+  --lk-surfacecontainerlow: var(--dark__surfacecontainerlow_lkv);
+  --lk-outlinevariant: var(--dark__outlinevariant_lkv);
+  --lk-outline: var(--dark__outline_lkv);
+  --lk-error: var(--dark__error_lkv);
+  --lk-primary: var(--dark__primary_lkv);
+}

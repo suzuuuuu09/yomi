@@ -222,4 +222,12 @@
   }
 }
 
+/* YOMi keeps its cosmic surfaces dark even when the OS is in light mode. */
+html[data-yomi-theme="dark"]
+  [data-lk-component="card"][data-lk-card-material="glass"]
+  [data-lk-slot="children"] {
+  mix-blend-mode: plus-lighter;
+  color: var(--lk-onsurface);
+}
+
 /* TODO: Consider adding a 'tint' prop which would let you combine frosted glass effects with a slight color */
