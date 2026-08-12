@@ -67,10 +67,10 @@ importers:
         version: 9.7.0(@types/react@19.2.14)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(three@0.183.2)
       '@zxing/browser':
         specifier: ^0.2.0
-        version: 0.2.1(@zxing/library@0.21.3)
+        version: 0.2.1(@zxing/library@0.23.0)
       '@zxing/library':
-        specifier: ^0.21.3
-        version: 0.21.3
+        specifier: ^0.23.0
+        version: 0.23.0
       better-auth:
         specifier: ^1.6.25
         version: 1.6.25(e2c2d25bb21370d9c0e3dffb96d080c7)
@@ -1489,9 +1489,9 @@ packages:
     peerDependencies:
       '@zxing/library': ^0.23.0
 
-  '@zxing/library@0.21.3':
-    resolution: {integrity: sha512-hZHqFe2JyH/ZxviJZosZjV+2s6EDSY0O24R+FQmlWZBZXP9IqMo7S3nb3+2LBWxodJQkSurdQGnqE7KXqrYgow==}
-    engines: {node: '>= 10.4.0'}
+  '@zxing/library@0.23.0':
+    resolution: {integrity: sha512-6fkkoFwP8CHxl6ugnPsj74PLJgX2iRv5zczGAyt5OBzQgxFhuhF0NCEc4t4OvSr8xAv2MRLlI0Iu9ZGDZQ2urA==}
+    engines: {node: '>= 24.0.0'}
 
   '@zxing/text-encoding@0.9.0':
     resolution: {integrity: sha512-U/4aVJ2mxI0aDNI8Uq0wEhMgY+u4CNtEb0om3+y3+niDAsoTCOB33UF0sxpzqzdqXLqmvc+vZyAt4O8pPdfkwA==}
@@ -4439,13 +4439,13 @@ snapshots:
 
   '@webgpu/types@0.1.69': {}
 
-  '@zxing/browser@0.2.1(@zxing/library@0.21.3)':
+  '@zxing/browser@0.2.1(@zxing/library@0.23.0)':
     dependencies:
-      '@zxing/library': 0.21.3
+      '@zxing/library': 0.23.0
     optionalDependencies:
       '@zxing/text-encoding': 0.9.0
 
-  '@zxing/library@0.21.3':
+  '@zxing/library@0.23.0':
     dependencies:
       ts-custom-error: 3.3.1
     optionalDependencies:
@@ -4884,9 +4884,9 @@ snapshots:
     dependencies:
       reusify: 1.1.0
 
-  fdir@6.5.0(picomatch@4.0.4):
+  fdir@6.5.0(picomatch@4.0.5):
     optionalDependencies:
-      picomatch: 4.0.4
+      picomatch: 4.0.5
 
   fflate@0.6.10: {}
 
@@ -5759,8 +5759,8 @@ snapshots:
 
   tinyglobby@0.2.17:
     dependencies:
-      fdir: 6.5.0(picomatch@4.0.4)
-      picomatch: 4.0.4
+      fdir: 6.5.0(picomatch@4.0.5)
+      picomatch: 4.0.5
 
   tinyrainbow@3.1.1: {}
 
