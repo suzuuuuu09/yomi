@@ -36,7 +36,7 @@ overrides:
   postcss@<=8.5.11: ^8.5.12
   postcss@<=8.5.17: ^8.5.18
   sharp@<0.35.0: ^0.35.0
-  undici@<6.23.0: ^6.23.0
+  undici@<6.23.0: ^7.29.0
   undici@<6.24.0: ^6.24.0
   undici@<6.27.0: ^6.27.0
   valibot@<=1.4.1: ^1.4.2
@@ -4884,9 +4884,9 @@ snapshots:
     dependencies:
       reusify: 1.1.0
 
-  fdir@6.5.0(picomatch@4.0.4):
+  fdir@6.5.0(picomatch@4.0.5):
     optionalDependencies:
-      picomatch: 4.0.4
+      picomatch: 4.0.5
 
   fflate@0.6.10: {}
 
@@ -5759,8 +5759,8 @@ snapshots:
 
   tinyglobby@0.2.17:
     dependencies:
-      fdir: 6.5.0(picomatch@4.0.4)
-      picomatch: 4.0.4
+      fdir: 6.5.0(picomatch@4.0.5)
+      picomatch: 4.0.5
 
   tinyrainbow@3.1.1: {}
 
