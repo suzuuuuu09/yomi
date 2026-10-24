@@ -19,10 +19,8 @@ export function useAddBook(
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<BookInfoValues>(EMPTY_FORM);
 
-  const setField =
-    (key: keyof BookInfoValues) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  const setField = (key: keyof BookInfoValues, value: string) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
 
   const handleSelectResult = (book: BookSearchResult) => {
     store.setSelectedResult(book);

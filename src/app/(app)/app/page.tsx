@@ -133,7 +133,6 @@ function ObservatoryContent() {
   const clearNewlyAdded = useLibraryStore((s) => s.clearNewlyAdded);
   const lastError = useLibraryStore((s) => s.lastError);
   const clearMutationError = useLibraryStore((s) => s.clearMutationError);
-  const isBottomDockVisible = useLibraryStore((s) => s.isBottomDockVisible);
   const readingStreak = useLibraryStore((s) => s.readingStats.streak);
 
   const [vrMode, setVrMode] = useState(false);
@@ -157,6 +156,7 @@ function ObservatoryContent() {
   const { updatePageProgress, setSelectedBook } = useLibraryStore();
 
   const nowReading = books.filter((b) => b.status === "reading");
+  const isBottomDockVisible = nowReading.length > 0;
 
   return (
     <s.main position="relative" w="screen" h="screen" overflow="hidden">

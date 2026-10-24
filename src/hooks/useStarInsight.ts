@@ -11,7 +11,7 @@ export function useStarInsight() {
     setPageProgress,
     addNote,
     deleteNote,
-    deleteBook,
+    archiveBook,
     readingStats,
     readingLogsByBookId,
     fetchReadingLogs,
@@ -34,7 +34,7 @@ export function useStarInsight() {
     onPageSet: setPageProgress,
     onAddNote: addNote,
     onDeleteNote: deleteNote,
-    onDeleteBook: deleteBook,
+    onArchiveBook: archiveBook,
     onPermanentlyDeleteBook: permanentlyDeleteBook,
     readingStats,
     readingLogs: selectedBookId

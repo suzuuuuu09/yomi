@@ -1,10 +1,8 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import { useEffect } from "react";
 import { css, cx } from "styled-system/css";
 import { Box, Flex, HStack, Stack } from "styled-system/jsx";
-import useLibraryStore from "@/store/useLibraryStore";
 import type { Book } from "@/types/library";
 import Card from "~liftkit/card";
 import Text from "~liftkit/text";
@@ -158,12 +156,6 @@ export default function BottomDock({
   onQuickAdd,
   onBookClick,
 }: BottomDockProps) {
-  const setBottomDockVisible = useLibraryStore((s) => s.setBottomDockVisible);
-
-  useEffect(() => {
-    setBottomDockVisible(nowReading.length > 0);
-  }, [nowReading.length, setBottomDockVisible]);
-
   if (nowReading.length === 0) return null;
 
   return (

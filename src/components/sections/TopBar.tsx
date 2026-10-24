@@ -15,56 +15,6 @@ import Column from "~liftkit/column";
 import Row from "~liftkit/row";
 import TextInput from "~liftkit/text-input";
 
-function SearchOverlay({
-  query,
-  setQuery,
-}: {
-  query: string;
-  setQuery: (q: string) => void;
-}) {
-  return (
-    <Box
-      position="fixed"
-      inset="0"
-      bg="gray.950/95"
-      backdropFilter="blur(12px)"
-      border="1px solid"
-      borderColor="indigo.500/20"
-      rounded="2xl"
-      p="3"
-      zIndex="50"
-    >
-      <Flex gap="2" align="center">
-        <Box flex={1}>
-          <TextInput
-            labelPosition="on-input"
-            name=""
-            placeholder="星を検索..."
-            endIcon={query ? "x" : "search"}
-            value={query}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setQuery(e.target.value)
-            }
-            onEndIconClick={query ? () => setQuery("") : undefined}
-          />
-        </Box>
-        <s.button
-          type="button"
-          onClick={() => setQuery("")}
-          px="3"
-          py="2"
-          rounded="xl"
-          color="slate.400"
-          fontSize="sm"
-          flexShrink={0}
-        >
-          キャンセル
-        </s.button>
-      </Flex>
-    </Box>
-  );
-}
-
 export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
   const { activeFilter, query, setFilter, setQuery, clearSearch } =
     useLibraryFilterStore();

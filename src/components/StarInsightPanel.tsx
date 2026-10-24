@@ -633,7 +633,7 @@ export default function StarInsightPanel({
   onPageSet,
   onAddNote,
   onDeleteNote,
-  onDeleteBook,
+  onArchiveBook,
   onPermanentlyDeleteBook,
   readingStats,
   readingLogs,
@@ -651,7 +651,7 @@ export default function StarInsightPanel({
     page: number | null,
   ) => Promise<boolean>;
   onDeleteNote: (bookId: string, noteId: string) => void;
-  onDeleteBook: (bookId: string) => void;
+  onArchiveBook: (bookId: string) => void;
   onPermanentlyDeleteBook: (bookId: string) => void;
   readingStats: ReadingStats;
   readingLogs: ReadingLog[];
@@ -708,7 +708,7 @@ export default function StarInsightPanel({
         bookId={book.id}
         onCloseAction={() => setIsDelOpen(false)}
         onArchiveAction={(id) => {
-          onDeleteBook(id);
+          onArchiveBook(id);
           setIsDelOpen(false);
           onClose();
         }}

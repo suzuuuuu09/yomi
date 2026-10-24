@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { css } from "styled-system/css";
-import { Box, Flex, Stack, styled as s } from "styled-system/jsx";
+import { Box, Flex, Stack } from "styled-system/jsx";
 import StatusBadge from "@/components/shares/badge/StatusBadge";
 import CloseButton from "@/components/shares/CloseButton";
 import FilterTabs from "@/components/shares/FilterTabs";
+import { useBookCount } from "@/hooks/useBookCount";
 import { useBookList } from "@/hooks/useBookList";
 import useBookListStore from "@/store/useBookListStore";
 import useLibraryStore from "@/store/useLibraryStore";
@@ -141,15 +142,7 @@ export default function BookListDrawer() {
     return result;
   }, [books, filter, query]);
 
-  const counts = useMemo(
-    () => ({
-      all: books.length,
-      reading: books.filter((b) => b.status === "reading").length,
-      unread: books.filter((b) => b.status === "unread").length,
-      completed: books.filter((b) => b.status === "completed").length,
-    }),
-    [books],
-  );
+  const counts = useBookCount();
 
   if (!isOpen) return null;
 

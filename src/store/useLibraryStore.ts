@@ -51,7 +51,6 @@ interface LibraryState {
   lastError: string | null;
   selectedBookId: string | null;
   newlyAddedBookId: string | null;
-  isBottomDockVisible: boolean;
   clearNewlyAdded: () => void;
   clearMutationError: () => void;
   fetchBooks: () => Promise<void>;
@@ -62,7 +61,6 @@ interface LibraryState {
   addBook: (partial: Partial<Book>) => Promise<boolean>;
   updateBook: (bookId: string, updates: Partial<Book>) => Promise<void>;
   archiveBook: (bookId: string) => Promise<void>;
-  deleteBook: (bookId: string) => Promise<void>;
   restoreBook: (bookId: string) => Promise<void>;
   permanentlyDeleteBook: (bookId: string) => Promise<void>;
   setSelectedBook: (book: Book | null) => void;
@@ -87,7 +85,6 @@ interface LibraryState {
     readingDay?: number | null,
     readingTimezoneRevision?: number,
   ) => Promise<void>;
-  setBottomDockVisible: (visible: boolean) => void;
 }
 
 const latestRevision = new Map<string, number>();
@@ -405,76 +402,75 @@ type ProgressRequest =
   | { kind: "page"; page: number };
 
 const useLibraryStore = create<LibraryState>((set, get) => {
-  const progressQueues = new Map<string, Promise<void>>();
+  const bookQueues = new Map<string, Promise<void>>();
 
-  const mutateProgress = async (bookId: string, request: ProgressRequest) => {
-    const previous = progressQueues.get(bookId) ?? Promise.resolve();
-    const operation = previous
-      .catch(() => undefined)
-      .then(async () => {
-        const book = get().books.find((item) => item.id === bookId);
-        if (!book) return;
-
-        const previousBook = book;
-        const targetPage =
-          request.kind === "delta"
-            ? book.currentPage + request.delta
-            : request.page;
-        const revision = nextRevision(bookId);
-        const optimistic = progressBook(book, targetPage);
-
-        set((state) => ({
-          ...withLines(replaceBook(state.books, optimistic)),
-          lastError: null,
-        }));
-
-        try {
-          const progressBody =
-            request.kind === "delta"
-              ? { delta: request.delta }
-              : { page: optimistic.currentPage };
-          const body = {
-            ...progressBody,
-            readingTimezone: get().readingTimezone ?? browserTimeZone(),
-          };
-          const data = await requestJson(
-            `${API_BASE}/${bookId}/progress`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(body),
-            },
-            parseMutationBookResponse,
-          );
-          if (!isLatest(bookId, revision)) return;
-          set((state) => ({
-            ...withLines(replaceBook(state.books, data.book)),
-            lastError: null,
-          }));
-          void get().fetchReadingStats();
-          if (get().readingLogsByBookId[bookId]) {
-            void get().fetchReadingLogs(bookId);
-          }
-        } catch (error) {
-          if (!isLatest(bookId, revision)) return;
-          set((state) => ({
-            ...withLines(replaceBook(state.books, previousBook)),
-            lastError: getApiErrorMessage(
-              error,
-              "進捗を更新できませんでした。",
-            ),
-          }));
-        }
-      });
-    progressQueues.set(bookId, operation);
+  const queueBookMutation = async (
+    bookId: string,
+    mutate: () => Promise<void>,
+  ) => {
+    const previous = bookQueues.get(bookId) ?? Promise.resolve();
+    const operation = previous.catch(() => undefined).then(mutate);
+    bookQueues.set(bookId, operation);
     try {
       await operation;
     } finally {
-      if (progressQueues.get(bookId) === operation) {
-        progressQueues.delete(bookId);
-      }
+      if (bookQueues.get(bookId) === operation) bookQueues.delete(bookId);
     }
   };
+
+  const mutateProgress = (bookId: string, request: ProgressRequest) =>
+    queueBookMutation(bookId, async () => {
+      const book = get().books.find((item) => item.id === bookId);
+      if (!book) return;
+
+      const previousBook = book;
+      const targetPage =
+        request.kind === "delta"
+          ? book.currentPage + request.delta
+          : request.page;
+      const revision = nextRevision(bookId);
+      const optimistic = progressBook(book, targetPage);
+
+      set((state) => ({
+        ...withLines(replaceBook(state.books, optimistic)),
+        lastError: null,
+      }));
+
+      try {
+        const progressBody =
+          request.kind === "delta"
+            ? { delta: request.delta }
+            : { page: optimistic.currentPage };
+        const body = {
+          ...progressBody,
+          readingTimezone: get().readingTimezone ?? browserTimeZone(),
+        };
+        const data = await requestJson(
+          `${API_BASE}/${bookId}/progress`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          },
+          parseMutationBookResponse,
+        );
+        if (!isLatest(bookId, revision)) return;
+        set((state) => ({
+          ...withLines(replaceBook(state.books, data.book)),
+          lastError: null,
+        }));
+        void get().fetchReadingStats();
+        if (get().readingLogsByBookId[bookId]) {
+          void get().fetchReadingLogs(bookId);
+        }
+      } catch (error) {
+        if (!isLatest(bookId, revision)) return;
+        set((state) => ({
+          ...withLines(replaceBook(state.books, previousBook)),
+          lastError: getApiErrorMessage(error, "進捗を更新できませんでした。"),
+        }));
+      }
+    });
 
   return {
     books: [],
@@ -668,44 +664,45 @@ const useLibraryStore = create<LibraryState>((set, get) => {
       }
     },
 
-    updateBook: async (bookId, updates) => {
-      const previous = get().books.find((book) => book.id === bookId);
-      if (!previous) return;
-      const revision = nextRevision(bookId);
-      const payload = toUpdatePayload(updates);
+    updateBook: (bookId, updates) =>
+      queueBookMutation(bookId, async () => {
+        const previous = get().books.find((book) => book.id === bookId);
+        if (!previous) return;
+        const revision = nextRevision(bookId);
+        const payload = toUpdatePayload(updates);
 
-      set((state) => ({
-        ...withLines(
-          state.books.map((book) =>
-            book.id === bookId ? { ...book, ...payload } : book,
-          ),
-        ),
-        lastError: null,
-      }));
-
-      try {
-        const data = await requestJson(
-          `${API_BASE}/${bookId}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          },
-          parseMutationBookResponse,
-        );
-        if (!isLatest(bookId, revision)) return;
         set((state) => ({
-          ...withLines(replaceBook(state.books, data.book)),
+          ...withLines(
+            state.books.map((book) =>
+              book.id === bookId ? { ...book, ...payload } : book,
+            ),
+          ),
           lastError: null,
         }));
-      } catch (error) {
-        if (!isLatest(bookId, revision)) return;
-        set((state) => ({
-          ...withLines(replaceBook(state.books, previous)),
-          lastError: getApiErrorMessage(error, "本を更新できませんでした。"),
-        }));
-      }
-    },
+
+        try {
+          const data = await requestJson(
+            `${API_BASE}/${bookId}`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            },
+            parseMutationBookResponse,
+          );
+          if (!isLatest(bookId, revision)) return;
+          set((state) => ({
+            ...withLines(replaceBook(state.books, data.book)),
+            lastError: null,
+          }));
+        } catch (error) {
+          if (!isLatest(bookId, revision)) return;
+          set((state) => ({
+            ...withLines(replaceBook(state.books, previous)),
+            lastError: getApiErrorMessage(error, "本を更新できませんでした。"),
+          }));
+        }
+      }),
 
     setSelectedBook: (book) => set({ selectedBookId: book?.id ?? null }),
 
@@ -742,10 +739,6 @@ const useLibraryStore = create<LibraryState>((set, get) => {
           ),
         }));
       }
-    },
-
-    deleteBook: async (bookId) => {
-      await get().archiveBook(bookId);
     },
 
     restoreBook: async (bookId) => {
@@ -973,9 +966,6 @@ const useLibraryStore = create<LibraryState>((set, get) => {
         });
       }
     },
-
-    isBottomDockVisible: false,
-    setBottomDockVisible: (visible) => set({ isBottomDockVisible: visible }),
   };
 });
 

@@ -284,3 +284,36 @@ it("keeps a newly saved note when an older progress response arrives", async () 
     { id: "saved-note", content: "残すメモ" },
   ]);
 });
+
+it("serializes metadata edits after pending progress without losing either result", async () => {
+  resetStore();
+  let finishProgress!: (value: Response) => void;
+  const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+    if (String(input) === "/api/reading-logs") return statsResponse();
+    if (String(input).endsWith("/progress")) {
+      return new Promise<Response>((resolve) => {
+        finishProgress = resolve;
+      });
+    }
+    return response({ ...baseBook, title: "変更後", currentPage: 11 });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  const progress = useLibraryStore.getState().updatePageProgress("book-1", 1);
+  await vi.waitFor(() => expect(finishProgress).toBeTypeOf("function"));
+  const edit = useLibraryStore
+    .getState()
+    .updateBook("book-1", { title: "変更後" });
+  await Promise.resolve();
+  expect(
+    fetchMock.mock.calls.some(([url]) => String(url) === "/api/books/book-1"),
+  ).toBe(false);
+  finishProgress(response({ ...baseBook, currentPage: 11 }));
+  await Promise.all([progress, edit]);
+  expect(useLibraryStore.getState().books[0]).toMatchObject({
+    title: "変更後",
+    currentPage: 11,
+  });
+  expect(
+    fetchMock.mock.calls.some(([url]) => String(url) === "/api/reading-logs"),
+  ).toBe(true);
+});
