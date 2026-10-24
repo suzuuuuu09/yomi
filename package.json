@@ -34,10 +34,10 @@
     "better-sqlite3": "^12.6.2",
     "dotenv": "^17.3.1",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.32",
+    "hono": "^4.13.11",
     "lucide-react": "^0.575.0",
     "material-dynamic-colors": "^1.1.4",
-    "next": "16.2.12",
+    "next": "16.4.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "three": "^0.183.2",
@@ -57,6 +57,6 @@
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.21.0",
     "typescript": "^5",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }
