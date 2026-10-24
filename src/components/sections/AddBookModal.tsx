@@ -32,13 +32,20 @@ const MODES: { mode: BookSearchMode; label: string; icon: IconName }[] = [
 interface AddBlockModalProps {
   isOpen: boolean;
   onCloseAction: () => void;
-  onAddAction: (book: Partial<Book>) => void;
+  onAddAction: (book: Partial<Book>) => Promise<boolean>;
 }
 
 export default function AddBookModal(props: AddBlockModalProps) {
   const { isOpen, onCloseAction, onAddAction } = props;
-  const { store, form, setField, handleSelectResult, handleSubmit, canSubmit } =
-    useAddBook(onAddAction, onCloseAction);
+  const {
+    store,
+    form,
+    setField,
+    handleSelectResult,
+    handleSubmit,
+    canSubmit,
+    isSubmitting,
+  } = useAddBook(onAddAction, onCloseAction);
 
   const handleClose = () => {
     store.reset();
@@ -329,7 +336,7 @@ export default function AddBookModal(props: AddBlockModalProps) {
         <s.button
           type="button"
           onClick={handleSubmit}
-          disabled={!canSubmit}
+          disabled={!canSubmit || isSubmitting}
           mt={6}
           w="full"
           py={3}

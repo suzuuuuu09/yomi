@@ -176,6 +176,7 @@ export default function UserMenu() {
             variant="outline"
             scaleFactor="caption"
             materialProps={{ thickness: "thin" }}
+            as="button"
             isClickable
             onClick={handleLogout}
             className={logoutStyles.card}
@@ -188,6 +189,7 @@ export default function UserMenu() {
             variant="outline"
             scaleFactor="caption"
             materialProps={{ thickness: "thin" }}
+            as="button"
             isClickable
             onClick={openSettings}
             className={loginStyles.card}

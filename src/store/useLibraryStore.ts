@@ -28,13 +28,6 @@ interface MutationBookResponse {
   book: Book;
 }
 
-interface CreateBookResponse extends MutationBookResponse {
-  id: string;
-  position: [number, number, number];
-  brightness: number;
-  color: string;
-}
-
 interface NoteResponse {
   id: string;
 }
@@ -66,7 +59,7 @@ interface LibraryState {
   fetchReadingStats: () => Promise<void>;
   fetchReadingLogs: (bookId: string) => Promise<void>;
   setReadingTimezone: (readingTimezone: string) => Promise<boolean>;
-  addBook: (partial: Partial<Book>) => Promise<void>;
+  addBook: (partial: Partial<Book>) => Promise<boolean>;
   updateBook: (bookId: string, updates: Partial<Book>) => Promise<void>;
   archiveBook: (bookId: string) => Promise<void>;
   deleteBook: (bookId: string) => Promise<void>;
@@ -79,7 +72,7 @@ interface LibraryState {
     bookId: string,
     content: string,
     page: number | null,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   deleteNote: (bookId: string, noteId: string) => Promise<void>;
   updateReadingLog: (
     bookId: string,
@@ -233,29 +226,6 @@ function parseMutationBookResponse(value: unknown): MutationBookResponse {
   };
 }
 
-function parseCreateBookResponse(value: unknown): CreateBookResponse {
-  if (!isRecord(value) || !isString(value.id)) {
-    throw new Error("create response has an invalid shape");
-  }
-  const mutation = parseMutationBookResponse(value);
-  if (
-    !Array.isArray(value.position) ||
-    value.position.length !== 3 ||
-    !value.position.every(isNumber) ||
-    !isNumber(value.brightness) ||
-    !isString(value.color)
-  ) {
-    throw new Error("create response has an invalid shape");
-  }
-  return {
-    ...mutation,
-    id: value.id,
-    position: [value.position[0], value.position[1], value.position[2]],
-    brightness: value.brightness,
-    color: value.color,
-  };
-}
-
 function parseArchivedBooksResponse(value: unknown): ArchivedBooksResponse {
   if (!isRecord(value) || !Array.isArray(value.books)) {
     throw new Error("archived books response has an invalid shape");
@@ -388,7 +358,10 @@ function withLines(books: Book[]) {
 }
 
 function replaceBook(books: Book[], replacement: Book) {
-  return books.map((book) => (book.id === replacement.id ? replacement : book));
+  // 書誌・進捗の応答に含まれるノートは、並行して保存したノートより古い場合がある。
+  return books.map((book) =>
+    book.id === replacement.id ? { ...replacement, notes: book.notes } : book,
+  );
 }
 
 function clampPage(page: number, totalPages: number) {
@@ -519,6 +492,9 @@ const useLibraryStore = create<LibraryState>((set, get) => {
     clearMutationError: () => set({ lastError: null }),
 
     fetchBooks: async () => {
+      const key = "fetch:books";
+      const revision = nextRevision(key);
+      const previous = get().books;
       set({ isLoading: true });
       try {
         const data = await requestJson(
@@ -526,6 +502,8 @@ const useLibraryStore = create<LibraryState>((set, get) => {
           undefined,
           parseFetchBooksResponse,
         );
+        if (!isLatest(key, revision)) return;
+        if (get().books !== previous) return get().fetchBooks();
         set({ ...data, isLoading: false, lastError: null });
         try {
           const settings = await requestJson(
@@ -547,12 +525,13 @@ const useLibraryStore = create<LibraryState>((set, get) => {
             );
             readingTimezone = saved.readingTimezone;
           }
-          set({ readingTimezone });
+          if (isLatest(key, revision)) set({ readingTimezone });
         } catch {
           // 読書設定が未取得でも本一覧は表示できるようにする。
         }
         void get().fetchReadingStats();
       } catch (error) {
+        if (!isLatest(key, revision)) return;
         set({
           isLoading: false,
           lastError: getApiErrorMessage(
@@ -564,14 +543,20 @@ const useLibraryStore = create<LibraryState>((set, get) => {
     },
 
     fetchArchivedBooks: async () => {
+      const key = "fetch:archived";
+      const revision = nextRevision(key);
+      const previous = get().archivedBooks;
       try {
         const data = await requestJson(
           `${API_BASE}/archived`,
           undefined,
           parseArchivedBooksResponse,
         );
+        if (!isLatest(key, revision)) return;
+        if (get().archivedBooks !== previous) return get().fetchArchivedBooks();
         set({ archivedBooks: data.books });
       } catch (error) {
+        if (!isLatest(key, revision)) return;
         set({
           lastError: getApiErrorMessage(
             error,
@@ -582,17 +567,21 @@ const useLibraryStore = create<LibraryState>((set, get) => {
     },
 
     fetchReadingStats: async () => {
+      const key = "fetch:stats";
+      const revision = nextRevision(key);
       try {
         const data = await requestJson(
           READING_LOG_API_BASE,
           undefined,
           parseReadingStats,
         );
+        if (!isLatest(key, revision)) return;
         set({
           readingStats: data,
           readingTimezone: data.readingTimezone ?? get().readingTimezone,
         });
       } catch (error) {
+        if (!isLatest(key, revision)) return;
         set({
           lastError: getApiErrorMessage(
             error,
@@ -603,12 +592,15 @@ const useLibraryStore = create<LibraryState>((set, get) => {
     },
 
     fetchReadingLogs: async (bookId) => {
+      const key = `fetch:logs:${bookId}`;
+      const revision = nextRevision(key);
       try {
         const data = await requestJson(
           `${READING_LOG_API_BASE}/${encodeURIComponent(bookId)}`,
           undefined,
           parseReadingLogsResponse,
         );
+        if (!isLatest(key, revision)) return;
         set((state) => ({
           readingLogsByBookId: {
             ...state.readingLogsByBookId,
@@ -616,6 +608,7 @@ const useLibraryStore = create<LibraryState>((set, get) => {
           },
         }));
       } catch (error) {
+        if (!isLatest(key, revision)) return;
         set({
           lastError: getApiErrorMessage(
             error,
@@ -651,31 +644,6 @@ const useLibraryStore = create<LibraryState>((set, get) => {
     },
 
     addBook: async (partial) => {
-      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const newBook: Book = {
-        id: tempId,
-        title: partial.title ?? "",
-        author: partial.author ?? "",
-        isbn: partial.isbn ?? "",
-        totalPages: partial.totalPages ?? 0,
-        currentPage: partial.currentPage ?? 0,
-        status: partial.status ?? "unread",
-        genre: partial.genre ?? "",
-        coverUrl: partial.coverUrl ?? "",
-        registeredAt: new Date().toISOString(),
-        completedAt: null,
-        archivedAt: null,
-        position: [0, 0, 0],
-        brightness: 0.15,
-        color: "#1b1b98",
-        notes: [],
-      };
-      set((state) => ({
-        ...withLines([...state.books, newBook]),
-        newlyAddedBookId: tempId,
-        lastError: null,
-      }));
-
       try {
         const data = await requestJson(
           API_BASE,
@@ -684,20 +652,19 @@ const useLibraryStore = create<LibraryState>((set, get) => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(partial),
           },
-          parseCreateBookResponse,
+          parseMutationBookResponse,
         );
-        set((state) => {
-          const updatedBooks = state.books.map((book) =>
-            book.id === tempId ? data.book : book,
-          );
-          return { ...withLines(updatedBooks), newlyAddedBookId: data.id };
-        });
-      } catch (error) {
         set((state) => ({
-          ...withLines(state.books.filter((book) => book.id !== tempId)),
-          newlyAddedBookId: null,
-          lastError: getApiErrorMessage(error, "本を登録できませんでした。"),
+          ...withLines([...state.books, data.book]),
+          newlyAddedBookId: data.book.id,
+          lastError: null,
         }));
+        return true;
+      } catch (error) {
+        set({
+          lastError: getApiErrorMessage(error, "本を登録できませんでした。"),
+        });
+        return false;
       }
     },
 
@@ -859,18 +826,7 @@ const useLibraryStore = create<LibraryState>((set, get) => {
     },
 
     addNote: async (bookId, content, page) => {
-      const tempId = `note-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const now = new Date().toISOString();
-      const revision = nextRevision(tempId);
-      const note: ReadingNote = { id: tempId, content, page, createdAt: now };
-
-      set((state) => ({
-        books: state.books.map((book) =>
-          book.id === bookId ? { ...book, notes: [...book.notes, note] } : book,
-        ),
-        lastError: null,
-      }));
-
+      const createdAt = new Date().toISOString();
       try {
         const data = await requestJson(
           `${API_BASE}/${bookId}/notes`,
@@ -881,36 +837,29 @@ const useLibraryStore = create<LibraryState>((set, get) => {
           },
           parseNoteResponse,
         );
-        if (!isLatest(tempId, revision)) return;
         set((state) => ({
           books: state.books.map((book) =>
             book.id === bookId
               ? {
                   ...book,
-                  notes: book.notes.map((item) =>
-                    item.id === tempId ? { ...item, id: data.id } : item,
-                  ),
+                  notes: [
+                    ...book.notes,
+                    { id: data.id, content, page, createdAt },
+                  ],
                 }
               : book,
           ),
           lastError: null,
         }));
+        return true;
       } catch (error) {
-        if (!isLatest(tempId, revision)) return;
-        set((state) => ({
-          books: state.books.map((book) =>
-            book.id === bookId
-              ? {
-                  ...book,
-                  notes: book.notes.filter((item) => item.id !== tempId),
-                }
-              : book,
-          ),
+        set({
           lastError: getApiErrorMessage(
             error,
             "ノートを追加できませんでした。",
           ),
-        }));
+        });
+        return false;
       }
     },
 
@@ -976,11 +925,11 @@ const useLibraryStore = create<LibraryState>((set, get) => {
             }),
           },
         );
+        set({ lastError: null });
         await Promise.all([
           get().fetchReadingLogs(bookId),
           get().fetchReadingStats(),
         ]);
-        set({ lastError: null });
       } catch (error) {
         set({
           lastError: getApiErrorMessage(
@@ -1010,11 +959,11 @@ const useLibraryStore = create<LibraryState>((set, get) => {
           `${READING_LOG_API_BASE}/${encodeURIComponent(bookId)}/${encodeURIComponent(date)}${suffix}`,
           { method: "DELETE" },
         );
+        set({ lastError: null });
         await Promise.all([
           get().fetchReadingLogs(bookId),
           get().fetchReadingStats(),
         ]);
-        set({ lastError: null });
       } catch (error) {
         set({
           lastError: getApiErrorMessage(

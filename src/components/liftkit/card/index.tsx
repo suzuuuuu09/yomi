@@ -3,7 +3,8 @@ import { propsToDataAttrs } from "@/lib/liftkit/utilities";
 import "@/components/liftkit/card/card.css";
 import MaterialLayer from "@/components/liftkit/material-layer";
 
-export interface LkCardProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface LkCardProps extends React.HTMLAttributes<HTMLElement> {
+  as?: "div" | "button";
   scaleFactor?: LkFontClass | "none";
   variant?: "fill" | "outline" | "transparent";
   material?: "flat" | "glass"; //TODO: Integrate these material controls with the new MaterialLayer component features
@@ -40,6 +41,7 @@ export interface LkCardProps extends React.HTMLAttributes<HTMLDivElement> {
  * @returns A card component with configurable styling and material effects
  */
 export default function Card({
+  as: Component = "div",
   scaleFactor = "body",
   variant = "fill",
   material = "flat",
@@ -59,7 +61,8 @@ export default function Card({
   );
 
   return (
-    <div
+    <Component
+      type={Component === "button" ? "button" : undefined}
       data-lk-component="card"
       className={`${isClickable ? "clickable" : ""}  ${className || ""}`}
       {...lkCardAttrs}
@@ -90,6 +93,6 @@ export default function Card({
         />
       )}
       {/**TODO: Define outlined card behavior */}
-    </div>
+    </Component>
   );
 }

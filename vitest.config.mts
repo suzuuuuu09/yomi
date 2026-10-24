@@ -6,6 +6,8 @@ const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
+      "~liftkit": `${projectRoot}src/components/liftkit`,
+      "styled-system": `${projectRoot}styled-system`,
       "@": `${projectRoot}src`,
     },
   },

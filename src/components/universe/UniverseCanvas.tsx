@@ -6,7 +6,7 @@ import {
   Stars,
 } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import * as THREE from "three";
 import {
   BIRTH_EFFECT_COUNT,
@@ -364,20 +364,15 @@ function StarBirthEffect({
   );
 }
 
-function GyroPermissionOverlay({ onGranted }: { onGranted: () => void }) {
-  const { needsPrompt, requestPermission } = useGyroPermission(true);
-
-  useEffect(() => {
-    if (!needsPrompt) onGranted();
-  }, [needsPrompt, onGranted]);
-
-  if (!needsPrompt) return null;
-
-  const handleClick = async () => {
-    await requestPermission();
-    onGranted();
-  };
-
+function GyroPermissionOverlay({
+  onRequest,
+  onClose,
+  error,
+}: {
+  onRequest?: () => Promise<void>;
+  onClose: () => void;
+  error: string | null;
+}) {
   return (
     <div
       style={{
@@ -403,22 +398,27 @@ function GyroPermissionOverlay({ onGranted }: { onGranted: () => void }) {
       >
         🌌 宇宙を見渡すには
         <br />
-        センサーの許可が必要です
+        {error ?? "センサーの許可が必要です"}
       </p>
-      <button
-        type="button"
-        onClick={handleClick}
-        style={{
-          padding: "14px 36px",
-          borderRadius: 9999,
-          background: "linear-gradient(135deg, #6366f1, #a855f7)",
-          border: "none",
-          color: "white",
-          fontSize: 16,
-          cursor: "pointer",
-        }}
-      >
-        センサーを有効にする
+      {onRequest && (
+        <button
+          type="button"
+          onClick={() => void onRequest()}
+          style={{
+            padding: "14px 36px",
+            borderRadius: 9999,
+            background: "linear-gradient(135deg, #6366f1, #a855f7)",
+            border: "none",
+            color: "white",
+            fontSize: 16,
+            cursor: "pointer",
+          }}
+        >
+          センサーを有効にする
+        </button>
+      )}
+      <button type="button" onClick={onClose}>
+        VRモードを終了
       </button>
     </div>
   );
@@ -432,6 +432,7 @@ interface UniverseCanvasProps {
   newlyAddedBookId: string | null;
   onBirthEffectComplete: () => void;
   vrMode?: boolean;
+  onExitVrMode: () => void;
 }
 
 export default function UniverseCanvas({
@@ -442,18 +443,19 @@ export default function UniverseCanvas({
   newlyAddedBookId,
   onBirthEffectComplete,
   vrMode = false,
+  onExitVrMode,
 }: UniverseCanvasProps) {
   const reducedMotion = useReducedMotion();
   const controlsRef = useRef<{
     target: THREE.Vector3;
     update: () => void;
   } | null>(null);
-  const [gyroGranted, setGyroGranted] = useState(false);
-
-  // VRモードを抜けたらジャイロ許可状態をリセット
-  useEffect(() => {
-    if (!vrMode) setGyroGranted(false);
-  }, [vrMode]);
+  const {
+    granted: gyroGranted,
+    needsPrompt,
+    requestPermission,
+    error,
+  } = useGyroPermission(vrMode);
 
   const newBook = newlyAddedBookId
     ? books.find((b) => b.id === newlyAddedBookId)
@@ -474,8 +476,12 @@ export default function UniverseCanvas({
         height: "100%",
       }}
     >
-      {vrMode && !gyroGranted && (
-        <GyroPermissionOverlay onGranted={() => setGyroGranted(true)} />
+      {vrMode && !gyroGranted && (needsPrompt || error) && (
+        <GyroPermissionOverlay
+          onRequest={needsPrompt ? requestPermission : undefined}
+          onClose={onExitVrMode}
+          error={error}
+        />
       )}
 
       <Canvas

@@ -559,61 +559,77 @@ booksApp.put("/:id", async (c) => {
 
   const bookId = c.req.param("id");
   const db = getDBFromContext();
-  const existing = await readBookWithNotes(db, user.id, bookId, {
-    activeOnly: true,
-  });
-  if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
-
   const input = parsed.data;
-  const newTotalPages = input.totalPages ?? existing.book.totalPages;
-  if (newTotalPages > 0 && existing.book.currentPage > newTotalPages) {
-    return apiError(
-      c,
-      400,
-      "INVALID_REQUEST",
-      "総ページ数は現在のページ数以上で指定してください",
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const existing = await readBookWithNotes(db, user.id, bookId, {
+      activeOnly: true,
+    });
+    if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
+
+    const newTotalPages = input.totalPages ?? existing.book.totalPages;
+    if (newTotalPages > 0 && existing.book.currentPage > newTotalPages) {
+      return apiError(
+        c,
+        400,
+        "INVALID_REQUEST",
+        "総ページ数は現在のページ数以上で指定してください",
+      );
+    }
+
+    const newGenre = input.genre ?? existing.book.genre;
+    const newBrightness = computeBrightness(
+      existing.book.currentPage,
+      newTotalPages,
     );
+    const newColor = computeColor(newGenre, newBrightness);
+    const newStatus = pageToStatus(existing.book.currentPage, newTotalPages);
+    const now = new Date().toISOString();
+
+    try {
+      const result = await db
+        .update(books)
+        .set({
+          ...input,
+          totalPages: newTotalPages,
+          brightness: newBrightness,
+          color: newColor,
+          status: newStatus,
+          completedAt: resolveCompletedAt(
+            newStatus,
+            existing.book.status,
+            now,
+            existing.book.completedAt,
+          ),
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(books.id, bookId),
+            eq(books.userId, user.id),
+            isNull(books.archivedAt),
+            eq(books.currentPage, existing.book.currentPage),
+            eq(books.totalPages, existing.book.totalPages),
+            eq(books.genre, existing.book.genre),
+            eq(books.status, existing.book.status),
+            eq(books.updatedAt, existing.book.updatedAt),
+          ),
+        );
+      if (result.meta.changes === 0) continue;
+    } catch (error) {
+      console.error("Book update failed", error);
+      return apiError(c, 500, "INTERNAL_ERROR", "本を更新できませんでした");
+    }
+
+    const current = await readBookWithNotes(db, user.id, bookId);
+    if (!current) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
+
+    return c.json({
+      ok: true,
+      book: toBookResponse(current.book, current.notes),
+    });
   }
 
-  const newGenre = input.genre ?? existing.book.genre;
-  const newBrightness = computeBrightness(
-    existing.book.currentPage,
-    newTotalPages,
-  );
-  const newColor = computeColor(newGenre, newBrightness);
-  const newStatus = pageToStatus(existing.book.currentPage, newTotalPages);
-  const now = new Date().toISOString();
-
-  try {
-    await db
-      .update(books)
-      .set({
-        ...input,
-        totalPages: newTotalPages,
-        brightness: newBrightness,
-        color: newColor,
-        status: newStatus,
-        completedAt: resolveCompletedAt(
-          newStatus,
-          existing.book.status,
-          now,
-          existing.book.completedAt,
-        ),
-        updatedAt: now,
-      })
-      .where(and(eq(books.id, bookId), eq(books.userId, user.id)));
-  } catch (error) {
-    console.error("Book update failed", error);
-    return apiError(c, 500, "INTERNAL_ERROR", "本を更新できませんでした");
-  }
-
-  const current = await readBookWithNotes(db, user.id, bookId);
-  if (!current) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
-
-  return c.json({
-    ok: true,
-    book: toBookResponse(current.book, current.notes),
-  });
+  return apiError(c, 500, "INTERNAL_ERROR", "本の更新が競合しました");
 });
 
 // 本をアーカイブ

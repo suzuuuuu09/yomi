@@ -201,6 +201,7 @@ function ObservatoryContent() {
         newlyAddedBookId={newlyAddedBookId}
         onBirthEffectComplete={clearNewlyAdded}
         vrMode={vrMode}
+        onExitVrMode={() => setVrMode(false)}
       />
       <TopBar bookCount={bookCount} />
 

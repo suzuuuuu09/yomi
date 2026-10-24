@@ -12,10 +12,11 @@ const EMPTY_FORM: BookInfoValues = {
 };
 
 export function useAddBook(
-  onAddAction: (book: Partial<Book>) => void,
+  onAddAction: (book: Partial<Book>) => Promise<boolean>,
   onCloseAction: () => void,
 ) {
   const store = useBookSearchStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<BookInfoValues>(EMPTY_FORM);
 
   const setField =
@@ -34,11 +35,13 @@ export function useAddBook(
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
     const title = store.selectedResult?.title || form.title;
     if (!title) return;
 
-    onAddAction({
+    setIsSubmitting(true);
+    const saved = await onAddAction({
       title,
       author: store.selectedResult?.authors?.join(", ") || form.author,
       isbn: form.isbn || store.selectedResult?.isbn || "",
@@ -51,6 +54,9 @@ export function useAddBook(
       status: "unread",
     });
 
+    setIsSubmitting(false);
+    if (!saved) return;
+
     setForm(EMPTY_FORM);
     store.reset();
     onCloseAction();
@@ -58,5 +64,13 @@ export function useAddBook(
 
   const canSubmit = !!form.title || !!store.selectedResult?.title;
 
-  return { store, form, setField, handleSelectResult, handleSubmit, canSubmit };
+  return {
+    store,
+    form,
+    setField,
+    handleSelectResult,
+    handleSubmit,
+    canSubmit,
+    isSubmitting,
+  };
 }

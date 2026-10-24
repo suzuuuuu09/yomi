@@ -1,3 +1,14 @@
+:where(button[data-lk-component="card"]) {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
 [data-lk-component="card"] {
   display: block;
   overflow: hidden;

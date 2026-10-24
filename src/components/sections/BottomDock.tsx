@@ -54,7 +54,6 @@ function ReadingCard({
       variant="outline"
       scaleFactor="caption"
       isClickable
-      onClick={onClick}
       className={cx(
         "group",
         css({
@@ -70,7 +69,18 @@ function ReadingCard({
       )}
     >
       <Stack gap="2" alignItems="stretch">
-        <Flex justify="between" alignItems="center">
+        <button
+          type="button"
+          onClick={onClick}
+          className={css({
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            width: "full",
+            textAlign: "left",
+            cursor: "pointer",
+          })}
+        >
           <Box minWidth={0}>
             <Text
               tag="p"
@@ -97,7 +107,7 @@ function ReadingCard({
               _groupHover: { color: "slate.400" },
             })}
           />
-        </Flex>
+        </button>
 
         <MiniProgress current={book.currentPage} total={book.totalPages} />
 

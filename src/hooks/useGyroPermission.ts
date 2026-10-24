@@ -7,6 +7,7 @@ type DeviceOrientationEventiOS = typeof DeviceOrientationEvent & {
 export interface UseGyroPermissionResult {
   // ジャイロの使用が許可されているか
   granted: boolean;
+  error: string | null;
   // iOS 13+でユーザーに許可を求める必要があるか
   needsPrompt: boolean;
   // iOS 13+でユーザーに許可を求めるための関数
@@ -23,11 +24,17 @@ export interface UseGyroPermissionResult {
 export function useGyroPermission(enabled: boolean): UseGyroPermissionResult {
   const [granted, setGranted] = useState(false);
   const [needsPrompt, setNeedsPrompt] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enabled) {
       setGranted(false);
       setNeedsPrompt(false);
+      setError(null);
+      return;
+    }
+    if (typeof DeviceOrientationEvent === "undefined") {
+      setError("この端末ではセンサーを利用できません。");
       return;
     }
     const DOE = DeviceOrientationEvent as DeviceOrientationEventiOS;
@@ -39,13 +46,25 @@ export function useGyroPermission(enabled: boolean): UseGyroPermissionResult {
   }, [enabled]);
 
   const requestPermission = useCallback(async () => {
-    const DOE = DeviceOrientationEvent as DeviceOrientationEventiOS;
-    const result = await DOE.requestPermission?.();
-    if (result === "granted") {
-      setGranted(true);
-      setNeedsPrompt(false);
+    try {
+      const DOE = DeviceOrientationEvent as DeviceOrientationEventiOS;
+      const result = await DOE.requestPermission?.();
+      if (result === "granted") {
+        setGranted(true);
+        setNeedsPrompt(false);
+        setError(null);
+      } else {
+        setError("センサーの使用が許可されませんでした。");
+      }
+    } catch {
+      setError("センサーの使用許可を確認できませんでした。");
     }
   }, []);
 
-  return { granted, needsPrompt, requestPermission };
+  return {
+    granted: enabled && granted,
+    needsPrompt: enabled && needsPrompt,
+    requestPermission,
+    error,
+  };
 }

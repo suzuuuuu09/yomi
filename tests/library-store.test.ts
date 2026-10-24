@@ -124,3 +124,163 @@ describe("useLibraryStore progress actions", () => {
     );
   });
 });
+
+describe("library persistence", () => {
+  it("does not expose a temporary book before creation succeeds", async () => {
+    resetStore();
+    let finish!: (value: Response) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      ),
+    );
+    const operation = useLibraryStore.getState().addBook({ title: "新しい本" });
+    expect(useLibraryStore.getState().books.map((book) => book.id)).toEqual([
+      "book-1",
+    ]);
+    finish(response({ ...baseBook, id: "created-book" }));
+    expect(await operation).toBe(true);
+    expect(useLibraryStore.getState().books.map((book) => book.id)).toEqual([
+      "book-1",
+      "created-book",
+    ]);
+  });
+});
+
+it("keeps failed note creation out of the book and reports failure", async () => {
+  resetStore();
+  let finish!: (value: Response) => void;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    ),
+  );
+  const operation = useLibraryStore.getState().addNote("book-1", "メモ", null);
+  expect(useLibraryStore.getState().books[0].notes).toEqual([]);
+  finish(
+    new Response(
+      JSON.stringify({
+        error: { code: "INTERNAL_ERROR", message: "保存できません" },
+      }),
+      { status: 500 },
+    ),
+  );
+  expect(await operation).toBe(false);
+  expect(useLibraryStore.getState().books[0].notes).toEqual([]);
+});
+
+it("ignores a stats response older than the last completed refresh", async () => {
+  const pending: Array<(value: Response) => void> = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => new Promise<Response>((resolve) => pending.push(resolve))),
+  );
+  const older = useLibraryStore.getState().fetchReadingStats();
+  const newer = useLibraryStore.getState().fetchReadingStats();
+  const stats = (pagesRead: number) =>
+    new Response(
+      JSON.stringify({
+        days: [{ date: "2026-10-24", pagesRead }],
+        streak: 1,
+        readingTimezone: "UTC",
+      }),
+    );
+  pending[1](stats(2));
+  await newer;
+  pending[0](stats(1));
+  await older;
+  expect(useLibraryStore.getState().readingStats.days[0].pagesRead).toBe(2);
+});
+
+it("keeps a refresh failure visible after a successful log correction", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((_input: RequestInfo | URL, init?: RequestInit) =>
+      Promise.resolve(
+        init?.method === "PUT"
+          ? new Response(JSON.stringify({ ok: true }))
+          : new Response(
+              JSON.stringify({
+                error: { code: "INTERNAL_ERROR", message: "再取得に失敗" },
+              }),
+              { status: 500 },
+            ),
+      ),
+    ),
+  );
+  await useLibraryStore.getState().updateReadingLog("book-1", "2026-10-24", 12);
+  expect(useLibraryStore.getState().lastError).toBe("再取得に失敗");
+});
+
+it("refreshes a book snapshot that arrived after a local creation", async () => {
+  resetStore();
+  let finishList!: (value: Response) => void;
+  let listRequests = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/books" && init?.method === "POST")
+        return response({ ...baseBook, id: "created-book" });
+      if (String(input) === "/api/books") {
+        listRequests += 1;
+        if (listRequests === 1)
+          return new Promise<Response>((resolve) => {
+            finishList = resolve;
+          });
+        return new Response(
+          JSON.stringify({
+            books: [baseBook, { ...baseBook, id: "created-book" }],
+            constellationLines: [],
+          }),
+        );
+      }
+      if (String(input).endsWith("/settings"))
+        return new Response(JSON.stringify({ readingTimezone: "UTC" }));
+      return statsResponse();
+    }),
+  );
+  const initialFetch = useLibraryStore.getState().fetchBooks();
+  await useLibraryStore.getState().addBook({ title: "新しい本" });
+  finishList(
+    new Response(JSON.stringify({ books: [baseBook], constellationLines: [] })),
+  );
+  await initialFetch;
+  expect(useLibraryStore.getState().books.map((book) => book.id)).toEqual([
+    "book-1",
+    "created-book",
+  ]);
+});
+
+it("keeps a newly saved note when an older progress response arrives", async () => {
+  resetStore();
+  let finishProgress!: (value: Response) => void;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/progress"))
+        return new Promise<Response>((resolve) => {
+          finishProgress = resolve;
+        });
+      if (String(input).endsWith("/notes"))
+        return new Response(JSON.stringify({ id: "saved-note" }));
+      return statsResponse();
+    }),
+  );
+  const progress = useLibraryStore.getState().updatePageProgress("book-1", 1);
+  for (let tick = 0; tick < 5 && !finishProgress; tick += 1)
+    await Promise.resolve();
+  await useLibraryStore.getState().addNote("book-1", "残すメモ", null);
+  finishProgress(response({ ...baseBook, currentPage: 11 }));
+  await progress;
+  expect(useLibraryStore.getState().books[0].notes).toMatchObject([
+    { id: "saved-note", content: "残すメモ" },
+  ]);
+});

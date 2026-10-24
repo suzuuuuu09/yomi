@@ -16,13 +16,7 @@ export function useObservatory() {
     [setSelectedBook],
   );
 
-  const handleAdd = useCallback(
-    (partial: Partial<Book>) => {
-      addBook(partial);
-      setIsAddModalOpen(false);
-    },
-    [addBook],
-  );
+  const handleAdd = addBook;
 
   return {
     filteredBooks,

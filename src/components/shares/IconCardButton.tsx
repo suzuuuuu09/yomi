@@ -3,7 +3,7 @@ import { DynamicIcon } from "lucide-react/dynamic";
 import Card, { type LkCardProps } from "~liftkit/card";
 
 interface IconCardButtonProps
-  extends Omit<LkCardProps, "children" | "isClickable"> {
+  extends Omit<LkCardProps, "children" | "isClickable" | "as"> {
   icon: IconName;
   iconSize?: number;
   label: string;
@@ -23,6 +23,7 @@ export function IconCardButton({
 }: IconCardButtonProps) {
   return (
     <Card
+      as="button"
       material={material}
       variant={variant}
       scaleFactor={scaleFactor}

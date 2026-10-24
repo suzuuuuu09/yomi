@@ -422,16 +422,28 @@ function ReadingNotes({
   bookId: string;
   notes: ReadingNote[];
   currentPage: number;
-  onAdd: (bookId: string, content: string, page: number | null) => void;
+  onAdd: (
+    bookId: string,
+    content: string,
+    page: number | null,
+  ) => Promise<boolean>;
   onDelete: (bookId: string, noteId: string) => void;
 }>) {
   const [draft, setDraft] = useState("");
   const [linkPage, setLinkPage] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const submit = () => {
+  const submit = async () => {
     const trimmed = draft.trim();
-    if (!trimmed) return;
-    onAdd(bookId, trimmed, linkPage ? currentPage : null);
+    if (!trimmed || isSaving) return;
+    setIsSaving(true);
+    const saved = await onAdd(
+      bookId,
+      trimmed,
+      linkPage && currentPage > 0 ? currentPage : null,
+    );
+    setIsSaving(false);
+    if (!saved) return;
     setDraft("");
     setLinkPage(false);
   };
@@ -534,6 +546,7 @@ function ReadingNotes({
       <Column gap="sm">
         <s.textarea
           value={draft}
+          disabled={isSaving}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="メモを入力..."
           rows={3}
@@ -568,7 +581,8 @@ function ReadingNotes({
           >
             <s.input
               type="checkbox"
-              checked={linkPage}
+              checked={linkPage && currentPage > 0}
+              disabled={currentPage < 1 || isSaving}
               onChange={(e) => setLinkPage(e.target.checked)}
               w="12px"
               h="12px"
@@ -581,7 +595,7 @@ function ReadingNotes({
           </s.label>
           <s.button
             onClick={submit}
-            disabled={!draft.trim()}
+            disabled={!draft.trim() || isSaving}
             className={css({
               display: "flex",
               alignItems: "center",
@@ -631,7 +645,11 @@ export default function StarInsightPanel({
   onUpdateBook: (bookId: string, updates: Partial<Book>) => void;
   onPageUpdate: (bookId: string, delta: number) => void;
   onPageSet: (bookId: string, page: number) => void;
-  onAddNote: (bookId: string, content: string, page: number | null) => void;
+  onAddNote: (
+    bookId: string,
+    content: string,
+    page: number | null,
+  ) => Promise<boolean>;
   onDeleteNote: (bookId: string, noteId: string) => void;
   onDeleteBook: (bookId: string) => void;
   onPermanentlyDeleteBook: (bookId: string) => void;
@@ -701,15 +719,17 @@ export default function StarInsightPanel({
         }}
       />
 
-      <BookEditModal
-        isOpen={isEditOpen}
-        book={book}
-        onCloseAction={() => setIsEditOpen(false)}
-        onSaveAction={(bookId, updates) => {
-          onUpdateBook(bookId, updates);
-          setIsEditOpen(false);
-        }}
-      />
+      {isEditOpen && (
+        <BookEditModal
+          isOpen={isEditOpen}
+          book={book}
+          onCloseAction={() => setIsEditOpen(false)}
+          onSaveAction={(bookId, updates) => {
+            onUpdateBook(bookId, updates);
+            setIsEditOpen(false);
+          }}
+        />
+      )}
 
       <Box
         position="fixed"
@@ -929,6 +949,7 @@ export default function StarInsightPanel({
             {/* メモ */}
             <ItemCard>
               <ReadingNotes
+                key={book.id}
                 bookId={book.id}
                 notes={book.notes}
                 currentPage={book.currentPage}
