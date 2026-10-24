@@ -9,12 +9,15 @@
 ## ER図
 
 ```
-user 1--N session
-user 1--N account
-user 1--N verification
-user 1--N books
+users 1--N sessions
+users 1--N accounts
+users 1--N books
+users 1--N reading_notes
+users 1--N reading_logs
 books 1--N reading_notes
 books 1--N reading_logs
+
+verifications（外部キーなし）
 ```
 
 ---
@@ -23,9 +26,9 @@ books 1--N reading_logs
 
 ### Better Auth 管理テーブル
 
-Better Auth が自動的にマイグレーション・管理するテーブル。手動でのスキーマ変更は不要。
+Better Auth の Drizzle アダプターが利用するテーブル。定義は `src/server/schemas/db.ts`、作成・更新は `drizzle/` のマイグレーションで管理する。以下は実際のSQLテーブル名・保存型を示す。
 
-#### `user` — ユーザー
+#### `users` — ユーザー
 
 | カラム | 型 | 制約 | 説明 |
 |---|---|---|---|
@@ -37,58 +40,58 @@ Better Auth が自動的にマイグレーション・管理するテーブル�
 | `reading_timezone` | TEXT | | 読書日の境界に使うIANAタイムゾーン（未設定可） |
 | `reading_day_offset` | INTEGER | NOT NULL DEFAULT 0 | タイムゾーン変更後も連続する論理読書日の補正値 |
 | `reading_timezone_revision` | INTEGER | NOT NULL DEFAULT 0 | タイムゾーン設定の世代番号 |
-| `createdAt` | TEXT | NOT NULL | ISO 8601 |
-| `updatedAt` | TEXT | NOT NULL | ISO 8601 |
+| `createdAt` | INTEGER | NOT NULL DEFAULT (unixepoch()) | Unix秒 |
+| `updatedAt` | INTEGER | NOT NULL DEFAULT (unixepoch()) | Unix秒 |
 
-#### `session` — セッション
+#### `sessions` — セッション
 
 | カラム | 型 | 制約 | 説明 |
 |---|---|---|---|
 | `id` | TEXT | PK | セッションID |
-| `expiresAt` | TEXT | NOT NULL | 有効期限 (ISO 8601) |
+| `expiresAt` | INTEGER | NOT NULL | 有効期限（Unix秒） |
 | `token` | TEXT | UNIQUE NOT NULL | セッショントークン（Cookie に保存） |
-| `createdAt` | TEXT | NOT NULL | ISO 8601 |
-| `updatedAt` | TEXT | NOT NULL | ISO 8601 |
+| `createdAt` | INTEGER | NOT NULL DEFAULT (unixepoch()) | Unix秒 |
+| `updatedAt` | INTEGER | NOT NULL DEFAULT (unixepoch()) | Unix秒 |
 | `ipAddress` | TEXT | | クライアントIPアドレス |
 | `userAgent` | TEXT | | User-Agent |
-| `userId` | TEXT | NOT NULL, FK → user.id | セッション所有ユーザー |
+| `userId` | TEXT | NOT NULL, FK → users.id ON DELETE CASCADE | セッション所有ユーザー |
 
-#### `account` — OAuth アカウント連携
+#### `accounts` — OAuth アカウント連携
 
 | カラム | 型 | 制約 | 説明 |
 |---|---|---|---|
 | `id` | TEXT | PK | アカウントID |
 | `accountId` | TEXT | NOT NULL | プロバイダ側のユーザーID (Google `sub`) |
 | `providerId` | TEXT | NOT NULL | プロバイダ名 (`google`) |
-| `userId` | TEXT | NOT NULL, FK → user.id | 紐付くユーザー |
+| `userId` | TEXT | NOT NULL, FK → users.id ON DELETE CASCADE | 紐付くユーザー |
 | `accessToken` | TEXT | | アクセストークン |
 | `refreshToken` | TEXT | | リフレッシュトークン |
 | `idToken` | TEXT | | IDトークン |
-| `accessTokenExpiresAt` | TEXT | | アクセストークン有効期限 |
-| `refreshTokenExpiresAt` | TEXT | | リフレッシュトークン有効期限 |
+| `accessTokenExpiresAt` | INTEGER | | アクセストークン有効期限（Unix秒） |
+| `refreshTokenExpiresAt` | INTEGER | | リフレッシュトークン有効期限（Unix秒） |
 | `scope` | TEXT | | 付与されたスコープ |
 | `password` | TEXT | | パスワード（ソーシャルログインでは未使用） |
-| `createdAt` | TEXT | NOT NULL | ISO 8601 |
-| `updatedAt` | TEXT | NOT NULL | ISO 8601 |
+| `createdAt` | INTEGER | NOT NULL DEFAULT (unixepoch()) | Unix秒 |
+| `updatedAt` | INTEGER | NOT NULL DEFAULT (unixepoch()) | Unix秒 |
 
-#### `verification` — メール検証トークン等
+#### `verifications` — メール検証トークン等
 
 | カラム | 型 | 制約 | 説明 |
 |---|---|---|---|
 | `id` | TEXT | PK | 検証ID |
 | `identifier` | TEXT | NOT NULL | 検証対象の識別子 |
 | `value` | TEXT | NOT NULL | トークン値 |
-| `expiresAt` | TEXT | NOT NULL | 有効期限 |
-| `createdAt` | TEXT | | ISO 8601 |
-| `updatedAt` | TEXT | | ISO 8601 |
+| `expiresAt` | INTEGER | NOT NULL | 有効期限（Unix秒） |
+| `createdAt` | INTEGER | | Unix秒 |
+| `updatedAt` | INTEGER | | Unix秒 |
 
-**備考**: これらのテーブルは Better Auth のマイグレーション機能（`getMigrations`）で自動作成される。
+**備考**: 日時のINTEGERは Drizzle の `mode: "timestamp"` で `Date` と相互変換する。書籍・ノート・読書ログの日時はTEXT（ISO 8601）で保存する。
 
 ---
 
 ### アプリケーション固有テーブル
 
-以下のテーブルは Drizzle ORM で手動管理する。`user.id` を外部キーとして参照する。
+以下のテーブルも Drizzle ORM のスキーマとマイグレーションで管理する。`users.id` を外部キーとして参照する。
 
 ---
 
@@ -96,11 +99,11 @@ Better Auth が自動的にマイグレーション・管理するテーブル�
 
 | カラム | 型 | 制約 | 説明 |
 |---|---|---|---|
-| `id` | TEXT | PK | ULID or UUID |
-| `user_id` | TEXT | NOT NULL, FK → user.id ON DELETE CASCADE | 所有ユーザー |
+| `id` | TEXT | PK | UUID（`crypto.randomUUID()`） |
+| `user_id` | TEXT | NOT NULL, FK → users.id ON DELETE CASCADE | 所有ユーザー |
 | `title` | TEXT | NOT NULL | 本のタイトル |
 | `author` | TEXT | NOT NULL DEFAULT '' | 著者名 |
-| `isbn` | TEXT | DEFAULT '' | ISBN-13 |
+| `isbn` | TEXT | DEFAULT '' | ISBN（検索ではISBN-13優先、ISBN-10も可） |
 | `total_pages` | INTEGER | NOT NULL DEFAULT 0 | 総ページ数 |
 | `current_page` | INTEGER | NOT NULL DEFAULT 0 | 現在の読書ページ |
 | `status` | TEXT | NOT NULL DEFAULT 'unread' | 'unread' \| 'reading' \| 'completed' |
@@ -109,7 +112,7 @@ Better Auth が自動的にマイグレーション・管理するテーブル�
 | `position_x` | REAL | NOT NULL DEFAULT 0 | 3D座標X（APIが計算） |
 | `position_y` | REAL | NOT NULL DEFAULT 0 | 3D座標Y（APIが計算） |
 | `position_z` | REAL | NOT NULL DEFAULT 0 | 3D座標Z（APIが計算） |
-| `brightness` | REAL | NOT NULL DEFAULT 0.15 | 星の明るさ (0.0〜1.0) |
+| `brightness` | REAL | NOT NULL DEFAULT 0.15 | 星の明るさ（API計算値は0.15〜0.9） |
 | `color` | TEXT | NOT NULL DEFAULT '#FFFFFF' | 星の色 (HEXまたはHSL) |
 | `registered_at` | TEXT | NOT NULL | 登録日 (ISO 8601) |
 | `completed_at` | TEXT | | 読了日 (nullable, ISO 8601) |
@@ -117,11 +120,13 @@ Better Auth が自動的にマイグレーション・管理するテーブル�
 | `created_at` | TEXT | NOT NULL | ISO 8601 |
 | `updated_at` | TEXT | NOT NULL | ISO 8601 |
 
-**インデックス**: `user_id`, `(user_id, status)`, `(user_id, genre)`, `(user_id, archived_at)`
+**インデックス**: `user_id`, `(user_id, status)`, `(user_id, genre)`, `(user_id, current_page)`, `(user_id, total_pages)`, `(user_id, archived_at)`
 
 **備考**:
+
 - `position_x/y/z`, `brightness`, `color` はAPI側で計算してDBに保存（[star-formation.md](./star-formation.md) 参照）
-- `status` は `current_page` の変更に連動して自動更新（0→unread, 1〜total-1→reading, total→completed）
+- `status` は作成・進捗更新・総ページ数変更時にページ数から算出（0→unread、総ページ数が既知で到達→completed、それ以外→reading）。総ページ数0は不明扱い
+- CHECK制約: ページ数は0以上、総ページ数が既知なら現在ページは総ページ数以下、statusは3種類に限定
 
 ---
 
@@ -129,14 +134,16 @@ Better Auth が自動的にマイグレーション・管理するテーブル�
 
 | カラム | 型 | 制約 | 説明 |
 |---|---|---|---|
-| `id` | TEXT | PK | ULID or UUID |
+| `id` | TEXT | PK | UUID（`crypto.randomUUID()`） |
 | `book_id` | TEXT | NOT NULL, FK → books.id ON DELETE CASCADE | 紐付く本 |
-| `user_id` | TEXT | NOT NULL, FK → user.id ON DELETE CASCADE | 所有ユーザー（非正規化、クエリ効率のため） |
+| `user_id` | TEXT | NOT NULL, FK → users.id ON DELETE CASCADE | 所有ユーザー（非正規化、クエリ効率のため） |
 | `content` | TEXT | NOT NULL | メモ本文 |
 | `page` | INTEGER | | 紐付くページ番号 (nullable) |
 | `created_at` | TEXT | NOT NULL | ISO 8601 |
 
 **インデックス**: `book_id`, `user_id`
+
+**CHECK制約**: `page >= 1 OR page IS NULL`
 
 ---
 
@@ -144,19 +151,23 @@ Better Auth が自動的にマイグレーション・管理するテーブル�
 
 | カラム | 型 | 制約 | 説明 |
 |---|---|---|---|
-| `id` | TEXT | PK | ULID or UUID |
+| `id` | TEXT | PK | UUID（`crypto.randomUUID()`） |
 | `book_id` | TEXT | NOT NULL, FK → books.id ON DELETE CASCADE | 紐付く本 |
-| `user_id` | TEXT | NOT NULL, FK → user.id ON DELETE CASCADE | 所有ユーザー |
+| `user_id` | TEXT | NOT NULL, FK → users.id ON DELETE CASCADE | 所有ユーザー |
 | `pages_read` | INTEGER | NOT NULL | その日に読んだページ数 |
 | `date` | TEXT | NOT NULL | 記録日 (YYYY-MM-DD) |
 | `reading_day` | INTEGER | | タイムゾーン変更をまたいでも不変な論理読書日番号 |
 | `reading_timezone_revision` | INTEGER | NOT NULL DEFAULT 0 | 記録時のタイムゾーン設定世代 |
 | `created_at` | TEXT | NOT NULL | ISO 8601 |
 
-**インデックス**: `(book_id, reading_timezone_revision, date)` UNIQUE（設定世代と表示日ごとに1レコード）, `(user_id, date)`
+**インデックス**: `(book_id, reading_timezone_revision, date)` UNIQUE（設定世代と表示日ごとに1レコード）, `(user_id, date)`, `(user_id, book_id)`
+
+**CHECK制約**: `pages_read >= 1`（0ページは行を削除）
 
 **備考**:
-- +1Pやページ更新のたびに、記録時の設定世代と表示日の組み合わせへ `UPSERT` で加算
+
+- 進捗の増加分は、記録時の設定世代と表示日の組み合わせへ `UPSERT` で加算
+- 進捗を戻す場合は同じ本の当日の論理読書日のログから減算し、0になる行を削除する。過去の論理読書日は変更しない
 - Reading Graph（過去14日）の描画に使用
 - `date` は記録時のタイムゾーンで表示する日付として保持し、タイムゾーン変更後も再計算しない
 - 統計では複数世代のログを `reading_day` で合算する
@@ -165,16 +176,16 @@ Better Auth が自動的にマイグレーション・管理するテーブル�
 
 ## 星座線 (constellation_lines) について
 
-星座の線はテーブルに保存せず、**APIが動的に計算**する。
+星座の線はテーブルに保存せず、APIがアーカイブされていない本から動的に計算する。クライアントでも同じ関数を使い、ローカルの書籍更新時に再計算する。
 条件（[star-formation.md](./star-formation.md) より）:
 
 ```
 1. 両方の status === 'completed'
-2. 同じ genre
+2. 同じ空でない genre
 3. 3D距離 < 4.0
 ```
 
-D1 (SQLite) でのクエリ例:
+実装は `src/server/lib/star-formation.ts` の関数で計算する。以下は同じ条件をSQLで表した参考例:
 
 ```sql
 SELECT b1.id AS from_id, b2.id AS to_id
@@ -186,6 +197,9 @@ JOIN books b2
  AND b2.status = 'completed'
  AND b1.genre = b2.genre
 WHERE b1.user_id = ?
+  AND b1.genre <> ''
+  AND b1.archived_at IS NULL
+  AND b2.archived_at IS NULL
   AND (
     (b1.position_x - b2.position_x) * (b1.position_x - b2.position_x)
   + (b1.position_y - b2.position_y) * (b1.position_y - b2.position_y)
@@ -199,105 +213,26 @@ WHERE b1.user_id = ?
 
 Better Auth が `/api/auth/*` エンドポイントで自動管理する。詳細は [api.md](./api.md) を参照。
 
-```
-[ブラウザ]                  [API (Hono + Better Auth)]    [Google]
-    |                            |                        |
-    |-- POST /api/auth/          |                        |
-    |   sign-in/social --------->|                        |
-    |                            |-- redirect ----------->|
-    |                            |                        |
-    |<-- redirect to consent ----|                        |
-    |                            |                        |
-    |-- (ユーザーが許可) ------->|                        |
-    |                            |                        |
-    |-- GET /api/auth/           |                        |
-    |   callback/google?code= -->|                        |
-    |                            |-- exchange code ------>|
-    |                            |<-- tokens -------------|
-    |                            |                        |
-    |                            |-- upsert user (D1) ----|
-    |                            |-- upsert account (D1) -|
-    |                            |-- create session (D1) -|
-    |                            |                        |
-    |<-- Set-Cookie              |                        |
-    |<-- redirect to /           |                        |
-```
+ログイン画面の `signIn.social({ provider: "google", callbackURL: "/app" })` から認証を開始し、Googleのコールバック処理後に `/app` へ戻る。
 
 ---
 
 ## マイグレーション
 
-### Better Auth テーブル（自動マイグレーション）
+認証用・アプリケーション用の全テーブルを次のSQLで順に作成・更新する。アプリ起動時の自動適用や、独自の `POST /migrate` エンドポイントはない。
 
-Better Auth のテーブル（`user`, `session`, `account`, `verification`）は、
-`POST /migrate` エンドポイントを呼び出すことで `getMigrations()` 経由で自動作成される。
+| ファイル | 内容 |
+|---|---|
+| [0000_superb_penance.sql](../drizzle/0000_superb_penance.sql) | 全7テーブル、インデックス、CHECK制約の作成 |
+| [0001_reading_log_settings.sql](../drizzle/0001_reading_log_settings.sql) | 読書タイムゾーンとアーカイブ日時の追加 |
+| [0002_strong_human_robot.sql](../drizzle/0002_strong_human_robot.sql) | 論理読書日・設定世代の追加、既存ログの補完、一意インデックスの変更 |
 
-### アプリケーションテーブル（手動マイグレーション）
+開発用D1への適用と必要カラムの確認:
 
-```sql
--- 001_create_books.sql
-CREATE TABLE IF NOT EXISTS books (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  author TEXT NOT NULL DEFAULT '',
-  isbn TEXT DEFAULT '',
-  total_pages INTEGER NOT NULL DEFAULT 0,
-  current_page INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'unread',
-  genre TEXT NOT NULL DEFAULT '',
-  cover_url TEXT DEFAULT '',
-  position_x REAL NOT NULL DEFAULT 0,
-  position_y REAL NOT NULL DEFAULT 0,
-  position_z REAL NOT NULL DEFAULT 0,
-  brightness REAL NOT NULL DEFAULT 0.15,
-  color TEXT NOT NULL DEFAULT '#FFFFFF',
-  registered_at TEXT NOT NULL,
-  completed_at TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_books_user_id ON books(user_id);
-CREATE INDEX IF NOT EXISTS idx_books_user_status ON books(user_id, status);
-CREATE INDEX IF NOT EXISTS idx_books_user_genre ON books(user_id, genre);
-
--- 002_create_reading_notes.sql
-CREATE TABLE IF NOT EXISTS reading_notes (
-  id TEXT PRIMARY KEY,
-  book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-  user_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
-  page INTEGER,
-  created_at TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_reading_notes_book_id ON reading_notes(book_id);
-
--- 003_create_reading_logs.sql
-CREATE TABLE IF NOT EXISTS reading_logs (
-  id TEXT PRIMARY KEY,
-  book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-  user_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
-  pages_read INTEGER NOT NULL,
-  date TEXT NOT NULL,
-  created_at TEXT NOT NULL
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_reading_logs_book_date ON reading_logs(book_id, date);
-CREATE INDEX IF NOT EXISTS idx_reading_logs_user_date ON reading_logs(user_id, date);
-
--- 0001_reading_log_settings.sql
-ALTER TABLE users ADD COLUMN reading_timezone TEXT;
-ALTER TABLE books ADD COLUMN archived_at TEXT;
-CREATE INDEX IF NOT EXISTS idx_books_user_archived ON books(user_id, archived_at);
-
--- 0002_stable_reading_days.sql
-DROP INDEX idx_reading_logs_book_date;
-ALTER TABLE users ADD COLUMN reading_day_offset INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE users ADD COLUMN reading_timezone_revision INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE reading_logs ADD COLUMN reading_day INTEGER;
-ALTER TABLE reading_logs ADD COLUMN reading_timezone_revision INTEGER NOT NULL DEFAULT 0;
-UPDATE reading_logs
-SET reading_day = CAST(strftime('%s', date || ' 00:00:00') / 86400 AS INTEGER) +
-  COALESCE((SELECT reading_day_offset FROM users WHERE users.id = reading_logs.user_id), 0)
-WHERE reading_day IS NULL;
-CREATE UNIQUE INDEX idx_reading_logs_book_revision_date ON reading_logs(book_id, reading_timezone_revision, date);
+```bash
+pnpm db:migrate:local
+pnpm db:check-schema:local
 ```
+
+共有・本番D1への適用は `pnpm db:migrate:remote` を使う。対象を確認して実行する。
+`scripts/migrate-d1.sh` は、SQLファイルで初期化した既存DBのスキーマを確認し、適用済みの移行履歴を補完してから未適用分を適用する。詳細は [README](../README.md#開発) を参照。

@@ -3,14 +3,14 @@
 ## 共通仕様
 
 - ベースURL: アプリと同一オリジンの`/api`（ローカル: `http://localhost:3000/api`）
-- レスポンス形式: `application/json`
+- 業務APIのレスポンス形式: `application/json`（`GET /api/` はテキスト、`GET /api/docs` はHTML）
 - 認証方式: Cookie ベースのセッション認証
 - OpenAPI ドキュメント: `GET /api/openapi.json`
 - Swagger UI: `GET /api/docs`
 
 ### エラーレスポンス
 
-APIが返すエラーは以下の形式で統一する。
+検索・書籍・読書ログAPIおよび認証ミドルウェアが返すエラーは以下の形式を使う。`issues` は入力検証の詳細がある場合のみ含む。`/api/auth/*` の応答はBetter Authの形式に従う。
 
 ```json
 {
@@ -39,43 +39,21 @@ APIが返すエラーは以下の形式で統一する。
 
 - **ライブラリ**: [Better Auth](https://www.better-auth.com/) — フレームワーク非依存の認証ライブラリ
 - **Hono 統合**: `auth.handler(c.req.raw)` を `/api/auth/*` にマウント
-- **DB**: Cloudflare D1（Better Auth がテーブルを自動管理）
+- **DB**: Cloudflare D1 + Drizzleアダプター（スキーマ・マイグレーションはリポジトリで管理）
 - **プロバイダ**: Google OAuth 2.0（`socialProviders.google`）
-- **セッション管理**: Better Auth が Cookie ベースで自動管理
+- **セッション管理**: Better Auth が Cookie ベースで管理。有効期間30日、Cookieキャッシュ5分
 
 ### アーキテクチャ
 
 Better Auth はすべての認証フロー（OAuth リダイレクト、コールバック、トークン交換、セッション管理）を内部で処理する。
 手動で state / code_verifier / Cookie を管理する必要はない。
 
-```
-[ブラウザ]                   [API (Hono)]                   [Google]
-    |                             |                              |
-    |-- POST /api/auth/           |                              |
-    |   sign-in/social ---------->|                              |
-    |   { provider: "google" }    |                              |
-    |                             |-- Better Auth が自動で        |
-    |                             |   state 生成 + redirect ----->|
-    |                             |                              |
-    |<-- 302 redirect to Google --|                              |
-    |                             |                              |
-    |-- (ユーザーが Google で許可) ------------------------------>|
-    |                             |                              |
-    |<-- 302 redirect (code) ----|-------------------------------|
-    |                             |                              |
-    |-- GET /api/auth/            |                              |
-    |   callback/google?code= --->|                              |
-    |                             |-- Better Auth が自動で        |
-    |                             |   code → token 交換 -------->|
-    |                             |<-- tokens -------------------|
-    |                             |                              |
-    |                             |-- user upsert (D1)           |
-    |                             |-- account upsert (D1)        |
-    |                             |-- session 作成 (D1)           |
-    |                             |                              |
-    |<-- Set-Cookie: better-auth  |                              |
-    |<-- 302 redirect to /app     |                              |
-```
+1. ログイン画面が `POST /api/auth/sign-in/social` にGoogleプロバイダと `callbackURL: "/app"` を送る。
+2. Better Authがstate・code verifierと認証URLを生成し、200で `{ url, redirect }` を返す。
+3. Better AuthクライアントがGoogleの認証画面へ遷移する。
+4. 許可後、Googleから `/api/auth/callback/google` へ戻る。
+5. Better Authがトークンを交換し、D1のユーザー・アカウント・セッションを保存する。
+6. セッションCookieを設定し、`/app` へリダイレクトする。
 
 ---
 
@@ -99,7 +77,7 @@ Better Auth はすべての認証フロー（OAuth リダイレクト、コー�
 }
 ```
 
-**レスポンス:** 302 → Google 認証画面
+**レスポンス (200 OK):** `{ "url": "https://accounts.google.com/...", "redirect": true }`。Better Authクライアントが返されたURLへ遷移する。
 
 #### `GET /api/auth/get-session`
 
@@ -122,7 +100,7 @@ Better Auth はすべての認証フロー（OAuth リダイレクト、コー�
 }
 ```
 
-**レスポンス (401):** セッションなしまたは期限切れ
+**セッションなし・期限切れ:** 通常は `200 OK` で `null` を返す。保護対象の業務APIにアクセスした場合は認証ミドルウェアが `401 UNAUTHORIZED` を返す。
 
 #### `POST /api/auth/sign-out`
 
@@ -132,21 +110,9 @@ Better Auth はすべての認証フロー（OAuth リダイレクト、コー�
 
 ### 認証ミドルウェア
 
-🔒 マークのついたエンドポイントはすべて認証ミドルウェアを通過する。
+検索・書籍・読書ログの全エンドポイントに `src/server/middleware/auth.ts` の `authMiddleware` を適用する。Better Auth の `auth.api.getSession({ headers: c.req.raw.headers })` でセッションを検証し、有効なら `user` と `session` をコンテキストへ設定する。
 
-Better Auth の `auth.api.getSession()` を使用して、リクエストヘッダーからセッションを検証する。
-
-```ts
-// src/middleware/auth.ts
-app.use("*", async (c, next) => {
-  const session = await auth.api.getSession({
-    headers: c.req.raw.headers,
-  });
-  c.set("user", session?.user ?? null);
-  c.set("session", session?.session ?? null);
-  await next();
-});
-```
+セッションがなければ `401 UNAUTHORIZED`、認証サービスの例外は `500 INTERNAL_ERROR` を返す。認証エンドポイント・OpenAPI・Swagger UIにはこのミドルウェアを適用しない。
 
 #### 型定義
 
@@ -172,7 +138,7 @@ type AppEnv = {
 
 ## 環境変数・シークレット
 
-認証に必要な環境変数（`.dev.vars` / Cloudflare Secrets）:
+実装が参照する設定は以下のとおり。認証設定はCloudflareのバインディング、Honoの環境、`process.env` を参照する。
 
 | 変数名 | 説明 |
 |---|---|
@@ -180,7 +146,10 @@ type AppEnv = {
 | `GOOGLE_CLIENT_SECRET` | Google OAuth クライアントシークレット |
 | `BETTER_AUTH_SECRET` | Better Auth のセッション署名用シークレット（ランダム文字列） |
 | `BETTER_AUTH_URL` | Better Authが動作するアプリの公開URL（例: `https://yomi.suzuuuuu09.com`） |
-| `FRONTEND_URL` | フロントエンドのURL（OAuth後のリダイレクト先） |
+| `GOOGLE_API_KEY` | Google Books APIのキー。検索ルートは `process.env.GOOGLE_API_KEY` を参照 |
+
+`BETTER_AUTH_URL` 未設定時はリクエストのオリジンを使う。D1バインディング `yomi_db` は必須。
+`FRONTEND_URL` は型に定義されているが、現在の認証処理では参照しない。OAuth後の遷移先はログイン画面が指定する `callbackURL: "/app"`。
 
 ---
 
@@ -191,12 +160,13 @@ type AppEnv = {
 ログイン済みセッションが必要です。匿名リクエストは`401 UNAUTHORIZED`になります。
 
 クエリパラメータ:
+
 - `q` (条件付き必須): 検索キーワード（最大200文字）
-- `isbn` (条件付き必須): ISBNコードでの検索（`q` と同時指定時は `isbn` 優先）
+- `isbn` (条件付き必須): 数字・X/x・スペース・ハイフンからなる10〜17文字（`q` と同時指定時は `isbn` 優先）
 - `index` (任意): 結果の開始位置（0以上の整数、デフォルト: 0）
 - `results` (任意): 返却する結果の最大数（1〜40の整数、デフォルト: 10）
 
-`q`と`isbn`の少なくとも一方を指定してください。上流障害時は502、タイムアウト時は504を返します。
+`q`と`isbn`の少なくとも一方を指定してください。文字列の前後の空白は除去します。上流障害・不正応答時は502、5秒のタイムアウト時は504を返します。上流に `items` がない場合はレスポンスの `books` も省略されます。
 
 OpenAPIドキュメントには現在、スキーマ定義済みの検索エンドポイントが登録されています。本の管理エンドポイントはこの文書の下記一覧を参照してください。
 
@@ -241,9 +211,22 @@ OpenAPIドキュメントには現在、スキーマ定義済みの検索エン�
 | POST | `/api/books/:id/notes` | ノートを作成 |
 | DELETE | `/api/books/:bookId/notes/:noteId` | 指定した書籍に属する自分のノートを削除 |
 
-`delta`による現在ページの加算は、複数タブから同時に送信されてもサーバー側で原子的に適用されます。`page`を指定する場合、`totalPages`が0より大きければ総ページ数を超える値は`400 INVALID_REQUEST`になります。`totalPages`が0の場合は総ページ数不明として上限を設けません。
+`delta` と `page` はどちらか一方だけを指定します。`delta` は -1,000,000〜1,000,000 の整数で、結果は0以上、総ページ数が既知ならその範囲内に丸めます。`delta`による更新は比較更新と再試行で競合を処理し、書籍と読書ログをD1のバッチでまとめて適用します。競合の再試行は最大5回で、解消できなければ500を返します。`page`を指定する場合、`totalPages`が0より大きければ総ページ数を超える値は`400 INVALID_REQUEST`になります。`totalPages`が0の場合は総ページ数による上限を設けません（`page` 自体の入力上限は1,000,000）。
+
+#### 書籍・ノートの入力と応答
+
+- 作成: `title` 必須（空白除去後1〜200文字）。`author` は200文字、`isbn` は32文字、`genre` は100文字、`coverUrl` は2,048文字まで。省略した文字列は空文字、ページ数は0。
+- ページ数: `totalPages`・`currentPage`・進捗の `page` は0〜1,000,000の整数。総ページ数0は不明扱い。状態はページ数から算出し、作成時に `status` を送っても状態指定には使わない。
+- 書誌編集: `title`・`author`・`isbn`・`totalPages`・`genre`・`coverUrl` のいずれか1項目以上。現在ページを変える場合は進捗APIを使う。
+- ノート作成: `content` は空白除去後1〜10,000文字。`page` は1〜1,000,000の整数、nullまたは省略可。成功時は201で `{ "id": "..." }` を返す。
+- 書籍の作成は201、編集・進捗更新・復元は200で `book` を返す。`book` は書誌情報、状態、`registeredAt`・`completedAt`・`archivedAt`、`position: [x, y, z]`、`brightness`、`color`、`notes` を含む（`src/server/lib/book-response.ts`）。
+- 一覧は `{ books, constellationLines }`、アーカイブ一覧は `{ books }`。星座線は進捗更新の応答には含めず、クライアント側でも再計算する。
+- アーカイブ・完全削除・ノート削除の成功応答は200で `{ "ok": true }`。アーカイブしてもノート・読書ログと統計への寄与は保持し、完全削除では関連ノート・読書ログも削除する。
+- 書誌編集・進捗更新はアーカイブ済みの本を対象にすると404。ノート操作・読書ログ操作・完全削除はアーカイブ済みの本も対象にできる。
 
 ### 読書ログ (`/api/reading-logs`)
+
+すべて認証必須。操作できるのは自分の本のログのみ。
 
 | メソッド | パス | 説明 |
 |---|---|---|
@@ -255,6 +238,18 @@ OpenAPIドキュメントには現在、スキーマ定義済みの検索エン�
 | PUT | `/api/reading-logs/settings` | IANAタイムゾーンを保存 |
 
 進捗更新時は保存済みタイムゾーンで暦日を決定し、同じ本と論理読書日のページ量へ増減を反映します。
-保存済みタイムゾーンがない初回更新では、クライアントが検出した有効なIANAタイムゾーンをリクエストの`readingTimezone`として必ず指定し、その値を初期値として保存します。値がない場合は`400 INVALID_REQUEST`になります。
+クライアントは本一覧の取得時に、設定がなければブラウザで検出したタイムゾーンを設定APIへ保存します。
+保存済みタイムゾーンがない初回の進捗更新では、クライアントが検出した有効なIANAタイムゾーンをリクエストの`readingTimezone`として必ず指定し、その値を初期値として保存します。値がない場合は`400 INVALID_REQUEST`になります。
 既存ログの日付はタイムゾーン変更後も再集計しません。
 タイムゾーン変更時は論理読書日の連続性を保つための補正値と設定世代だけを更新し、既存ログの`date`と`readingDay`は変更しません。新しい世代のログは既存世代と別レコードに保存し、統計では論理読書日単位に合算します。Reading Graphの棒ラベルは現在の読書タイムゾーンの論理日軸から生成します。
+
+進捗を戻す場合は、同じ本の当日の論理読書日のログから減算し、0になる行を削除します。過去日のログには遡りません。ログの明示的な訂正・削除は本の `currentPage` を変更しません。
+
+- 統計: `{ days: [{ date, pagesRead, readingDay }], streak, readingTimezone }`。アーカイブ済みを含む全冊を合算し、過去14日は記録のない日を0で埋めます。タイムゾーン未設定なら `{ days: [], streak: 0, readingTimezone: null }`。
+- 連続読書日数: 1ページ以上の日を数え、当日が未記録なら前日から数えます。
+- 本ごとのログ: `{ logs: [{ id, date, pagesRead, readingDay, readingTimezoneRevision }] }`。日付・設定世代・IDの昇順で全記録を返します。
+- 訂正: `pagesRead` は0〜1,000,000の整数。日付は実在する `YYYY-MM-DD`。未記録の日はログを作成しますが、`readingDay` または `readingTimezoneRevision` で存在しないログを指定した場合は404（`pagesRead: 0` の場合は何もせず成功）。成功応答は `{ ok: true, log }`、0ページでは `log: null`。
+- 削除: 対象がなくても `{ ok: true }`。訂正・削除ともに、日付と指定条件で複数のログが一致する場合は400。
+- 設定の取得・更新: `{ readingTimezone }` を返します。未設定の取得値はnull。更新ボディは `{ "readingTimezone": "Asia/Tokyo" }`。
+
+実装: `src/server/routes/{books,reading-logs,search}.ts`、入力スキーマ: `src/server/schemas/{books,search}.ts`。
