@@ -114,25 +114,7 @@ Better Auth はすべての認証フロー（OAuth リダイレクト、コー�
 
 セッションがなければ `401 UNAUTHORIZED`、認証サービスの例外は `500 INTERNAL_ERROR` を返す。認証エンドポイント・OpenAPI・Swagger UIにはこのミドルウェアを適用しない。
 
-#### 型定義
-
-```ts
-type AppEnv = {
-  Bindings: {
-    yomi_db: D1Database;
-    GOOGLE_CLIENT_ID: string;
-    GOOGLE_CLIENT_SECRET: string;
-    BETTER_AUTH_SECRET: string;
-    BETTER_AUTH_URL: string;
-    FRONTEND_URL: string;
-    GOOGLE_API_KEY: string;
-  };
-  Variables: {
-    user: BetterAuthUser | null;
-    session: BetterAuthSession | null;
-  };
-};
-```
+内部の型定義は [`src/server/types.ts`](../src/server/types.ts) を参照。
 
 ---
 
@@ -211,7 +193,7 @@ OpenAPIドキュメントには現在、スキーマ定義済みの検索エン�
 | POST | `/api/books/:id/notes` | ノートを作成 |
 | DELETE | `/api/books/:bookId/notes/:noteId` | 指定した書籍に属する自分のノートを削除 |
 
-`delta` と `page` はどちらか一方だけを指定します。`delta` は -1,000,000〜1,000,000 の整数で、結果は0以上、総ページ数が既知ならその範囲内に丸めます。`delta`による更新は比較更新と再試行で競合を処理し、書籍と読書ログをD1のバッチでまとめて適用します。競合の再試行は最大5回で、解消できなければ500を返します。`page`を指定する場合、`totalPages`が0より大きければ総ページ数を超える値は`400 INVALID_REQUEST`になります。`totalPages`が0の場合は総ページ数による上限を設けません（`page` 自体の入力上限は1,000,000）。
+`delta` と `page` はどちらか一方だけを指定します。`delta` は -1,000,000〜1,000,000 の整数で、結果は0以上、総ページ数が既知ならその範囲内に丸めます。`delta`による更新は比較更新と再試行で競合を処理し、書籍と読書ログをD1のバッチでまとめて適用します。競合の再試行は最大5回で、解消できなければ500を返します。書誌編集も更新前の値を比較し、競合時は最新のページ数から状態を再計算します。`page`を指定する場合、`totalPages`が0より大きければ総ページ数を超える値は`400 INVALID_REQUEST`になります。`totalPages`が0の場合は総ページ数による上限を設けません（`page` 自体の入力上限は1,000,000）。
 
 #### 書籍・ノートの入力と応答
 

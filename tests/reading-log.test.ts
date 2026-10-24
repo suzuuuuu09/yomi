@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   aggregateReadingDayNumbers,
-  aggregateReadingDays,
   calculateReadingDayStreak,
-  calculateReadingStreak,
   dateInTimeZone,
   dateToDayNumber,
   isValidTimeZone,
@@ -26,35 +24,34 @@ describe("reading log domain helpers", () => {
   });
 
   it("counts a streak from yesterday while today is still open", () => {
-    expect(
-      calculateReadingStreak(["2026-08-09", "2026-08-10"], "2026-08-11"),
-    ).toBe(2);
-    expect(
-      calculateReadingStreak(["2026-08-08", "2026-08-10"], "2026-08-11"),
-    ).toBe(1);
+    expect(calculateReadingDayStreak([8, 9], 10)).toBe(2);
+    expect(calculateReadingDayStreak([7, 9], 10)).toBe(1);
   });
 
   it("starts a new streak today and breaks after a blank day", () => {
-    expect(
-      calculateReadingStreak(["2026-08-10", "2026-08-11"], "2026-08-11"),
-    ).toBe(2);
-    expect(calculateReadingStreak(["2026-08-08"], "2026-08-11")).toBe(0);
+    expect(calculateReadingDayStreak([9, 10], 10)).toBe(2);
+    expect(calculateReadingDayStreak([7], 10)).toBe(0);
   });
 
   it("sums pages across books and returns zero for unrecorded days", () => {
     expect(
-      aggregateReadingDays(
+      aggregateReadingDayNumbers(
         [
-          { date: "2026-08-10", pagesRead: 12 },
-          { date: "2026-08-10", pagesRead: 8 },
-          { date: "2026-08-12", pagesRead: 4 },
+          { date: "2026-08-10", pagesRead: 12, readingDay: 10 },
+          { date: "2026-08-10", pagesRead: 8, readingDay: 10 },
+          { date: "2026-08-12", pagesRead: 4, readingDay: 12 },
         ],
-        ["2026-08-10", "2026-08-11", "2026-08-12"],
+        [10, 11, 12],
+        new Map([
+          [10, "2026-08-10"],
+          [11, "2026-08-11"],
+          [12, "2026-08-12"],
+        ]),
       ),
     ).toEqual([
-      { date: "2026-08-10", pagesRead: 20 },
-      { date: "2026-08-11", pagesRead: 0 },
-      { date: "2026-08-12", pagesRead: 4 },
+      { date: "2026-08-10", pagesRead: 20, readingDay: 10 },
+      { date: "2026-08-11", pagesRead: 0, readingDay: 11 },
+      { date: "2026-08-12", pagesRead: 4, readingDay: 12 },
     ]);
   });
 

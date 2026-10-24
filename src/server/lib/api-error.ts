@@ -38,3 +38,27 @@ export function apiError(
     headers: { "Content-Type": "application/json" },
   });
 }
+
+export function invalidRequest(
+  c: Context,
+  error: { issues: { path: PropertyKey[]; message: string }[] },
+) {
+  return apiError(
+    c,
+    400,
+    "INVALID_REQUEST",
+    "入力値が不正です",
+    error.issues.map((issue) => ({
+      path: issue.path.map(String),
+      message: issue.message,
+    })),
+  );
+}
+
+export async function readJson(c: Context) {
+  try {
+    return await c.req.json();
+  } catch {
+    return null;
+  }
+}

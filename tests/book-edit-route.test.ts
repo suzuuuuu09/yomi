@@ -64,3 +64,44 @@ describe("book editing", () => {
     });
   });
 });
+
+it.each([
+  ["DELETE", "/api/books/book-1"],
+  ["POST", "/api/books/book-1/archive"],
+])("keeps the %s archive endpoint compatible", async (method, path) => {
+  const archived = await app.request(path, { method });
+  expect(archived.status).toBe(200);
+  await expect(archived.json()).resolves.toEqual({ ok: true });
+  const active = await app.request("/api/books");
+  await expect(active.json()).resolves.toMatchObject({
+    books: [],
+    constellationLines: [],
+  });
+  const restore = await app.request("/api/books/book-1/restore", {
+    method: "POST",
+  });
+  expect(restore.status).toBe(200);
+  await expect(restore.json()).resolves.toMatchObject({
+    book: { id: "book-1", archivedAt: null },
+  });
+});
+
+it("preserves the book creation response and its legacy fields", async () => {
+  const response = await app.request("/api/books", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title: "新しい本" }),
+  });
+  expect(response.status).toBe(201);
+  const body = (await response.json()) as {
+    id: string;
+    position: number[];
+    brightness: number;
+    color: string;
+    book: { id: string; position: number[]; brightness: number; color: string };
+  };
+  expect(body.id).toBe(body.book.id);
+  expect(body.position).toEqual(body.book.position);
+  expect(body.brightness).toBe(body.book.brightness);
+  expect(body.color).toBe(body.book.color);
+});

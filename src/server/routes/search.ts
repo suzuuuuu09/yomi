@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import { apiError } from "@/server/lib/api-error";
+import { invalidRequest } from "@/server/lib/api-error";
 import {
   BookProviderError,
   BookProviderTimeoutError,
@@ -12,22 +12,6 @@ import {
   SearchErrorSchema,
   SearchQuerySchema,
 } from "@/server/schemas/search";
-
-function invalidRequest(
-  c: Parameters<typeof apiError>[0],
-  error: { issues: { path: PropertyKey[]; message: string }[] },
-) {
-  return apiError(
-    c,
-    400,
-    "INVALID_REQUEST",
-    "入力値が不正です",
-    error.issues.map((issue) => ({
-      path: issue.path.map(String),
-      message: issue.message,
-    })),
-  );
-}
 
 const searchApp = new OpenAPIHono({
   defaultHook: (result, c) => {

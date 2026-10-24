@@ -177,35 +177,7 @@ Better Auth の Drizzle アダプターが利用するテーブル。定義は `
 ## 星座線 (constellation_lines) について
 
 星座の線はテーブルに保存せず、APIがアーカイブされていない本から動的に計算する。クライアントでも同じ関数を使い、ローカルの書籍更新時に再計算する。
-条件（[star-formation.md](./star-formation.md) より）:
-
-```
-1. 両方の status === 'completed'
-2. 同じ空でない genre
-3. 3D距離 < 4.0
-```
-
-実装は `src/server/lib/star-formation.ts` の関数で計算する。以下は同じ条件をSQLで表した参考例:
-
-```sql
-SELECT b1.id AS from_id, b2.id AS to_id
-FROM books b1
-JOIN books b2
-  ON b1.user_id = b2.user_id
- AND b1.id < b2.id
- AND b1.status = 'completed'
- AND b2.status = 'completed'
- AND b1.genre = b2.genre
-WHERE b1.user_id = ?
-  AND b1.genre <> ''
-  AND b1.archived_at IS NULL
-  AND b2.archived_at IS NULL
-  AND (
-    (b1.position_x - b2.position_x) * (b1.position_x - b2.position_x)
-  + (b1.position_y - b2.position_y) * (b1.position_y - b2.position_y)
-  + (b1.position_z - b2.position_z) * (b1.position_z - b2.position_z)
-  ) < 16.0;  -- 4.0^2 = 16.0
-```
+結線条件と計算方法は [star-formation.md](./star-formation.md) を参照。
 
 ---
 

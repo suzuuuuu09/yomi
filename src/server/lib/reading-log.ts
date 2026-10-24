@@ -48,13 +48,6 @@ export function todayInTimeZone(timeZone: string, now = new Date()): string {
   return dateInTimeZone(now, timeZone);
 }
 
-export function addCalendarDays(date: string, amount: number): string {
-  const parsed = new Date(`${date}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime())) throw new Error("Invalid calendar date");
-  parsed.setUTCDate(parsed.getUTCDate() + amount);
-  return parsed.toISOString().slice(0, 10);
-}
-
 /** Convert an ISO calendar date into a timezone-independent day number. */
 export function dateToDayNumber(date: string): number {
   const parsed = new Date(`${date}T00:00:00.000Z`);
@@ -85,28 +78,6 @@ export function preserveReadingDayOffset(
   );
 }
 
-export function listCalendarDays(endDate: string, count: number): string[] {
-  if (!Number.isInteger(count) || count < 1) return [];
-  return Array.from({ length: count }, (_, index) =>
-    addCalendarDays(endDate, index - count + 1),
-  );
-}
-
-export function aggregateReadingDays(
-  logs: ReadingLogValue[],
-  dates: string[],
-): ReadingDay[] {
-  const totals = new Map<string, number>();
-  for (const log of logs) {
-    if (log.pagesRead <= 0) continue;
-    totals.set(log.date, (totals.get(log.date) ?? 0) + log.pagesRead);
-  }
-  return dates.map((date) => ({
-    date,
-    pagesRead: totals.get(date) ?? 0,
-  }));
-}
-
 export function aggregateReadingDayNumbers(
   logs: ReadingLogValue[],
   dayNumbers: number[],
@@ -126,22 +97,6 @@ export function aggregateReadingDayNumbers(
     pagesRead: totals.get(readingDay) ?? 0,
     readingDay,
   }));
-}
-
-export function calculateReadingStreak(
-  readingDates: string[],
-  today: string,
-): number {
-  const dates = new Set(readingDates);
-  let cursor = dates.has(today) ? today : addCalendarDays(today, -1);
-  if (!dates.has(cursor)) return 0;
-
-  let streak = 0;
-  while (dates.has(cursor)) {
-    streak += 1;
-    cursor = addCalendarDays(cursor, -1);
-  }
-  return streak;
 }
 
 export function calculateReadingDayStreak(

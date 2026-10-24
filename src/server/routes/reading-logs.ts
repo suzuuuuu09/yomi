@@ -1,6 +1,6 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { and, asc, eq } from "drizzle-orm";
-import { apiError } from "@/server/lib/api-error";
+import { apiError, invalidRequest, readJson } from "@/server/lib/api-error";
 import { getDBFromContext } from "@/server/lib/db";
 import {
   aggregateReadingDayNumbers,
@@ -32,22 +32,6 @@ type Database = Pick<
 
 readingLogsApp.use("/*", authMiddleware);
 
-function invalidRequest(
-  c: Parameters<typeof apiError>[0],
-  error: { issues: { path: PropertyKey[]; message: string }[] },
-) {
-  return apiError(
-    c,
-    400,
-    "INVALID_REQUEST",
-    "入力値が不正です",
-    error.issues.map((issue) => ({
-      path: issue.path.map(String),
-      message: issue.message,
-    })),
-  );
-}
-
 function readReadingDayQuery(c: Parameters<typeof apiError>[0]) {
   const raw = c.req.query("readingDay");
   if (raw === undefined) return { value: undefined as number | undefined };
@@ -64,14 +48,6 @@ function readRevisionQuery(c: Parameters<typeof apiError>[0]) {
     return { error: "readingTimezoneRevisionが不正です" };
   }
   return { value };
-}
-
-async function readJson(c: Parameters<typeof apiError>[0]) {
-  try {
-    return await c.req.json();
-  } catch {
-    return null;
-  }
 }
 
 async function readBook(db: Database, userId: string, bookId: string) {

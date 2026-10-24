@@ -1,6 +1,7 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { and, eq, exists, isNotNull, isNull } from "drizzle-orm";
-import { apiError } from "@/server/lib/api-error";
+import type { Handler } from "hono";
+import { apiError, invalidRequest, readJson } from "@/server/lib/api-error";
 import { toBookResponse } from "@/server/lib/book-response";
 import { pageToStatus, resolveCompletedAt } from "@/server/lib/book-status";
 import { getDBFromContext } from "@/server/lib/db";
@@ -41,22 +42,6 @@ type Database = Pick<
 // 全ルートに認証ミドルウェアを適用
 booksApp.use("/*", authMiddleware);
 
-function invalidRequest(
-  c: Parameters<typeof apiError>[0],
-  error: { issues: { path: PropertyKey[]; message: string }[] },
-) {
-  return apiError(
-    c,
-    400,
-    "INVALID_REQUEST",
-    "入力値が不正です",
-    error.issues.map((issue) => ({
-      path: issue.path.map(String),
-      message: issue.message,
-    })),
-  );
-}
-
 async function readBookWithNotes(
   db: Database,
   userId: string,
@@ -82,14 +67,6 @@ async function readBookWithNotes(
     );
 
   return { book, notes };
-}
-
-async function readJson(c: Parameters<typeof apiError>[0]) {
-  try {
-    return await c.req.json();
-  } catch {
-    return null;
-  }
 }
 
 function uniqueOperationTimestamp(now: Date) {
@@ -473,11 +450,6 @@ booksApp.post("/:id/progress", async (c) => {
 
   const bookId = c.req.param("id");
   const db = getDBFromContext();
-  const existing = await readBookWithNotes(db, user.id, bookId, {
-    activeOnly: true,
-  });
-  if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
-
   const { delta, page, readingTimezone } = parsed.data;
   if (readingTimezone !== undefined && !isValidTimeZone(readingTimezone)) {
     return invalidRequest(c, {
@@ -489,19 +461,6 @@ booksApp.post("/:id/progress", async (c) => {
       ],
     });
   }
-  if (
-    page !== undefined &&
-    existing.book.totalPages > 0 &&
-    page > existing.book.totalPages
-  ) {
-    return apiError(
-      c,
-      400,
-      "INVALID_REQUEST",
-      "ページ数は総ページ数以下で指定してください",
-    );
-  }
-
   const nowDate = new Date();
   let progress: Awaited<ReturnType<typeof updateProgressAndReadingLog>>;
   try {
@@ -539,12 +498,9 @@ booksApp.post("/:id/progress", async (c) => {
   }
   if (!progress) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
 
-  const current = await readBookWithNotes(db, user.id, bookId);
-  if (!current) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
-
   return c.json({
     ok: true,
-    book: toBookResponse(current.book, current.notes),
+    book: toBookResponse(progress.current.book, progress.current.notes),
   });
 });
 
@@ -633,7 +589,7 @@ booksApp.put("/:id", async (c) => {
 });
 
 // 本をアーカイブ
-booksApp.delete("/:id", async (c) => {
+const archiveBook: Handler<AppEnv, "/:id" | "/:id/archive"> = async (c) => {
   const user = c.get("user");
   if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
 
@@ -652,23 +608,10 @@ booksApp.delete("/:id", async (c) => {
     .where(and(eq(books.id, bookId), eq(books.userId, user.id)));
 
   return c.json({ ok: true });
-});
+};
 
-// 明示的なアーカイブ操作（DELETE /:id と同じ意味で、クライアントから利用する）
-booksApp.post("/:id/archive", async (c) => {
-  const user = c.get("user");
-  if (!user) return apiError(c, 401, "UNAUTHORIZED", "認証が必要です");
-  const bookId = c.req.param("id");
-  const db = getDBFromContext();
-  const existing = await readBookWithNotes(db, user.id, bookId);
-  if (!existing) return apiError(c, 404, "NOT_FOUND", "本が見つかりません");
-  const now = new Date().toISOString();
-  await db
-    .update(books)
-    .set({ archivedAt: existing.book.archivedAt ?? now, updatedAt: now })
-    .where(and(eq(books.id, bookId), eq(books.userId, user.id)));
-  return c.json({ ok: true });
-});
+booksApp.delete("/:id", archiveBook);
+booksApp.post("/:id/archive", archiveBook);
 
 // アーカイブ済みの本を復元
 booksApp.post("/:id/restore", async (c) => {
