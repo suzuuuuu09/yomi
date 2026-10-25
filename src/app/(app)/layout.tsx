@@ -1,17 +1,10 @@
 import type { Metadata } from "next";
-import { Fira_Code, Fira_Sans } from "next/font/google";
+import { Noto_Sans_JP } from "next/font/google";
 import "@/app/globals.css";
 
-const firaCode = Fira_Code({
+const notoSans = Noto_Sans_JP({
   subsets: ["latin"],
-  variable: "--font-fira-code",
-  display: "swap",
-});
-
-const firaSans = Fira_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-fira-sans",
+  variable: "--font-noto-sans-jp",
   display: "swap",
 });
 
@@ -42,7 +35,10 @@ export default function AppLayout({
 }>) {
   return (
     <html lang="ja" data-yomi-theme="dark">
-      <body className={`${firaCode.variable} ${firaSans.variable}`}>
+      <body
+        className={notoSans.variable}
+        style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif" }}
+      >
         {children}
       </body>
     </html>

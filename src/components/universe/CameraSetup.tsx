@@ -15,12 +15,13 @@ interface CameraSetupProps {
   controlsRef: ControlsRef;
   vrMode: boolean;
   gyroGranted: boolean;
+  selectedBookId: string | null;
 }
 
 export function CameraSetup(props: CameraSetupProps) {
-  const { books, controlsRef, vrMode, gyroGranted } = props;
+  const { books, controlsRef, vrMode, gyroGranted, selectedBookId } = props;
   const { camera, size } = useThree();
-  const initialized = useRef(false);
+  const initializedSize = useRef("");
   const vrPositioned = useRef(false);
 
   // 重心と分布半径を計算するユーティリティ
@@ -46,18 +47,57 @@ export function CameraSetup(props: CameraSetupProps) {
     return { cx, cy, cz, radius };
   }, [books]);
 
+  useEffect(() => {
+    const perspective = camera as PerspectiveCamera;
+    if (selectedBookId && !vrMode) {
+      perspective.setViewOffset(
+        size.width,
+        size.height,
+        size.width < 768 ? 0 : 200,
+        size.width < 768 ? size.height * 0.22 : 0,
+        size.width,
+        size.height,
+      );
+    } else perspective.clearViewOffset();
+    return () => perspective.clearViewOffset();
+  }, [camera, selectedBookId, size, vrMode]);
+
   // 通常モードの初期カメラ配置
   useEffect(() => {
-    if (initialized.current || books.length === 0) return;
-    initialized.current = true;
+    const viewportKey = `${size.width}x${size.height}:${!!selectedBookId}`;
+    if (initializedSize.current === viewportKey || books.length === 0) return;
+    initializedSize.current = viewportKey;
 
-    const { cx, cy, cz, radius } = computeBounds();
-    const r = Math.max(radius + 2.5, 4);
+    const { cx, cy, cz } = computeBounds();
+    const halfWidth =
+      books.reduce(
+        (max, book) => Math.max(max, Math.abs(book.position[0] - cx)),
+        0,
+      ) + 1;
+    const halfHeight =
+      books.reduce(
+        (max, book) => Math.max(max, Math.abs(book.position[1] - cy)),
+        0,
+      ) + 1;
+    const depth = books.reduce(
+      (max, book) => Math.max(max, book.position[2] - cz),
+      0,
+    );
     const fovRad = ((camera as PerspectiveCamera).fov * Math.PI) / 180;
-    const hFovRad =
-      2 * Math.atan(Math.tan(fovRad / 2) * (size.width / size.height));
+    const visibleWidth =
+      selectedBookId && size.width >= 768
+        ? Math.max(size.width - 540, size.width * 0.5)
+        : size.width;
+    const visibleHeight =
+      selectedBookId && size.width < 768 ? size.height * 0.5 : size.height;
     const distance = Math.min(
-      Math.max(r / Math.tan(fovRad / 2), r / Math.tan(hFovRad / 2)) * 1.15,
+      Math.max(
+        halfWidth / ((Math.tan(fovRad / 2) * visibleWidth) / size.height),
+        halfHeight / ((Math.tan(fovRad / 2) * visibleHeight) / size.height),
+        4,
+      ) *
+        1.1 +
+        depth,
       38,
     );
 
@@ -65,7 +105,7 @@ export function CameraSetup(props: CameraSetupProps) {
     camera.lookAt(cx, cy, cz);
     controlsRef.current?.target.set(cx, cy, cz);
     controlsRef.current?.update();
-  }, [books, camera, size, controlsRef, computeBounds]);
+  }, [books, camera, size, controlsRef, computeBounds, selectedBookId]);
 
   // VRモード時のカメラ配置: 全体を適度に俯瞰できる位置へ
   useEffect(() => {

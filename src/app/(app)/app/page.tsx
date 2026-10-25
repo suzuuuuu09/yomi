@@ -1,146 +1,63 @@
 "use client";
 
+import { Plus, Rotate3D } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
-import { css } from "styled-system/css";
-import { Box, Center, Circle, Flex, styled as s } from "styled-system/jsx";
+import { useCallback, useEffect, useState } from "react";
 import BookListDrawer from "@/components/BookListDrawer";
+import styles from "@/components/observatory.module.css";
 import SessionGuard from "@/components/SessionGuard";
 import StarInsightPanel from "@/components/StarInsightPanel";
 import AddBookModal from "@/components/sections/AddBookModal";
 import BottomDock from "@/components/sections/BottomDock";
-import StatsOverlay from "@/components/sections/StatsOverlay";
+import ObservatoryEmptyState from "@/components/sections/ObservatoryEmptyState";
 import TopBar from "@/components/sections/TopBar";
-import { IconCardButton } from "@/components/shares/IconCardButton";
-import TutorialOverlay from "@/components/TutorialOverlay";
 import { useObservatory } from "@/hooks/useObservatory";
 import { useStarInsight } from "@/hooks/useStarInsight";
+import useLibraryFilterStore from "@/store/useLibraryFilterStore";
 import useLibraryStore from "@/store/useLibraryStore";
 
-// 動的に UniverseCanvasを読み込む
 const UniverseCanvas = dynamic(
   () => import("@/components/universe/UniverseCanvas"),
   {
     ssr: false,
     loading: () => (
-      <Center position="fixed" inset={0} bg="#020617">
-        <Flex flexDir="column" align="center" gap="4">
-          <Circle size={6} bg="indigo.500" animation="ping" />
-          <s.p fontSize="xs" color="slate.500" letterSpacing="widest">
-            宇宙を展開中...
-          </s.p>
-        </Flex>
-      </Center>
+      <div className={styles.statusMessage} role="status">
+        宇宙を展開中...
+      </div>
     ),
   },
 );
 
-function AddBookButton({
-  setIsAddModalOpen,
-  isBottomDockVisible,
-}: {
-  setIsAddModalOpen: (open: boolean) => void;
-  isBottomDockVisible: boolean;
-}) {
-  return (
-    <IconCardButton
-      icon="plus"
-      label="本を追加"
-      onClick={() => setIsAddModalOpen(true)}
-      className={css({
-        color: "indigo.300",
-        shadow: "xl indigo.500/10",
-        _hover: { scale: "105%" },
-        _active: { scale: "95%" },
-        transitionProperty: "transform",
-        transitionDuration: "200ms",
-        transitionTimingFunction: "ease-in-out",
-        "@media (min-width: 768px)": {
-          bottom: 6,
-          right: 6,
-        },
-        "@media (max-width: 767px)": {
-          bottom: isBottomDockVisible ? 36 : -6,
-          right: 4,
-        },
-        "@media (prefers-reduced-motion: reduce)": {
-          transitionProperty: "none",
-        },
-        "@media (hover: hover)": {
-          _hover: {
-            scale: "105%",
-          },
-        },
-      })}
-      materialProps={{
-        thickness: "thin",
-        tint: "primary",
-        tintOpacity: 0.15,
-      }}
-    />
+function ObservatoryContent() {
+  const books = useLibraryStore((state) => state.books);
+  const constellationLines = useLibraryStore(
+    (state) => state.constellationLines,
   );
-}
-
-function VrModeButton({
-  vrMode,
-  onToggle,
-  isBottomDockVisible,
-}: {
-  vrMode: boolean;
-  onToggle: () => void;
-  isBottomDockVisible: boolean;
-}) {
+  const fetchBooks = useLibraryStore((state) => state.fetchBooks);
+  const isLoading = useLibraryStore((state) => state.isLoading);
+  const newlyAddedBookId = useLibraryStore((state) => state.newlyAddedBookId);
+  const clearNewlyAdded = useLibraryStore((state) => state.clearNewlyAdded);
+  const lastError = useLibraryStore((state) => state.lastError);
+  const clearMutationError = useLibraryStore(
+    (state) => state.clearMutationError,
+  );
+  const setSelectedBook = useLibraryStore((state) => state.setSelectedBook);
+  const [loadState, setLoadState] = useState<"loading" | "loaded" | "failed">(
+    "loading",
+  );
+  const [vrMode, setVrMode] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
-  useEffect(() => {
-    setIsTouchDevice(navigator.maxTouchPoints > 0 || "ontouchstart" in window);
-  }, []);
-
-  if (!isTouchDevice) return null;
-
-  return (
-    <IconCardButton
-      icon={vrMode ? "rotate-ccw" : "rotate-3d"}
-      label={vrMode ? "VRモードを終了" : "VRモード（ジャイロ）"}
-      onClick={onToggle}
-      className={css({
-        color: vrMode ? "purple.300" : "indigo.300",
-        shadow: vrMode ? "xl purple.500/20" : "xl indigo.500/10",
-        _hover: { scale: "105%" },
-        _active: { scale: "95%" },
-        bottom: isBottomDockVisible ? 36 : -6,
-        transitionProperty: "transform",
-        transitionDuration: "200ms",
-        transitionTimingFunction: "ease-in-out",
-        "@media (prefers-reduced-motion: reduce)": {
-          transitionProperty: "none",
-        },
-      })}
-      materialProps={{
-        thickness: "thin",
-        tint: vrMode ? "secondary" : "primary",
-        tintOpacity: vrMode ? 0.25 : 0.15,
-      }}
-    />
-  );
-}
-
-function ObservatoryContent() {
-  const books = useLibraryStore((s) => s.books);
-  const constellationLines = useLibraryStore((s) => s.constellationLines);
-  const fetchBooks = useLibraryStore((s) => s.fetchBooks);
-  const newlyAddedBookId = useLibraryStore((s) => s.newlyAddedBookId);
-  const clearNewlyAdded = useLibraryStore((s) => s.clearNewlyAdded);
-  const lastError = useLibraryStore((s) => s.lastError);
-  const clearMutationError = useLibraryStore((s) => s.clearMutationError);
-  const readingStreak = useLibraryStore((s) => s.readingStats.streak);
-
-  const [vrMode, setVrMode] = useState(false);
-
-  // ログインユーザーの本をAPIから取得
-  useEffect(() => {
-    fetchBooks();
+  const loadBooks = useCallback(async () => {
+    setLoadState("loading");
+    await fetchBooks();
+    setLoadState(useLibraryStore.getState().lastError ? "failed" : "loaded");
   }, [fetchBooks]);
+
+  useEffect(() => {
+    void loadBooks();
+    setIsTouchDevice(navigator.maxTouchPoints > 0 || "ontouchstart" in window);
+  }, [loadBooks]);
 
   const {
     filteredBooks,
@@ -152,47 +69,13 @@ function ObservatoryContent() {
     handleAdd,
   } = useObservatory();
   const starInsight = useStarInsight();
-
-  const { updatePageProgress, setSelectedBook } = useLibraryStore();
-
-  const nowReading = books.filter((b) => b.status === "reading");
-  const isBottomDockVisible = nowReading.length > 0;
+  const ready = loadState === "loaded" && !isLoading;
+  const empty = ready && books.length === 0 && !lastError;
+  const nowReading = books.filter((book) => book.status === "reading");
+  const openAdd = () => setIsAddModalOpen(true);
 
   return (
-    <s.main position="relative" w="screen" h="screen" overflow="hidden">
-      {lastError && (
-        <Box
-          role="alert"
-          position="fixed"
-          top={4}
-          left="50%"
-          transform="translateX(-50%)"
-          zIndex={100}
-          display="flex"
-          alignItems="center"
-          gap={3}
-          maxW="calc(100vw - 2rem)"
-          px={4}
-          py={3}
-          rounded="xl"
-          bg="red.950/90"
-          border="1px solid"
-          borderColor="red.500/30"
-          color="red.200"
-          fontSize="sm"
-        >
-          <s.span>{lastError}</s.span>
-          <s.button
-            type="button"
-            onClick={clearMutationError}
-            color="red.300"
-            fontSize="xs"
-            textDecoration="underline"
-          >
-            閉じる
-          </s.button>
-        </Box>
-      )}
+    <main className={styles.observatory}>
       <UniverseCanvas
         books={filteredBooks}
         constellationLines={constellationLines}
@@ -204,49 +87,89 @@ function ObservatoryContent() {
         onExitVrMode={() => setVrMode(false)}
       />
       <TopBar bookCount={bookCount} />
-
-      <Box
-        position="fixed"
-        bottom={16}
-        right={4}
-        md={{ bottom: 6, right: 6 }}
-        zIndex={30}
-      >
-        <AddBookButton
-          isBottomDockVisible={isBottomDockVisible}
-          setIsAddModalOpen={setIsAddModalOpen}
-        />
-      </Box>
-
-      {/* VRモード切り替えボタン（スマホのみ表示） */}
-      <Box position="fixed" bottom={16} left={4} zIndex={30}>
-        <VrModeButton
-          vrMode={vrMode}
-          onToggle={() => setVrMode((v) => !v)}
-          isBottomDockVisible={isBottomDockVisible}
-        />
-      </Box>
-
-      <BottomDock
-        nowReading={nowReading}
-        onQuickAdd={(bookId) => updatePageProgress(bookId, 1)}
-        onBookClick={(book) => setSelectedBook(book)}
-      />
-
+      {lastError && (
+        <div role="alert" className={styles.error}>
+          <span>{lastError}</span>
+          <button type="button" onClick={clearMutationError}>
+            閉じる
+          </button>
+        </div>
+      )}
+      {(loadState === "loading" || isLoading) && (
+        <div className={styles.statusMessage} role="status">
+          本を読み込み中...
+        </div>
+      )}
+      {empty && <ObservatoryEmptyState onAdd={openAdd} />}
+      {loadState === "failed" && books.length === 0 && (
+        <div className={styles.statusMessage}>
+          <button
+            type="button"
+            className={styles.glassButton}
+            onClick={() => void loadBooks()}
+          >
+            本を再読み込み
+          </button>
+        </div>
+      )}
+      {books.length > 0 && (
+        <>
+          {filteredBooks.length === 0 && (
+            <div className={styles.statusMessage} role="status">
+              <p>条件に合う本が見つかりません。</p>
+              <button
+                type="button"
+                className={styles.glassButton}
+                onClick={() => {
+                  useLibraryFilterStore.getState().clearSearch();
+                  useLibraryFilterStore.getState().setFilter("all");
+                }}
+              >
+                すべての星を表示
+              </button>
+            </div>
+          )}
+          <div className={styles.addButton} data-selected={!!selectedBookId}>
+            <button
+              type="button"
+              className={styles.primaryButton}
+              onClick={openAdd}
+              aria-label="本を追加"
+            >
+              <Plus size={24} aria-hidden="true" />
+              <span className={styles.addLabel}>本を追加</span>
+            </button>
+          </div>
+          {isTouchDevice && (
+            <div className={styles.gyroButton} data-selected={!!selectedBookId}>
+              <button
+                type="button"
+                className={styles.glassButton}
+                aria-pressed={vrMode}
+                onClick={() => setVrMode((value) => !value)}
+                aria-label={vrMode ? "ジャイロを終了" : "ジャイロで見渡す"}
+              >
+                <Rotate3D size={18} />
+                <span>{vrMode ? "終了" : "ジャイロ"}</span>
+              </button>
+            </div>
+          )}
+          <div
+            className={styles.readingAccess}
+            data-selected={!!selectedBookId}
+          >
+            <BottomDock nowReading={nowReading} onBookClick={setSelectedBook} />
+          </div>
+        </>
+      )}
       <AddBookModal
         isOpen={isAddModalOpen}
         onCloseAction={() => setIsAddModalOpen(false)}
         onAddAction={handleAdd}
       />
-
       <BookListDrawer />
-
-      <StarInsightPanel {...starInsight} />
-
-      <StatsOverlay books={books} readingStreak={readingStreak} />
-
-      <TutorialOverlay />
-    </s.main>
+      <StarInsightPanel key={selectedBookId} {...starInsight} />
+    </main>
   );
 }
 

@@ -1,60 +1,29 @@
 "use client";
 
-import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
-import * as THREE from "three";
-import { SPIKE_PLANE_RATIOS } from "@/consts/universe";
+import { useTexture } from "@react-three/drei";
+import { AdditiveBlending } from "three";
 
-interface StarSpikesProps {
+export default function StarSpikes({
+  color,
+  size,
+  opacity,
+}: {
   color: string;
   size: number;
   opacity: number;
-}
-
-export default function StarSpikes(props: StarSpikesProps) {
-  const { color, size, opacity } = props;
-  const groupRef = useRef<THREE.Group>(null);
-  const mat = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-      }),
-    [color, opacity],
-  );
-
-  const geos = useMemo(
-    () =>
-      SPIKE_PLANE_RATIOS.map(
-        ([w, h]) => new THREE.PlaneGeometry(size * w, size * h),
-      ),
-    [size],
-  );
-
-  useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.z =
-        Math.sin(state.clock.elapsedTime * 0.35) * 0.06;
-    }
-  });
-
+}) {
+  const texture = useTexture("/textures/book-star.png");
   return (
-    <group ref={groupRef}>
-      {SPIKE_PLANE_RATIOS.map(([, , rotZ], i) => {
-        const key = `spike-${i}`;
-        return (
-          <mesh
-            key={key}
-            geometry={geos[i]}
-            material={mat}
-            rotation={[0, 0, rotZ]}
-          />
-        );
-      })}
-    </group>
+    <sprite scale={[size * 2, size * 2, 1]}>
+      <spriteMaterial
+        map={texture}
+        color={color}
+        transparent
+        opacity={opacity}
+        blending={AdditiveBlending}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </sprite>
   );
 }

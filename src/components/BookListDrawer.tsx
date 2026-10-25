@@ -243,7 +243,7 @@ export default function BookListDrawer() {
 
         <Box pt="3" pb="2" px="4" flexShrink={0}>
           <TextInput
-            name="Search"
+            name="本の検索"
             placeholder="タイトル・著者で検索..."
             value={query}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>

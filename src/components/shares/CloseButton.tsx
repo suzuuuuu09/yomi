@@ -4,5 +4,5 @@ import IconButton from "~liftkit/icon-button";
 interface CloseButtonProps extends Omit<LkIconButtonProps, "icon"> {}
 
 export default function CloseButton(props: CloseButtonProps) {
-  return <IconButton icon="x" variant="text" aria-label="Close" {...props} />;
+  return <IconButton icon="x" variant="text" aria-label="閉じる" {...props} />;
 }

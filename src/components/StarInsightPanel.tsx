@@ -1,18 +1,20 @@
 import {
   BarChart3,
   BookOpen,
-  Clock,
+  Pencil,
   Plus,
   StickyNote,
   Trash2,
+  X,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { css, cva } from "styled-system/css";
 import { Box, Flex, styled as s } from "styled-system/jsx";
 import { token } from "styled-system/tokens";
 import BookEditModal from "@/components/BookEditModal";
 import DeleteBookModal from "@/components/DelBookModal";
+import styles from "@/components/observatory.module.css";
 import type {
   Book,
   ReadingLog,
@@ -21,11 +23,8 @@ import type {
 } from "@/types/library";
 import Column from "~liftkit/column";
 import Grid from "~liftkit/grid";
-import IconButton from "~liftkit/icon-button";
 import Row from "~liftkit/row";
 import Text from "~liftkit/text";
-import StatusBadge from "./shares/badge/StatusBadge";
-import ItemCard from "./shares/card/ItemCard";
 
 const DELTA_BUTTONS = [
   { label: "−10", delta: -10, color: "violet" },
@@ -39,7 +38,7 @@ const deltaButton = cva({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    h: "32px",
+    h: "44px",
     rounded: "lg",
     fontSize: "xs",
     fontWeight: "semibold",
@@ -74,41 +73,33 @@ const deltaButton = cva({
 function ReadingProgress({
   current,
   total,
+  status,
 }: {
   current: number;
   total: number;
+  status: string;
 }) {
-  const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+  const pct =
+    total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
   return (
-    <Column gap="sm">
-      <Row alignItems="center" justifyContent="space-between">
-        <Text fontClass="caption" color="outline">
-          進捗
-        </Text>
-        <Text fontClass="caption-bold" color="onsurface">
-          {pct}%
-        </Text>
-      </Row>
-      <Box w="full" h="8px" rounded="full" bg="white/6" overflow="hidden">
-        <Box
-          h="full"
-          rounded="full"
-          style={{
-            width: `${pct}%`,
-            background: "linear-gradient(90deg,#6366f1,#a855f7,#ec4899)",
-            transition: "width 0.7s ease-out",
-          }}
-        />
-      </Box>
-      <Row alignItems="center" justifyContent="space-between">
-        <Text fontClass="capline" color="outline">
-          {current}ページ
-        </Text>
-        <Text fontClass="capline" color="outline">
-          {total}ページ
-        </Text>
-      </Row>
-    </Column>
+    <>
+      <div className={styles.progressMeta}>
+        <span>
+          {status}　{pct}%
+        </span>
+        <span>
+          {current} / {total > 0 ? total : "未設定"} ページ
+        </span>
+      </div>
+      <progress
+        className={styles.progress}
+        value={pct}
+        max={100}
+        aria-label="読書進捗"
+      >
+        {pct}%
+      </progress>
+    </>
   );
 }
 
@@ -354,7 +345,8 @@ function PageControls({
           type="number"
           value={draft}
           min={0}
-          max={total}
+          max={total > 0 ? total : undefined}
+          aria-label="現在のページ"
           onChange={(e) => setDraft(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={commit}
@@ -503,7 +495,7 @@ function ReadingNotes({
                 {note.content}
               </s.p>
               <Flex align="center" gap={2} mt={1.5}>
-                <s.span fontSize="10px" color="slate.600">
+                <s.span fontSize="11px" color="slate.400">
                   {new Date(note.createdAt).toLocaleString("ja-JP", {
                     year: "numeric",
                     month: "2-digit",
@@ -514,8 +506,8 @@ function ReadingNotes({
                 </s.span>
                 {note.page !== null && (
                   <s.span
-                    fontSize="10px"
-                    color="indigo.500/70"
+                    fontSize="11px"
+                    color="indigo.200"
                     fontVariantNumeric="tabular-nums"
                   >
                     p.{note.page}
@@ -534,6 +526,7 @@ function ReadingNotes({
                   transition: "all 0.15s",
                   _hover: { color: "red.400", bg: "red.500/10" },
                 })}
+                aria-label="読書メモを削除"
                 onClick={() => onDelete(bookId, note.id)}
               >
                 <Trash2 size={10} />
@@ -548,6 +541,7 @@ function ReadingNotes({
           value={draft}
           disabled={isSaving}
           onChange={(e) => setDraft(e.target.value)}
+          aria-label="読書メモ"
           placeholder="メモを入力..."
           rows={3}
           onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -671,38 +665,30 @@ export default function StarInsightPanel({
 }) {
   const [isDelOpen, setIsDelOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
+
+  useEffect(() => {
+    if (!book || isEditOpen || isDelOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [book, isEditOpen, isDelOpen, onClose]);
+
+  useEffect(() => {
+    if (isRecording) progressRef.current?.scrollIntoView({ block: "nearest" });
+  }, [isRecording]);
 
   if (!book) return null;
-
-  const metaItems = [
-    { icon: <BookOpen size={10} />, label: "ISBN", value: book.isbn || "—" },
-    {
-      icon: <Clock size={10} />,
-      label: "登録日",
-      value: book.registeredAt
-        ? new Date(book.registeredAt).toLocaleDateString("ja-JP")
-        : "—",
-    },
+  const statusLabel = { unread: "未読", reading: "読書中", completed: "読了" }[
+    book.status
   ];
 
   return (
     <>
-      <Box
-        position="fixed"
-        inset={0}
-        zIndex={40}
-        onClick={onClose}
-        className={css({
-          animation: "fadeIn 0.2s ease-out",
-          md: { display: "none" },
-        })}
-        style={{
-          background: "rgba(0,0,0,0.4)",
-          backdropFilter: "blur(4px)",
-          WebkitBackdropFilter: "blur(4px)",
-        }}
-      />
-
       <DeleteBookModal
         isOpen={isDelOpen}
         bookId={book.id}
@@ -718,280 +704,147 @@ export default function StarInsightPanel({
           onClose();
         }}
       />
-
       {isEditOpen && (
         <BookEditModal
           isOpen={isEditOpen}
           book={book}
           onCloseAction={() => setIsEditOpen(false)}
-          onSaveAction={(bookId, updates) => {
-            onUpdateBook(bookId, updates);
+          onSaveAction={(id, updates) => {
+            onUpdateBook(id, updates);
             setIsEditOpen(false);
           }}
         />
       )}
-
-      <Box
-        position="fixed"
-        zIndex={50}
-        bottom={0}
-        left={0}
-        right={0}
-        maxH="82vh"
-        roundedTop="3xl"
-        md={{
-          top: 4,
-          right: 4,
-          bottom: 4,
-          left: "auto",
-          w: "22rem",
-          maxH: "none",
-          rounded: "3xl",
-        }}
-        display="flex"
-        flexDir="column"
-        className={css({
-          animation: "scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-        })}
-        style={{
-          background: "rgba(255, 255, 255, 0.07)",
-          backdropFilter: "blur(40px)",
-          WebkitBackdropFilter: "blur(40px)",
-          border: "1px solid rgba(255, 255, 255, 0.08)",
-          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
-        }}
+      <section
+        className={styles.panel}
+        data-expanded={isRecording || isNotesOpen}
+        aria-labelledby="selected-book-title"
       >
-        {/* アクセントグロー */}
-        <Box
-          position="absolute"
-          top={0}
-          right={0}
-          w="192px"
-          h="128px"
-          rounded="full"
-          pointerEvents="none"
-          style={{ background: `${book.color}20`, filter: "blur(48px)" }}
+        <span className={styles.sheetHandle} aria-hidden="true" />
+        <button
+          type="button"
+          className={`${styles.iconButton} ${styles.panelClose}`}
+          onClick={onClose}
+          aria-label="パネルを閉じる"
+        >
+          <X size={18} />
+        </button>
+        <div className={styles.bookHeader}>
+          {book.coverUrl ? (
+            <Image
+              src={book.coverUrl.replace("http://", "https://")}
+              alt={`${book.title}の書影`}
+              width={92}
+              height={126}
+              className={styles.cover}
+            />
+          ) : (
+            <div
+              className={`${styles.cover} ${styles.coverFallback}`}
+              role="img"
+              aria-label="書影なし"
+            >
+              <BookOpen size={32} />
+            </div>
+          )}
+          <div>
+            <h2 id="selected-book-title" className={styles.bookTitle}>
+              {book.title}
+            </h2>
+            <p className={styles.bookAuthor}>{book.author || "著者未設定"}</p>
+          </div>
+        </div>
+        <ReadingProgress
+          current={book.currentPage}
+          total={book.totalPages}
+          status={statusLabel}
         />
-
-        {/* ドラッグハンドル（モバイル） */}
-        <Box
-          display="flex"
-          justifyContent="center"
-          pt={3}
-          pb={1}
-          flexShrink={0}
-          md={{ display: "none" }}
+        <button
+          type="button"
+          className={`${styles.primaryButton} ${styles.recordButton}`}
+          aria-expanded={isRecording}
+          aria-controls="reading-progress-controls"
+          onClick={() => setIsRecording((value) => !value)}
         >
-          <Box w="40px" h="4px" rounded="full" bg="white/20" />
-        </Box>
-
-        {/* ヘッダー */}
-        <Flex
-          position="relative"
-          align="center"
-          justify="space-between"
-          px={5}
-          pt={3}
-          pb={0}
-          flexShrink={0}
+          <Pencil size={20} />
+          読書を記録する
+        </button>
+        <div className={styles.secondaryActions}>
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            aria-expanded={isNotesOpen}
+            aria-controls="reading-notes"
+            onClick={() => setIsNotesOpen((value) => !value)}
+          >
+            <BookOpen size={18} />
+            メモ
+          </button>
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            onClick={() => setIsEditOpen(true)}
+          >
+            <Pencil size={18} />
+            編集
+          </button>
+        </div>
+        <div
+          ref={progressRef}
+          id="reading-progress-controls"
+          hidden={!isRecording}
         >
-          <StatusBadge status={book.status} />
-          <Flex gap={1}>
-            <IconButton
-              icon="pencil"
-              variant="text"
-              aria-label="本の情報を編集"
-              onClick={() => setIsEditOpen(true)}
-            />
-            <IconButton
-              icon="x"
-              variant="text"
-              aria-label="パネルを閉じる"
-              onClick={onClose}
-            />
-          </Flex>
-        </Flex>
-
-        {/* コンテンツ */}
-        <Box flex={1} overflowY="auto" p={5}>
+          <PageControls
+            key={book.id}
+            bookId={book.id}
+            current={book.currentPage}
+            total={book.totalPages}
+            onUpdate={onPageUpdate}
+            onSet={onPageSet}
+          />
+        </div>
+        <div
+          id="reading-notes"
+          hidden={!isNotesOpen}
+          className={styles.expandedSection}
+        >
+          <ReadingNotes
+            key={book.id}
+            bookId={book.id}
+            notes={book.notes}
+            currentPage={book.currentPage}
+            onAdd={onAddNote}
+            onDelete={onDeleteNote}
+          />
+        </div>
+        <details className={styles.moreDetails}>
+          <summary>読書の記録・書籍情報</summary>
           <Column gap="lg">
-            {/* 書籍情報 */}
-            <Row alignItems="center" gap="lg">
-              <Box position="relative" flexShrink={0}>
-                {book.coverUrl ? (
-                  <Image
-                    src={book.coverUrl.replace("http://", "https://")}
-                    alt={book.title}
-                    width={48}
-                    height={68}
-                    className={css({
-                      rounded: "lg",
-                      objectFit: "cover",
-                      mx: 2,
-                      my: 2,
-                    })}
-                    style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
-                  />
-                ) : (
-                  <>
-                    <Box
-                      w="64px"
-                      h="64px"
-                      rounded="full"
-                      position="absolute"
-                      inset={0}
-                      style={{
-                        background: `${book.color}30`,
-                        filter: "blur(12px)",
-                      }}
-                    />
-                    <Box
-                      w="48px"
-                      h="48px"
-                      rounded="full"
-                      position="relative"
-                      mx={2}
-                      my={2}
-                      style={{
-                        background: `radial-gradient(circle at 35% 35%, white, ${book.color})`,
-                      }}
-                    />
-                  </>
-                )}
-              </Box>
-              <Box minW={0}>
-                <s.h2
-                  fontSize="base"
-                  fontWeight="semibold"
-                  color="white"
-                  lineHeight="tight"
-                  mb={0.5}
-                >
-                  {book.title}
-                </s.h2>
-                <s.p fontSize="xs" color="slate.400">
-                  {book.author}
-                </s.p>
-              </Box>
-            </Row>
-
-            {/* メタ情報 */}
-            <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap={3}>
-              {metaItems.map(({ icon, label, value }) => (
-                <ItemCard key={label}>
-                  <Flex align="center" gap={1.5} mb={1}>
-                    <s.span color="slate.500" display="flex">
-                      {icon}
-                    </s.span>
-                    <s.span fontSize="10px" color="slate.500">
-                      {label}
-                    </s.span>
-                  </Flex>
-                  <Text
-                    tag="p"
-                    fontClass="caption"
-                    className={css({ color: "slate.300" })}
-                  >
-                    {value}
-                  </Text>
-                </ItemCard>
-              ))}
-            </Box>
-
-            {/* 進捗 */}
-            <ItemCard>
-              <ReadingProgress
-                current={book.currentPage}
-                total={book.totalPages}
-              />
-              <PageControls
-                bookId={book.id}
-                current={book.currentPage}
-                total={book.totalPages}
-                onUpdate={onPageUpdate}
-                onSet={onPageSet}
-              />
-            </ItemCard>
-
-            {/* グラフ */}
-            <ItemCard>
-              <MiniGraph stats={readingStats} />
-            </ItemCard>
-
-            <ItemCard>
-              <ReadingLogEditor
-                logs={readingLogs}
-                onUpdate={(
-                  date,
-                  pagesRead,
-                  readingDay,
-                  readingTimezoneRevision,
-                ) =>
-                  onUpdateReadingLog(
-                    book.id,
-                    date,
-                    pagesRead,
-                    readingDay,
-                    readingTimezoneRevision,
-                  )
-                }
-                onDelete={(date, readingDay, readingTimezoneRevision) =>
-                  onDeleteReadingLog(
-                    book.id,
-                    date,
-                    readingDay,
-                    readingTimezoneRevision,
-                  )
-                }
-              />
-            </ItemCard>
-
-            {/* メモ */}
-            <ItemCard>
-              <ReadingNotes
-                key={book.id}
-                bookId={book.id}
-                notes={book.notes}
-                currentPage={book.currentPage}
-                onAdd={onAddNote}
-                onDelete={onDeleteNote}
-              />
-            </ItemCard>
-
-            {/* 削除 */}
-            <Box pt={2} pb={1}>
-              <s.button
-                w="full"
-                py={2.5}
-                rounded="xl"
-                fontSize="xs"
-                fontWeight="medium"
-                cursor="pointer"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                gap={1.5}
-                className={css({
-                  bg: "transparent",
-                  border: "1px solid",
-                  borderColor: "white/8",
-                  color: "slate.600",
-                  transition: "all 0.2s",
-                  _hover: {
-                    bg: "red.500/8",
-                    borderColor: "red.500/20",
-                    color: "red.500",
-                  },
-                })}
-                onClick={() => setIsDelOpen(true)}
-              >
-                <Trash2 size={13} />
-                この本をアーカイブ
-              </s.button>
-            </Box>
+            <MiniGraph stats={readingStats} />
+            <ReadingLogEditor
+              logs={readingLogs}
+              onUpdate={(date, pages, day, revision) =>
+                onUpdateReadingLog(book.id, date, pages, day, revision)
+              }
+              onDelete={(date, day, revision) =>
+                onDeleteReadingLog(book.id, date, day, revision)
+              }
+            />
+            <p>ISBN: {book.isbn || "未設定"}</p>
+            <p>
+              登録日: {new Date(book.registeredAt).toLocaleDateString("ja-JP")}
+            </p>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => setIsDelOpen(true)}
+            >
+              <Trash2 size={16} />
+              この本をアーカイブ
+            </button>
           </Column>
-        </Box>
-      </Box>
+        </details>
+      </section>
     </>
   );
 }

@@ -1,188 +1,124 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
-import { css } from "styled-system/css";
-import { Box, Flex, styled as s } from "styled-system/jsx";
+import { Library, Search, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import styles from "@/components/observatory.module.css";
 import type { FilterTabsCounts } from "@/components/shares/FilterTabs";
 import FilterTabs from "@/components/shares/FilterTabs";
-import { IconCardButton } from "@/components/shares/IconCardButton";
 import UserMenu from "@/components/shares/UserMenu";
 import useBookListStore from "@/store/useBookListStore";
 import useLibraryFilterStore from "@/store/useLibraryFilterStore";
-import Card from "~liftkit/card";
-import Column from "~liftkit/column";
-import Row from "~liftkit/row";
-import TextInput from "~liftkit/text-input";
 
 export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
   const { activeFilter, query, setFilter, setQuery, clearSearch } =
     useLibraryFilterStore();
-  const openBookList = useBookListStore((s) => s.open);
+  const openBookList = useBookListStore((state) => state.open);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
 
-  const handleSearchClose = () => {
+  const closeSearch = useCallback(() => {
     setIsSearchOpen(false);
     clearSearch();
-  };
+    setFilter("all");
+    triggerRef.current?.focus();
+  }, [clearSearch, setFilter]);
+
+  useEffect(() => {
+    if (isSearchOpen) searchRef.current?.focus();
+  }, [isSearchOpen]);
+
+  useEffect(() => {
+    if (bookCount.all === 0) setIsSearchOpen(false);
+  }, [bookCount.all]);
+
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    const closeOnOutside = (event: PointerEvent) => {
+      if (!headerRef.current?.contains(event.target as Node)) {
+        closeSearch();
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeSearch();
+      }
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("pointerdown", closeOnOutside);
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("pointerdown", closeOnOutside);
+    };
+  }, [isSearchOpen, closeSearch]);
 
   return (
-    <s.header
-      position="fixed"
-      top={{ base: "3", md: "4" }}
-      left={{ base: "3", md: "4" }}
-      right={{ base: "3", md: "4" }}
-      zIndex="30"
-      spaceY="2"
-    >
-      <Column gap="xs">
-        <Row gap="xs" alignItems="center">
-          <Card
-            material="glass"
-            variant="outline"
-            scaleFactor="caption"
-            materialProps={{ thickness: "thin" }}
-            className="shrink-0 shadow-lg shadow-black/20"
-            style={{
-              padding: 0,
-              width: 42,
-              height: 42,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "hidden",
-            }}
-          >
-            <Image
-              src="/yomi.png"
-              alt="YOMi"
-              width={34}
-              height={34}
-              // className="topbar-logo"
-              className={css({
-                rounded: "10px",
-                transform: "scale(2.6)",
-                transformOrigin: "center",
-                filter:
-                  "drop-shadow(0 0 4px #6366f173) drop-shadow(0 0 10px #a855f733)",
-                display: "block",
-              })}
-              priority
-            />
-          </Card>
-
-          {/* PC*/}
-          <Box flex={1} display={{ base: "none", md: "block" }}>
-            <TextInput
-              labelPosition="on-input"
-              name=""
-              placeholder="星を検索..."
-              aria-label="星を検索"
-              endIcon={query ? "x" : "search"}
-              value={query}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setQuery(e.target.value)
+    <header ref={headerRef} className={styles.header}>
+      <span className={styles.logo}>YOMi</span>
+      <nav className={styles.navigation} aria-label="本と設定">
+        {bookCount.all > 0 && (
+          <>
+            <button
+              ref={triggerRef}
+              type="button"
+              className={styles.glassButton}
+              aria-expanded={isSearchOpen}
+              aria-controls="library-search"
+              onClick={() =>
+                isSearchOpen ? closeSearch() : setIsSearchOpen(true)
               }
-              onEndIconClick={query ? clearSearch : undefined}
+            >
+              <Search size={18} aria-hidden="true" />
+              <span>検索</span>
+            </button>
+            <button
+              type="button"
+              className={styles.glassButton}
+              onClick={() => {
+                closeSearch();
+                openBookList();
+              }}
+            >
+              <Library size={18} aria-hidden="true" />
+              <span>本の一覧</span>
+            </button>
+          </>
+        )}
+        <UserMenu />
+      </nav>
+      {isSearchOpen && bookCount.all > 0 && (
+        <section
+          id="library-search"
+          className={styles.searchPanel}
+          aria-label="蔵書を検索"
+        >
+          <div className={styles.searchRow}>
+            <input
+              ref={searchRef}
+              type="search"
+              className={styles.searchInput}
+              aria-label="タイトル・著者・ジャンルで検索"
+              placeholder="タイトル・著者・ジャンル"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
             />
-          </Box>
-
-          <Flex shrink={0} gap="1.5" align="center">
-            {/* Mobile */}
-            <Box display={{ base: "block", md: "none" }}>
-              <IconCardButton
-                icon="search"
-                label="検索"
-                onClick={() => setIsSearchOpen(true)}
-                className={css({
-                  shadow: "lg",
-                  color: "slate.400",
-                  shadowColor: "black/20",
-                })}
-              />
-            </Box>
-            <IconCardButton
-              icon="library"
-              label="本の一覧"
-              onClick={openBookList}
-              className={css({
-                shadow: "lg",
-                color: "slate.400",
-                shadowColor: "black/20",
-                "@media (hover: hover)": {
-                  _hover: {
-                    color: "white",
-                  },
-                },
-              })}
-            />
-            <UserMenu />
-          </Flex>
-        </Row>
-
-        <FilterTabs
-          activeFilter={activeFilter}
-          setFilter={setFilter}
-          counts={bookCount}
-        />
-      </Column>
-
-      {/* 検索over令*/}
-      {isSearchOpen && (
-        <>
-          {/* 背景タップで閉じる */}
-          <Box
-            display={{ base: "block", md: "none" }}
-            position="fixed"
-            inset="0"
-            zIndex="40"
-            onClick={handleSearchClose}
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={closeSearch}
+              aria-label="検索を解除して閉じる"
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <FilterTabs
+            activeFilter={activeFilter}
+            setFilter={setFilter}
+            counts={bookCount}
           />
-          <Box
-            display={{ base: "block", md: "none" }}
-            position="fixed"
-            top="3"
-            left="3"
-            right="3"
-            zIndex="50"
-            bg="gray.950/95"
-            backdropFilter="blur(12px)"
-            border="1px solid"
-            borderColor="indigo.500/20"
-            rounded="2xl"
-            p="3"
-            shadow="lg"
-          >
-            <Flex gap="2" align="center">
-              <Box flex={1}>
-                <TextInput
-                  labelPosition="on-input"
-                  name=""
-                  placeholder="星を検索..."
-                  endIcon={query ? "x" : "search"}
-                  value={query}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setQuery(e.target.value)
-                  }
-                  onEndIconClick={query ? clearSearch : undefined}
-                />
-              </Box>
-              <s.button
-                type="button"
-                onClick={handleSearchClose}
-                px="3"
-                py="2"
-                rounded="xl"
-                color="slate.400"
-                fontSize="sm"
-                flexShrink={0}
-              >
-                キャンセル
-              </s.button>
-            </Flex>
-          </Box>
-        </>
+        </section>
       )}
-    </s.header>
+    </header>
   );
 }
