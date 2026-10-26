@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 const SESSION_COOKIE = "better-auth.session_token";
 const SESSION_COOKIE_SECURE = "__Secure-better-auth.session_token";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // パスを取得
   const { pathname } = request.nextUrl;
 

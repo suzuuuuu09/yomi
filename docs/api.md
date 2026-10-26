@@ -120,7 +120,7 @@ Better Auth はすべての認証フロー（OAuth リダイレクト、コー�
 
 ## 環境変数・シークレット
 
-実装が参照する設定は以下のとおり。認証設定はCloudflareのバインディング、Honoの環境、`process.env` を参照する。
+実装が参照する設定は以下のとおり。認証設定は `cloudflare:workers` の `env`、Honoの環境、`process.env` の順に参照する。開発・プレビュー・本番ともCloudflare Workersのランタイムを使い、D1は同じ `env.yomi_db` から取得する。
 
 | 変数名 | 説明 |
 |---|---|

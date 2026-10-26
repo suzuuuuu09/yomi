@@ -58,6 +58,14 @@ const panel = document.querySelector('section[aria-labelledby="selected-book-tit
 if (innerWidth < 768) assert(panel.getBoundingClientRect().top >= innerHeight / 2, 'upper half');
 ```
 
+## 2026-10-26: vinext移行後の確認
+
+- Cloudflare Workersのビルドとローカルプレビューで、ログイン画面と未認証時の転送・APIの401応答を確認。
+- ブラウザ内のサンプル応答で1440×900の3D画面、390×844の詳細シートを確認。ページエラーなし。Three.Clockの上流警告は残る。
+- 実際のBetter Authによる署名検証とD1バインディング経由の書籍保存・再取得を、SQLiteを使う境界テストで確認。Google OAuthと本番D1の動作は未確認。
+- 62テスト、型チェック、lint、ビルド、ローカルD1のスキーマ確認、Wranglerのデプロイdry-runが成功。依存監査は既知の脆弱性0件、peer依存の問題0件。
+- 公開・ドメイン切替は未実施。画像リサイズ用オプティマイザーは未設定。vinextの互換性検査は画像設定を部分対応と報告するが、使用中のNext.js APIに非対応項目はない。
+
 ## 意図した差と未確認事項
 
 - 実フォントはNoto Sans JP。生成画像の近似字形は再現せず、本文・ボタンは実際のWebフォントで読みやすく表示する。

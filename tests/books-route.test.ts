@@ -14,8 +14,8 @@ vi.mock("@/server/lib/auth", () => ({
   }),
 }));
 
-vi.mock("@cloudflare/next-on-pages", () => ({
-  getRequestContext: () => ({ env: {} }),
+vi.mock("cloudflare:workers", () => ({
+  env: {},
 }));
 
 import app from "@/server";

@@ -1,4 +1,4 @@
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { env as cloudflareEnv } from "cloudflare:workers";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { drizzle as drizzleD1 } from "drizzle-orm/d1";
@@ -15,18 +15,8 @@ type Env = {
   FRONTEND_URL?: string;
 };
 
-function getCFEnv(): Env {
-  try {
-    return getRequestContext().env as Env;
-  } catch {
-    return {};
-  }
-}
-
 export function createAuth(honoEnv: Env = {}, requestURL?: string) {
-  // NOTE: CF env: getRequestContext() (本番・ローカルwrangler) → honoEnv → fallback
-  const cfEnv = getCFEnv();
-  const env: Env = { ...cfEnv, ...honoEnv };
+  const env: Env = { ...cloudflareEnv, ...honoEnv };
 
   const googleClientId =
     env.GOOGLE_CLIENT_ID ?? process.env.GOOGLE_CLIENT_ID ?? "";
@@ -43,7 +33,7 @@ export function createAuth(honoEnv: Env = {}, requestURL?: string) {
   if (!env.yomi_db) {
     throw new Error(
       "D1 database binding (yomi_db) not found. " +
-        "Local dev: setupDevPlatform() が instrumentation.ts で設定されているか確認してください。",
+        "wrangler.jsonc の yomi_db と Cloudflare Vite plugin の設定を確認してください。",
     );
   }
 
