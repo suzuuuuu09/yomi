@@ -2,7 +2,7 @@
 
 ## 星の配置ロジック
 
-API（Hono / Cloudflare PagesのEdge Runtime）が座標・明るさ・色を計算してDBに保存する。星座線は一覧取得時にAPIで計算し、クライアントも書籍更新時に同じ関数で再計算する。
+API（Hono / Cloudflare Workers）が座標・明るさ・色を計算してDBに保存する。星座線は一覧取得時にAPIで計算し、クライアントも書籍更新時に同じ関数で再計算する。
 実装は `src/server/lib/star-formation.ts`、呼び出し元は `src/server/routes/books.ts` と `src/store/useLibraryStore.ts`。
 
 ### 座標の決め方

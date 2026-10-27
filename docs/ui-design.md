@@ -10,7 +10,7 @@
 
 - `/`: 紹介ページ。
 - `/login`: Googleログイン画面。認証後は `/app` へ遷移する。
-- `/app`: 星空と読書管理画面。Cookieの有無をNext.jsミドルウェアで確認し、`SessionGuard` が実セッションを検証する。
+- `/app`: 星空と読書管理画面。Cookieの有無をvinextのNext.js互換の `src/proxy.ts` で確認し、`SessionGuard` が実セッションを検証する。
 
 `src/app/(app)/layout.tsx` はフォント・共通スタイル・メタデータを設定する。
 星空と操作パネルは `src/app/(app)/app/page.tsx` で組み立てる。`UniverseCanvas` はクライアントで動的に読み込み、画面全体に固定表示する。星・星座線・星雲は同じR3F Canvas内に描画する。

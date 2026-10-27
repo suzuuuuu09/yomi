@@ -40,14 +40,14 @@
 - pnpm
 
 ### フロントエンド
-- Next.js(App Router)
+- vinext（Next.js互換のApp Router / Vite）
 - Three.js + React Three Fiber (3D Visualization)
 - PandaCSS + [LiftKit](https://www.chainlift.io/liftkit)(UI Framework)
-- Cloudflare Pages (Hosting)
+- Cloudflare Workers (Hosting)
 
 ### バックエンド
 
-- Hono（Next.jsのAPIルートで実行）
+- Hono（vinextのAPIルートで実行）
 - Cloudflare D1 (Database)
 - Drizzle ORM
 - Zod (Validation)

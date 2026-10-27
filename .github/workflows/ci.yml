@@ -2,11 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/security-vinext') && 'yomi-worker-deploy' || github.ref }}
+  cancel-in-progress: false
 
 jobs:
   verify:
@@ -48,3 +51,10 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Deploy Worker
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/security-vinext')
+        run: pnpm exec wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

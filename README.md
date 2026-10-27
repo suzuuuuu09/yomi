@@ -10,11 +10,11 @@
 
 ## 技術スタック
 - フロントエンド
-	- **フレームワーク**: Next.js
+	- **フレームワーク**: vinext（Next.js互換API / Vite）
 	- **CSS フレームワーク**: PandaCSS
 	- **UI フレームワーク**: LIftKit
 	- **3D グラフィック**: Three.js
-	- **ホスティング**: Cloudflare Pages
+	- **ホスティング**: Cloudflare Workers
 - バックエンド
 	- **フレームワーク**: Hono
 	- **バリデーション**: Zod
@@ -37,6 +37,8 @@ pnpm db:migrate:local
 pnpm dev
 ```
 
+`pnpm dev` はCloudflare Vite pluginを通して、サーバー処理をローカルのWorkersランタイムで実行します。URLは `http://localhost:3000` です。既存の `pnpm dev:cf` も同じ開発サーバーを起動します。
+
 データベースのスキーマを更新したときは、開発用D1にマイグレーションを適用してから開発サーバーを起動します。
 マイグレーションはアプリ起動時には自動適用されません。既存のD1をWranglerのマイグレーション機能ではなくSQLファイルで初期化していた場合も、同じコマンドで移行履歴を補完してから未適用分を適用します。
 
@@ -57,4 +59,10 @@ pnpm lint:app
 pnpm build
 ```
 
-書籍APIと認証はCloudflare D1およびBetter Authの環境変数が必要です。デプロイ設定の詳細は`wrangler.jsonc`と`docs/api.md`を参照してください。
+ビルド後は `pnpm start` でWorkersのローカルプレビューを起動できます。ビルド成果物は `dist/client` と `dist/server` に生成されます。
+
+既存の `next/*` インポートはvinextが互換実装へ解決します。`next` パッケージは既存コードの型参照とテストのために残しています。Cloudflare Imagesによる画像リサイズは未設定です。
+
+書籍APIと認証はCloudflare D1およびBetter Authの環境変数が必要です。D1のバインディング名・データベースID・マイグレーションは従来のものを維持しています。デプロイ設定の詳細は`wrangler.jsonc`と`docs/api.md`を参照してください。
+
+デプロイ先はCloudflare PagesからWorkersへ変わります。`pnpm deploy` はビルド後にWorkerをデプロイするため、公開する際にだけ実行してください。既存のPagesのカスタムドメインやGoogle OAuthのコールバックURLは、Workersへの切替時に別途確認が必要です。
