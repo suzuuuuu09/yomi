@@ -18,5 +18,15 @@
       "database_id": "0652fb68-4d3e-4fab-bc93-e2f5ed717389",
       "migrations_dir": "drizzle"
     }
-  ]
+  ],
+  "previews": {
+    "d1_databases": [
+      {
+        "binding": "yomi_db",
+        "database_name": "yomi-db-preview",
+        "database_id": "c795be68-9e08-4b19-b6d4-a2baf26f47f0",
+        "migrations_dir": "drizzle"
+      }
+    ]
+  }
 }
