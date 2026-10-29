@@ -8,13 +8,15 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-import { css, cva } from "styled-system/css";
+import { useEffect, useId, useRef, useState } from "react";
+import { css } from "styled-system/css";
 import { Box, Flex, styled as s } from "styled-system/jsx";
 import { token } from "styled-system/tokens";
 import BookEditModal from "@/components/BookEditModal";
 import DeleteBookModal from "@/components/DelBookModal";
 import styles from "@/components/observatory.module.css";
+import progressStyles from "@/components/star-insight-progress.module.css";
+import useProgressPreviewStore from "@/store/useProgressPreviewStore";
 import type {
   Book,
   ReadingLog,
@@ -22,53 +24,44 @@ import type {
   ReadingStats,
 } from "@/types/library";
 import Column from "~liftkit/column";
-import Grid from "~liftkit/grid";
 import Row from "~liftkit/row";
 import Text from "~liftkit/text";
 
-const DELTA_BUTTONS = [
-  { label: "−10", delta: -10, color: "violet" },
-  { label: "−1", delta: -1, color: "white" },
-  { label: "+1", delta: 1, color: "white" },
-  { label: "+10", delta: 10, color: "indigo" },
-] as const;
+const MAX_PAGE = 1_000_000;
 
-const deltaButton = cva({
-  base: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    h: "44px",
-    rounded: "lg",
-    fontSize: "xs",
-    fontWeight: "semibold",
-    transition: "all 0.15s",
-    cursor: "pointer",
-  },
-  variants: {
-    color: {
-      white: {
-        bg: "white/5",
-        color: "slate.400",
-        _hover: { bg: "white/10", color: "white" },
-      },
-      violet: {
-        bg: "violet.500/10",
-        color: "violet.400",
-        border: "1px solid",
-        borderColor: "violet.500/20",
-        _hover: { bg: "violet.500/20", color: "violet.300" },
-      },
-      indigo: {
-        bg: "indigo.500/10",
-        color: "indigo.400",
-        border: "1px solid",
-        borderColor: "indigo.500/20",
-        _hover: { bg: "indigo.500/20", color: "indigo.300" },
-      },
-    },
-  },
-});
+export function parseTargetPage(value: string, total: number): number | null {
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const page = Number(trimmed);
+  const maxPage = total > 0 ? Math.min(total, MAX_PAGE) : MAX_PAGE;
+  if (!Number.isSafeInteger(page) || page < 0 || page > maxPage) return null;
+  return page;
+}
+
+export function clampTargetPage(page: number, total: number): number {
+  const maxPage = total > 0 ? Math.min(total, MAX_PAGE) : MAX_PAGE;
+  return Math.min(maxPage, Math.max(0, Math.trunc(page)));
+}
+
+function targetErrorMessage(value: string, total: number): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return "ページを入力してください。";
+  if (parseTargetPage(trimmed, total) !== null) return null;
+  if (!/^\d+$/.test(trimmed)) return "0以上の整数で入力してください。";
+  const maxPage = total > 0 ? Math.min(total, MAX_PAGE) : MAX_PAGE;
+  return `0〜${maxPage}ページの範囲で入力してください。`;
+}
+
+function percentOf(page: number, total: number): number | null {
+  if (total <= 0) return null;
+  return Math.min(100, Math.max(0, Math.round((page / total) * 100)));
+}
+
+function formatDelta(delta: number) {
+  if (delta === 0) return "変更なし";
+  const sign = delta > 0 ? "+" : "−";
+  return `${sign}${Math.abs(delta)}ページ`;
+}
 
 function ReadingProgress({
   current,
@@ -304,103 +297,230 @@ function ReadingLogEditor({
   );
 }
 
-function PageControls({
+export function PageControls({
   bookId,
   current,
   total,
-  onUpdate,
   onSet,
 }: {
   bookId: string;
   current: number;
   total: number;
-  onUpdate: (bookId: string, delta: number) => void;
-  onSet: (bookId: string, page: number) => void;
+  onUpdate?: (bookId: string, delta: number) => void;
+  onSet: (bookId: string, page: number) => Promise<void> | void;
 }) {
   const [draft, setDraft] = useState(String(current));
-  const [focused, setFocused] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const savingRef = useRef(false);
+  const lastCurrentRef = useRef(current);
+  const pendingSaveRef = useRef<{ target: number; from: number } | null>(null);
+  const inputId = useId();
+  const errorId = `${inputId}-error`;
+  const setPreview = useProgressPreviewStore((state) => state.setPreview);
+  const clearPreview = useProgressPreviewStore((state) => state.clearPreview);
+
+  const target = parseTargetPage(draft, total);
+  const error = targetErrorMessage(draft, total);
+  const currentPercent = percentOf(current, total);
+  const targetPercent = target === null ? null : percentOf(target, total);
+  const delta = target === null ? null : target - current;
+  const canSubmit = target !== null && target !== current && !isSaving;
+  const canDecrease = (target ?? current) > 0;
+  const canIncrease =
+    (target ?? current) < (total > 0 ? Math.min(total, MAX_PAGE) : MAX_PAGE);
 
   useEffect(() => {
-    if (!focused) setDraft(String(current));
-  }, [current, focused]);
+    if (current === lastCurrentRef.current) return;
+    const previousCurrent = lastCurrentRef.current;
+    lastCurrentRef.current = current;
+    const pendingSave = pendingSaveRef.current;
+    if (pendingSave !== null) {
+      if (current === pendingSave.target) {
+        setDraft(String(current));
+        return;
+      }
+      if (current === pendingSave.from) {
+        pendingSaveRef.current = null;
+        return;
+      }
+      pendingSaveRef.current = null;
+    }
+    setDraft((value) => {
+      if (
+        value === String(previousCurrent) ||
+        parseTargetPage(value, total) === current
+      ) {
+        return String(current);
+      }
+      return value;
+    });
+  }, [current, total]);
 
-  const commit = () => {
-    const n = parseInt(draft, 10);
-    if (!Number.isNaN(n)) onSet(bookId, n);
-    else setDraft(String(current));
-    setFocused(false);
+  useEffect(() => {
+    if (target !== null && target !== current) {
+      setPreview(bookId, target);
+    } else {
+      clearPreview();
+    }
+  }, [bookId, clearPreview, current, setPreview, target]);
+
+  useEffect(() => () => clearPreview(), [clearPreview]);
+
+  const adjust = (direction: -1 | 1) => {
+    const base = target ?? clampTargetPage(current, total);
+    pendingSaveRef.current = null;
+    setDraft(String(clampTargetPage(base + direction, total)));
+  };
+
+  const submit = async () => {
+    if (!canSubmit || target === null || savingRef.current) return;
+    savingRef.current = true;
+    setIsSaving(true);
+    setSaveError(null);
+    pendingSaveRef.current = { target, from: current };
+    try {
+      await onSet(bookId, target);
+    } catch {
+      pendingSaveRef.current = null;
+      setSaveError("記録できませんでした。もう一度お試しください。");
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
+  };
+
+  const cancel = () => {
+    pendingSaveRef.current = null;
+    setDraft(String(current));
+    clearPreview();
   };
 
   return (
-    <Column
-      gap="sm"
-      style={{
-        marginTop: 12,
-        paddingTop: 12,
-        borderTop: "1px solid #ffffff0D",
-      }}
-    >
-      <Row gap="md" style={{ alignItems: "center", justifyContent: "center" }}>
+    <div className={progressStyles.root}>
+      <div className={progressStyles.currentRow}>
+        <div>
+          <span className={progressStyles.eyebrow}>現在の進捗</span>
+          <div className={progressStyles.currentValue}>
+            {current}
+            <span className={progressStyles.currentTotal}>
+              {" "}
+              / {total > 0 ? `${total}ページ` : "ページ数未設定"}
+            </span>
+          </div>
+        </div>
+        <span className={progressStyles.currentPercent}>
+          {currentPercent === null ? (
+            <>
+              <span aria-hidden="true">—</span>
+              <span className={progressStyles.srOnly}>進捗率未設定</span>
+            </>
+          ) : (
+            `${currentPercent}%`
+          )}
+        </span>
+      </div>
+
+      <div className={progressStyles.targetHeader}>
+        <label className={progressStyles.eyebrow} htmlFor={inputId}>
+          記録するページ
+        </label>
+        <span className={progressStyles.previewRow} aria-live="polite">
+          <span>
+            プレビュー{" "}
+            <strong className={progressStyles.previewPercent}>
+              {targetPercent === null ? "—" : `${targetPercent}%`}
+            </strong>
+          </span>
+          <span
+            className={`${progressStyles.delta}${delta === 0 ? ` ${progressStyles.deltaMuted}` : ""}`}
+          >
+            {delta === null ? "—" : formatDelta(delta)}
+          </span>
+        </span>
+      </div>
+
+      <div className={progressStyles.targetRow}>
+        <button
+          type="button"
+          className={progressStyles.stepper}
+          onClick={() => adjust(-1)}
+          disabled={!canDecrease || isSaving}
+          aria-label="1ページ戻す"
+        >
+          −
+        </button>
         <input
+          id={inputId}
           type="number"
+          disabled={isSaving}
+          inputMode="numeric"
           value={draft}
           min={0}
-          max={total > 0 ? total : undefined}
-          aria-label="現在のページ"
-          onChange={(e) => setDraft(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={commit}
-          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          max={total > 0 ? Math.min(total, MAX_PAGE) : MAX_PAGE}
+          step={1}
+          aria-label="記録するページ"
+          aria-invalid={error !== null}
+          aria-describedby={error !== null ? errorId : undefined}
+          onChange={(event) => {
+            pendingSaveRef.current = null;
+            setDraft(event.target.value);
           }}
-          className={css({
-            w: "96px",
-            textAlign: "center",
-            fontSize: "2xl",
-            fontWeight: "bold",
-            fontVariantNumeric: "tabular-nums",
-            bg: "white/6",
-            border: "1px solid",
-            borderColor: "white/10",
-            rounded: "xl",
-            px: 2,
-            py: 2,
-            color: "white",
-            transition: "all 0.2s",
-            _focus: {
-              borderColor: "indigo.500/50",
-              bg: "white/9",
-              outline: "none",
-            },
-            "&[type=number]": { appearance: "textfield" },
-            "&::-webkit-inner-spin-button,&::-webkit-outer-spin-button": {
-              display: "none",
-            },
-          })}
+          onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              void submit();
+            } else if (event.key === "ArrowUp") {
+              event.preventDefault();
+              adjust(1);
+            } else if (event.key === "ArrowDown") {
+              event.preventDefault();
+              adjust(-1);
+            }
+          }}
+          className={progressStyles.input}
         />
-        <Text
-          tag="span"
-          fontClass="callout"
-          className={css({
-            color: "slate.500",
-            fontVariantNumeric: "tabular-nums",
-          })}
+        <button
+          type="button"
+          className={progressStyles.stepper}
+          onClick={() => adjust(1)}
+          disabled={!canIncrease || isSaving}
+          aria-label="1ページ進める"
         >
-          / {total}p
-        </Text>
-      </Row>
-      <Grid gap="sm" columns={4}>
-        {DELTA_BUTTONS.map(({ label, delta, color }) => (
-          <s.button
-            key={label}
-            className={deltaButton({ color })}
-            onClick={() => onUpdate(bookId, delta)}
-          >
-            {label}
-          </s.button>
-        ))}
-      </Grid>
-    </Column>
+          +
+        </button>
+        <span className={progressStyles.unit}>
+          {total > 0 ? `/ ${total}p` : "ページ数未設定"}
+        </span>
+      </div>
+
+      {error !== null && (
+        <p id={errorId} className={progressStyles.error} role="alert">
+          {error}
+        </p>
+      )}
+      {saveError !== null && <p role="alert">{saveError}</p>}
+
+      <div className={progressStyles.actions}>
+        <button
+          type="button"
+          className={progressStyles.cancel}
+          onClick={cancel}
+          disabled={isSaving}
+          aria-label="記録するページのプレビューを取り消す"
+        >
+          取り消す
+        </button>
+        <button
+          type="button"
+          className={progressStyles.submit}
+          onClick={() => void submit()}
+          disabled={!canSubmit}
+        >
+          {isSaving ? "記録中..." : "このページまで記録"}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -636,9 +756,12 @@ export default function StarInsightPanel({
 }: {
   book: Book | null;
   onClose: () => void;
-  onUpdateBook: (bookId: string, updates: Partial<Book>) => void;
+  onUpdateBook: (
+    bookId: string,
+    updates: Partial<Book>,
+  ) => Promise<boolean> | undefined;
   onPageUpdate: (bookId: string, delta: number) => void;
-  onPageSet: (bookId: string, page: number) => void;
+  onPageSet: (bookId: string, page: number) => Promise<void> | void;
   onAddNote: (
     bookId: string,
     content: string,
@@ -668,6 +791,7 @@ export default function StarInsightPanel({
   const [isRecording, setIsRecording] = useState(false);
   const progressRef = useRef<HTMLDivElement>(null);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [failedCover, setFailedCover] = useState<string | null>(null);
 
   useEffect(() => {
     if (!book || isEditOpen || isDelOpen) return;
@@ -709,15 +833,13 @@ export default function StarInsightPanel({
           isOpen={isEditOpen}
           book={book}
           onCloseAction={() => setIsEditOpen(false)}
-          onSaveAction={(id, updates) => {
-            onUpdateBook(id, updates);
-            setIsEditOpen(false);
-          }}
+          onSaveAction={onUpdateBook}
         />
       )}
       <section
         className={styles.panel}
         data-expanded={isRecording || isNotesOpen}
+        data-star-tool={isRecording ? "progress" : undefined}
         aria-labelledby="selected-book-title"
       >
         <span className={styles.sheetHandle} aria-hidden="true" />
@@ -730,23 +852,23 @@ export default function StarInsightPanel({
           <X size={18} />
         </button>
         <div className={styles.bookHeader}>
-          {book.coverUrl ? (
-            <Image
-              src={book.coverUrl.replace("http://", "https://")}
-              alt={`${book.title}の書影`}
-              width={92}
-              height={126}
-              className={styles.cover}
-            />
-          ) : (
-            <div
-              className={`${styles.cover} ${styles.coverFallback}`}
-              role="img"
-              aria-label="書影なし"
-            >
-              <BookOpen size={32} />
-            </div>
-          )}
+          <Image
+            src={
+              book.coverUrl && book.coverUrl !== failedCover
+                ? book.coverUrl.replace("http://", "https://")
+                : "/images/book-cover-fallback.png"
+            }
+            alt={
+              book.coverUrl && book.coverUrl !== failedCover
+                ? `${book.title}の書影`
+                : "書影なし"
+            }
+            width={92}
+            height={126}
+            className={styles.cover}
+            unoptimized
+            onError={() => setFailedCover(book.coverUrl)}
+          />
           <div>
             <h2 id="selected-book-title" className={styles.bookTitle}>
               {book.title}
@@ -794,14 +916,16 @@ export default function StarInsightPanel({
           id="reading-progress-controls"
           hidden={!isRecording}
         >
-          <PageControls
-            key={book.id}
-            bookId={book.id}
-            current={book.currentPage}
-            total={book.totalPages}
-            onUpdate={onPageUpdate}
-            onSet={onPageSet}
-          />
+          {isRecording && (
+            <PageControls
+              key={book.id}
+              bookId={book.id}
+              current={book.currentPage}
+              total={book.totalPages}
+              onUpdate={onPageUpdate}
+              onSet={onPageSet}
+            />
+          )}
         </div>
         <div
           id="reading-notes"

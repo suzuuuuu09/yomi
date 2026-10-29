@@ -59,7 +59,7 @@ interface LibraryState {
   fetchReadingLogs: (bookId: string) => Promise<void>;
   setReadingTimezone: (readingTimezone: string) => Promise<boolean>;
   addBook: (partial: Partial<Book>) => Promise<boolean>;
-  updateBook: (bookId: string, updates: Partial<Book>) => Promise<void>;
+  updateBook: (bookId: string, updates: Partial<Book>) => Promise<boolean>;
   archiveBook: (bookId: string) => Promise<void>;
   restoreBook: (bookId: string) => Promise<void>;
   permanentlyDeleteBook: (bookId: string) => Promise<void>;
@@ -664,8 +664,9 @@ const useLibraryStore = create<LibraryState>((set, get) => {
       }
     },
 
-    updateBook: (bookId, updates) =>
-      queueBookMutation(bookId, async () => {
+    updateBook: async (bookId, updates) => {
+      let saved = false;
+      await queueBookMutation(bookId, async () => {
         const previous = get().books.find((book) => book.id === bookId);
         if (!previous) return;
         const revision = nextRevision(bookId);
@@ -695,6 +696,7 @@ const useLibraryStore = create<LibraryState>((set, get) => {
             ...withLines(replaceBook(state.books, data.book)),
             lastError: null,
           }));
+          saved = true;
         } catch (error) {
           if (!isLatest(bookId, revision)) return;
           set((state) => ({
@@ -702,7 +704,9 @@ const useLibraryStore = create<LibraryState>((set, get) => {
             lastError: getApiErrorMessage(error, "本を更新できませんでした。"),
           }));
         }
-      }),
+      });
+      return saved;
+    },
 
     setSelectedBook: (book) => set({ selectedBookId: book?.id ?? null }),
 

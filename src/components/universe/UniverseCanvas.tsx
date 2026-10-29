@@ -428,6 +428,7 @@ function GyroPermissionOverlay({
 
 interface UniverseCanvasProps {
   books: Book[];
+  matchingBookIds?: ReadonlySet<string>;
   constellationLines: [string, string][];
   onStarClick: (book: Book) => void;
   selectedBookId: string | null;
@@ -439,6 +440,7 @@ interface UniverseCanvasProps {
 
 export default function UniverseCanvas({
   books,
+  matchingBookIds,
   constellationLines: lines,
   onStarClick,
   selectedBookId,
@@ -532,16 +534,23 @@ export default function UniverseCanvas({
             lines={lines}
             reducedMotion={reducedMotion}
           />
-          {books.map((book) => (
-            <BookStar
-              key={book.id}
-              book={book}
-              onClick={onStarClick}
-              isSelected={selectedBookId === book.id}
-              reducedMotion={reducedMotion}
-              onHover={setHoveredBookId}
-            />
-          ))}
+          {books.map((book) => {
+            const muted =
+              matchingBookIds !== undefined && !matchingBookIds.has(book.id);
+            const visibleBook: Book = muted
+              ? { ...book, currentPage: 0, status: "unread" }
+              : book;
+            return (
+              <BookStar
+                key={`${book.id}:${muted ? "muted" : "visible"}`}
+                book={visibleBook}
+                onClick={() => onStarClick(book)}
+                isSelected={selectedBookId === book.id}
+                reducedMotion={reducedMotion}
+                onHover={setHoveredBookId}
+              />
+            );
+          })}
           {newBook && !reducedMotion && (
             <StarBirthEffect
               key={newBook.id}
@@ -579,7 +588,11 @@ export default function UniverseCanvas({
             empty={books.length === 0}
           />
           <BookLabels
-            books={books}
+            books={
+              matchingBookIds === undefined
+                ? books
+                : books.filter((book) => matchingBookIds.has(book.id))
+            }
             selectedBookId={selectedBookId}
             hoveredBookId={hoveredBookId}
             onSelect={onStarClick}

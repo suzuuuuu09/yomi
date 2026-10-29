@@ -6,6 +6,7 @@ import styles from "@/components/observatory.module.css";
 import type { FilterTabsCounts } from "@/components/shares/FilterTabs";
 import FilterTabs from "@/components/shares/FilterTabs";
 import UserMenu from "@/components/shares/UserMenu";
+import searchStyles from "@/components/star-search.module.css";
 import useBookListStore from "@/store/useBookListStore";
 import useLibraryFilterStore from "@/store/useLibraryFilterStore";
 
@@ -54,7 +55,12 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
   }, [isSearchOpen, closeSearch]);
 
   return (
-    <header ref={headerRef} className={styles.header}>
+    <header
+      ref={headerRef}
+      className={`${styles.header}${
+        isSearchOpen ? ` ${searchStyles.headerActive}` : ""
+      }`}
+    >
       <span className={styles.logo}>YOMi</span>
       <nav className={styles.navigation} aria-label="本と設定">
         {bookCount.all > 0 && (
@@ -90,33 +96,50 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
       {isSearchOpen && bookCount.all > 0 && (
         <section
           id="library-search"
-          className={styles.searchPanel}
+          className={searchStyles.panel}
           aria-label="蔵書を検索"
         >
-          <div className={styles.searchRow}>
+          <div className={searchStyles.field}>
+            <Search
+              size={17}
+              className={searchStyles.searchIcon}
+              aria-hidden="true"
+            />
             <input
               ref={searchRef}
               type="search"
-              className={styles.searchInput}
+              className={searchStyles.input}
               aria-label="タイトル・著者・ジャンルで検索"
               placeholder="タイトル・著者・ジャンル"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
+            {query && (
+              <button
+                type="button"
+                className={searchStyles.clearButton}
+                onClick={() => setQuery("")}
+                aria-label="検索語を消去"
+              >
+                <X size={15} aria-hidden="true" />
+              </button>
+            )}
             <button
               type="button"
-              className={styles.iconButton}
+              className={searchStyles.closeButton}
               onClick={closeSearch}
               aria-label="検索を解除して閉じる"
             >
-              <X size={18} />
+              <X size={16} aria-hidden="true" />
             </button>
           </div>
-          <FilterTabs
-            activeFilter={activeFilter}
-            setFilter={setFilter}
-            counts={bookCount}
-          />
+          <div className={searchStyles.filters}>
+            <FilterTabs
+              activeFilter={activeFilter}
+              setFilter={setFilter}
+              counts={bookCount}
+            />
+          </div>
         </section>
       )}
     </header>

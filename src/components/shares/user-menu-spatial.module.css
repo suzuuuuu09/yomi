@@ -1,0 +1,37 @@
+.overlay {
+  background: transparent !important;
+  pointer-events: none;
+}
+
+.panel {
+  pointer-events: auto;
+  margin-top: 60px;
+  width: min(360px, calc(100vw - 24px)) !important;
+  max-height: calc(100dvh - 88px) !important;
+}
+
+.archive > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+  color: #c7d2fe;
+  list-style: none;
+}
+
+.archive > summary::-webkit-details-marker {
+  display: none;
+}
+
+.archive > summary:focus-visible {
+  outline: 2px solid #c7d2fe;
+  outline-offset: 3px;
+}
+
+@media (max-width: 767px) {
+  .panel {
+    margin-top: 54px;
+  }
+}

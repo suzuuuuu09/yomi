@@ -1,14 +1,16 @@
 "use client";
 
-import { Camera, Search, X } from "lucide-react";
+import { Camera, Search, Sparkles, X } from "lucide-react";
 import type { IconName } from "lucide-react/dynamic";
 import dynamic from "next/dynamic";
-import { useState } from "react";
-import { Box, Flex, Stack, styled as s } from "styled-system/jsx";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import { Box, Flex, styled as s } from "styled-system/jsx";
 import { token } from "styled-system/tokens";
 import { ModeButton } from "@/components/ModeButton";
 import { SearchResultItem } from "@/components/SearchResultItem";
-import FeatureCard from "@/components/shares/card/FeatureCard";
+import styles from "@/components/sections/add-book-modal.module.css";
+import CloseButton from "@/components/shares/CloseButton";
 import BookInfoFields from "@/components/shares/field/BookInfoFields";
 import Modal from "@/components/shares/modal/Modal";
 import { useAddBook } from "@/hooks/useAddBook";
@@ -23,6 +25,8 @@ const BarcodeScanner = dynamic(
   { ssr: false },
 );
 
+const COVER_FALLBACK = "/images/book-cover-fallback.png";
+
 const MODES: { mode: BookSearchMode; label: string; icon: IconName }[] = [
   { mode: "search", label: "キーワード", icon: "search" },
   { mode: "isbn", label: "ISBN", icon: "book-open" },
@@ -34,6 +38,8 @@ interface AddBlockModalProps {
   onCloseAction: () => void;
   onAddAction: (book: Partial<Book>) => Promise<boolean>;
 }
+
+type CoverState = "book" | "fallback";
 
 export default function AddBookModal(props: AddBlockModalProps) {
   const { isOpen, onCloseAction, onAddAction } = props;
@@ -52,6 +58,19 @@ export default function AddBookModal(props: AddBlockModalProps) {
     store.reset();
     onCloseAction();
   };
+
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const frame = requestAnimationFrame(() => {
+      const firstField = dialogRef.current?.querySelector<HTMLElement>(
+        "input:not([disabled]), select:not([disabled]), textarea:not([disabled])",
+      );
+      firstField?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isOpen]);
 
   type ScanStep = "idle" | "scanning" | "post-confirm";
   const [scanStep, setScanStep] = useState<ScanStep>("idle");
@@ -75,284 +94,371 @@ export default function AddBookModal(props: AddBlockModalProps) {
     store.fetchPage(0);
   };
 
-  // TODO: APIの総件数からページ数を計算できるようにする
+  const selected = store.selectedResult;
+  const [coverState, setCoverState] = useState<CoverState>("book");
+
+  useEffect(() => {
+    setCoverState(selected?.thumbnail ? "book" : "fallback");
+  }, [selected]);
+
+  const coverSrc =
+    coverState === "book" && selected?.thumbnail
+      ? selected.thumbnail.replace("http://", "https://")
+      : COVER_FALLBACK;
+  const showBookCover = coverState === "book" && Boolean(selected?.thumbnail);
+
   const totalPages =
     store.mode === "isbn" ? 1 : Math.ceil(store.totalItems / 20);
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose}>
-      <FeatureCard
-        title="新しい星を生む"
-        description="本を登録して宇宙に星を追加"
-        icon="sparkles"
-        onCloseAction={handleClose}
+    <Modal isOpen={isOpen} onClose={handleClose} variant="floating" maxW="3xl">
+      <div
+        ref={dialogRef}
+        className={styles.dialog}
+        role="dialog"
+        aria-labelledby="add-book-title"
+        aria-describedby="add-book-description"
       >
+        <CloseButton onClick={handleClose} className={styles.close} />
+
+        <header className={styles.header}>
+          <span className={styles.headerIcon} aria-hidden="true">
+            <Sparkles size={18} />
+          </span>
+          <div>
+            <h2 id="add-book-title" className={styles.title}>
+              新しい星を生む
+            </h2>
+            <p id="add-book-description" className={styles.description}>
+              本を登録して宇宙に星を追加
+            </p>
+          </div>
+        </header>
+
         <fieldset
           disabled={isSubmitting}
           inert={isSubmitting}
           aria-busy={isSubmitting}
-          style={{ border: 0, padding: 0, minWidth: 0 }}
+          className={styles.fieldset}
         >
-          <Flex
-            gap={1}
-            mb={6}
-            rounded="2xl"
-            bg="indigo.500/8"
-            border="1px solid"
-            borderColor="indigo.500/25"
-            style={{ padding: "4px" }}
-          >
-            {MODES.map(({ mode, label, icon }) => (
-              <ModeButton
-                key={mode}
-                mode={mode}
-                current={store.mode}
-                onClick={store.setMode}
-                icon={icon}
-                label={label}
-              />
-            ))}
-          </Flex>
+          <div className={styles.layout}>
+            <div className={styles.searchColumn}>
+              <div className={styles.modeRow}>
+                {MODES.map(({ mode, label, icon }) => (
+                  <ModeButton
+                    key={mode}
+                    mode={mode}
+                    current={store.mode}
+                    onClick={store.setMode}
+                    icon={icon}
+                    label={label}
+                  />
+                ))}
+              </div>
 
-          {store.mode === "manual" ? (
-            <BookInfoFields
-              values={{
-                title: form.title,
-                author: form.author,
-                pages: form.pages,
-                isbn: form.isbn,
-                genre: form.genre,
-              }}
-              onChange={setField}
-            />
-          ) : (
-            <Stack dir="column">
-              <Stack dir="column" gap={2}>
-                <TextInput
-                  name={store.mode === "isbn" ? "ISBN" : "キーワード"}
-                  placeholder={
-                    store.mode === "isbn" ? "97..." : "タイトルや著者名で検索"
-                  }
-                  endIcon={store.isSearching ? "loader-circle" : "search"}
-                  value={store.query}
-                  onChange={(e) => store.setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && store.fetchPage(0)}
-                  onEndIconClick={
-                    store.query.trim() && !store.isSearching
-                      ? () => store.fetchPage(0)
-                      : undefined
-                  }
-                />
-                {store.error && (
-                  <s.p role="alert" fontSize="xs" color="red.300" mt={2}>
-                    {store.error}
-                  </s.p>
-                )}
-                {store.mode === "isbn" && (
-                  <s.button
-                    type="button"
-                    onClick={startCamera}
-                    w="full"
-                    py={2}
-                    rounded="xl"
-                    bg="indigo.500/15"
-                    border="1px solid"
-                    borderColor="indigo.500/40"
-                    color="indigo.300"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    gap={2}
-                    cursor="pointer"
-                    _hover={{ bg: "indigo.500/25" }}
-                    title="カメラでバーコードをスキャン"
-                  >
-                    <Camera size={16} />
-                    <s.span fontSize="sm">カメラでスキャン</s.span>
-                  </s.button>
-                )}
-              </Stack>
-
-              <Box mt={4} overflowY="auto" maxH="28vh" minH="120px">
-                {!store.isSearching &&
-                  store.searchResults.map((book) => (
-                    <SearchResultItem
-                      key={book.id}
-                      book={book}
-                      isSelected={store.selectedResult?.id === book.id}
-                      onSelect={handleSelectResult}
+              {store.mode === "manual" ? (
+                <p className={styles.resultsHint}>
+                  各項目を入力して登録できます。
+                </p>
+              ) : (
+                <>
+                  <div className={styles.searchRow}>
+                    <TextInput
+                      name={store.mode === "isbn" ? "ISBN" : "キーワード"}
+                      placeholder={
+                        store.mode === "isbn"
+                          ? "97..."
+                          : "タイトルや著者名で検索"
+                      }
+                      endIcon={store.isSearching ? "loader-circle" : "search"}
+                      value={store.query}
+                      onChange={(e) => store.setQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && store.fetchPage(0)}
+                      onEndIconClick={
+                        store.query.trim() && !store.isSearching
+                          ? () => store.fetchPage(0)
+                          : undefined
+                      }
                     />
-                  ))}
-              </Box>
+                    {store.error && (
+                      <s.p role="alert" className={styles.error}>
+                        {store.error}
+                      </s.p>
+                    )}
+                    {store.mode === "isbn" && (
+                      <s.button
+                        type="button"
+                        onClick={startCamera}
+                        w="full"
+                        py={2}
+                        rounded="xl"
+                        bg="indigo.500/15"
+                        border="1px solid"
+                        borderColor="indigo.500/40"
+                        color="indigo.300"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        gap={2}
+                        cursor="pointer"
+                        _hover={{ bg: "indigo.500/25" }}
+                        title="カメラでバーコードをスキャン"
+                      >
+                        <Camera size={16} />
+                        <s.span fontSize="sm">カメラでスキャン</s.span>
+                      </s.button>
+                    )}
+                  </div>
 
-              {totalPages > 1 && store.mode !== "isbn" && (
-                <Flex align="center" justify="center" gap={4} mt={2}>
-                  <IconButton
-                    icon="chevron-left"
-                    onClick={() => store.fetchPage(store.currentPage - 1)}
-                    disabled={store.currentPage === 0}
-                    variant="text"
-                    aria-label="前のページ"
-                  />
-                  <Text
-                    tag="span"
-                    fontClass="caption"
-                    style={{ color: token("colors.slate.500") }}
-                  >
-                    {store.currentPage + 1} / {totalPages}
-                  </Text>
-                  <IconButton
-                    icon="chevron-right"
-                    onClick={() => store.fetchPage(store.currentPage + 1)}
-                    disabled={store.currentPage >= totalPages - 1}
-                    variant="text"
-                    aria-label="次のページ"
-                  />
-                </Flex>
+                  <div className={styles.results}>
+                    {!store.isSearching &&
+                      store.searchResults.map((book) => (
+                        <SearchResultItem
+                          key={book.id}
+                          book={book}
+                          isSelected={store.selectedResult?.id === book.id}
+                          onSelect={handleSelectResult}
+                        />
+                      ))}
+                    {store.isSearching && (
+                      <p className={styles.resultsHint}>検索中…</p>
+                    )}
+                    {!store.isSearching &&
+                      store.hasSearched &&
+                      store.searchResults.length === 0 && (
+                        <p className={styles.empty}>
+                          検索結果が見つかりませんでした
+                        </p>
+                      )}
+                    {!store.isSearching && !store.hasSearched && (
+                      <p className={styles.resultsHint}>
+                        検索キーワードを入力して結果を表示
+                      </p>
+                    )}
+                  </div>
+
+                  {totalPages > 1 && store.mode !== "isbn" && (
+                    <Flex align="center" justify="center" gap={4}>
+                      <IconButton
+                        icon="chevron-left"
+                        onClick={() => store.fetchPage(store.currentPage - 1)}
+                        disabled={store.currentPage === 0}
+                        variant="text"
+                        aria-label="前のページ"
+                      />
+                      <Text
+                        tag="span"
+                        fontClass="caption"
+                        style={{ color: token("colors.slate.500") }}
+                      >
+                        {store.currentPage + 1} / {totalPages}
+                      </Text>
+                      <IconButton
+                        icon="chevron-right"
+                        onClick={() => store.fetchPage(store.currentPage + 1)}
+                        disabled={store.currentPage >= totalPages - 1}
+                        variant="text"
+                        aria-label="次のページ"
+                      />
+                    </Flex>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className={styles.detailColumn}>
+              {store.mode === "manual" ? (
+                <BookInfoFields
+                  values={{
+                    title: form.title,
+                    author: form.author,
+                    pages: form.pages,
+                    isbn: form.isbn,
+                    genre: form.genre,
+                  }}
+                  onChange={setField}
+                />
+              ) : selected ? (
+                <>
+                  <div className={styles.coverFrame}>
+                    <Image
+                      src={coverSrc}
+                      alt={
+                        showBookCover ? `${selected.title}の書影` : "書影なし"
+                      }
+                      width={160}
+                      height={240}
+                      sizes="(max-width: 639px) 90px, 160px"
+                      className={styles.coverImage}
+                      onError={() =>
+                        setCoverState((previous) =>
+                          previous === "book" ? "fallback" : previous,
+                        )
+                      }
+                    />
+                  </div>
+                  <dl className={styles.metadata}>
+                    <div>
+                      <dt>タイトル</dt>
+                      <dd>{selected.title}</dd>
+                    </div>
+                    <div>
+                      <dt>著者</dt>
+                      <dd>{selected.authors?.join(", ") || "—"}</dd>
+                    </div>
+                    {selected.page ? (
+                      <div>
+                        <dt>ページ数</dt>
+                        <dd>{selected.page}</dd>
+                      </div>
+                    ) : null}
+                    {selected.isbn ? (
+                      <div>
+                        <dt>ISBN</dt>
+                        <dd>{selected.isbn}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </>
+              ) : (
+                <div className={styles.placeholder}>
+                  <p>
+                    検索結果から本を選択すると、ここに書影と情報が表示されます。
+                  </p>
+                </div>
               )}
 
-              <BookInfoFields
-                genreOnly
-                values={{
-                  title: "",
-                  author: "",
-                  pages: "",
-                  isbn: "",
-                  genre: form.genre,
-                }}
-                onChange={(field, value) =>
-                  field === "genre" && setField("genre", value)
-                }
-              />
-            </Stack>
-          )}
+              {store.mode !== "manual" && (
+                <BookInfoFields
+                  genreOnly
+                  values={{
+                    title: "",
+                    author: "",
+                    pages: "",
+                    isbn: "",
+                    genre: form.genre,
+                  }}
+                  onChange={(field, value) =>
+                    field === "genre" && setField("genre", value)
+                  }
+                />
+              )}
 
-          {scanStep !== "idle" && (
-            <Box
-              position="fixed"
-              inset="0"
-              zIndex="50"
-              bg="black/80"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-            >
-              <Box
-                position="relative"
-                w="full"
-                maxW="md"
-                mx="4"
-                bg="gray.950"
-                rounded="2xl"
-                overflow="hidden"
+              <s.button
+                type="button"
+                className={styles.addButton}
+                onClick={handleSubmit}
+                disabled={!canSubmit || isSubmitting}
               >
-                <s.button
-                  type="button"
-                  onClick={closeScanner}
-                  position="absolute"
-                  top="3"
-                  right="3"
-                  zIndex="10"
-                  p="1"
-                  rounded="full"
-                  bg="gray.800/80"
-                  color="gray.300"
-                  _hover={{ bg: "gray.700" }}
-                >
-                  <X size={18} />
-                </s.button>
-
-                {scanStep === "scanning" && (
-                  <BarcodeScanner onScan={handleBarcodeScan} />
-                )}
-
-                {scanStep === "post-confirm" && (
-                  <Box p="8" textAlign="center">
-                    <Box
-                      mb="4"
-                      display="inline-flex"
-                      p="4"
-                      rounded="full"
-                      bg="green.500/15"
-                      color="green.300"
-                    >
-                      <Search size={32} />
-                    </Box>
-                    <s.p fontSize="lg" fontWeight="bold" color="white" mb="2">
-                      バーコードを読み取りました
-                    </s.p>
-                    <s.p fontSize="sm" color="gray.400" mb="2">
-                      以下のISBNで検索しますか？
-                    </s.p>
-                    <s.p
-                      fontSize="xl"
-                      fontWeight="mono"
-                      color="indigo.200"
-                      mb="6"
-                      letterSpacing="widest"
-                    >
-                      {scannedIsbn}
-                    </s.p>
-                    <Flex gap="3" justify="center">
-                      <s.button
-                        type="button"
-                        onClick={() => setScanStep("scanning")}
-                        px="5"
-                        py="2"
-                        rounded="xl"
-                        bg="gray.800"
-                        color="gray.300"
-                        border="1px solid"
-                        borderColor="gray.700"
-                        _hover={{ bg: "gray.700" }}
-                      >
-                        やり直す
-                      </s.button>
-                      <s.button
-                        type="button"
-                        onClick={confirmScan}
-                        px="5"
-                        py="2"
-                        rounded="xl"
-                        bg="indigo.500/30"
-                        color="indigo.200"
-                        border="1px solid"
-                        borderColor="indigo.500/50"
-                        _hover={{ bg: "indigo.500/40" }}
-                      >
-                        この本を検索する
-                      </s.button>
-                    </Flex>
-                  </Box>
-                )}
-              </Box>
-            </Box>
-          )}
-
-          <s.button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!canSubmit || isSubmitting}
-            mt={6}
-            w="full"
-            py={3}
-            rounded="xl"
-            bg="indigo.500/20"
-            border="1px solid"
-            borderColor="indigo.500/30"
-            color="indigo.300"
-            fontWeight="semibold"
-            cursor="pointer"
-            _hover={{ bg: "indigo.500/30" }}
-            _disabled={{
-              opacity: 0.3,
-              cursor: "not-allowed",
-            }}
-          >
-            星を誕生させる
-          </s.button>
+                星を誕生させる
+              </s.button>
+            </div>
+          </div>
         </fieldset>
-      </FeatureCard>
+
+        {scanStep !== "idle" && (
+          <Box
+            position="fixed"
+            inset="0"
+            zIndex="50"
+            bg="black/80"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Box
+              position="relative"
+              w="full"
+              maxW="md"
+              mx="4"
+              bg="gray.950"
+              rounded="2xl"
+              overflow="hidden"
+            >
+              <s.button
+                type="button"
+                onClick={closeScanner}
+                position="absolute"
+                top="3"
+                right="3"
+                zIndex="10"
+                p="1"
+                rounded="full"
+                bg="gray.800/80"
+                color="gray.300"
+                _hover={{ bg: "gray.700" }}
+                aria-label="スキャナーを閉じる"
+              >
+                <X size={18} />
+              </s.button>
+
+              {scanStep === "scanning" && (
+                <BarcodeScanner onScan={handleBarcodeScan} />
+              )}
+
+              {scanStep === "post-confirm" && (
+                <Box p="8" textAlign="center">
+                  <Box
+                    mb="4"
+                    display="inline-flex"
+                    p="4"
+                    rounded="full"
+                    bg="green.500/15"
+                    color="green.300"
+                  >
+                    <Search size={32} />
+                  </Box>
+                  <s.p fontSize="lg" fontWeight="bold" color="white" mb="2">
+                    バーコードを読み取りました
+                  </s.p>
+                  <s.p fontSize="sm" color="gray.400" mb="2">
+                    以下のISBNで検索しますか？
+                  </s.p>
+                  <s.p
+                    fontSize="xl"
+                    fontWeight="mono"
+                    color="indigo.200"
+                    mb="6"
+                    letterSpacing="widest"
+                  >
+                    {scannedIsbn}
+                  </s.p>
+                  <Flex gap="3" justify="center">
+                    <s.button
+                      type="button"
+                      onClick={() => setScanStep("scanning")}
+                      px="5"
+                      py="2"
+                      rounded="xl"
+                      bg="gray.800"
+                      color="gray.300"
+                      border="1px solid"
+                      borderColor="gray.700"
+                      _hover={{ bg: "gray.700" }}
+                    >
+                      やり直す
+                    </s.button>
+                    <s.button
+                      type="button"
+                      onClick={confirmScan}
+                      px="5"
+                      py="2"
+                      rounded="xl"
+                      bg="indigo.500/30"
+                      color="indigo.200"
+                      border="1px solid"
+                      borderColor="indigo.500/50"
+                      _hover={{ bg: "indigo.500/40" }}
+                    >
+                      この本を検索する
+                    </s.button>
+                  </Flex>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        )}
+      </div>
     </Modal>
   );
 }

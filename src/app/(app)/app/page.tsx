@@ -2,7 +2,7 @@
 
 import { Plus, Rotate3D } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import BookListDrawer from "@/components/BookListDrawer";
 import styles from "@/components/observatory.module.css";
 import SessionGuard from "@/components/SessionGuard";
@@ -15,6 +15,8 @@ import { useObservatory } from "@/hooks/useObservatory";
 import { useStarInsight } from "@/hooks/useStarInsight";
 import useLibraryFilterStore from "@/store/useLibraryFilterStore";
 import useLibraryStore from "@/store/useLibraryStore";
+import useProgressPreviewStore from "@/store/useProgressPreviewStore";
+import type { BookStatus } from "@/types/library";
 
 const UniverseCanvas = dynamic(
   () => import("@/components/universe/UniverseCanvas"),
@@ -69,6 +71,29 @@ function ObservatoryContent() {
     handleAdd,
   } = useObservatory();
   const starInsight = useStarInsight();
+  const preview = useProgressPreviewStore((state) => state.preview);
+  const visibleBooks = useMemo(() => {
+    if (!preview || preview.bookId !== selectedBookId) return books;
+
+    return books.map((book) => {
+      if (book.id !== preview.bookId) return book;
+
+      const status: BookStatus =
+        preview.page <= 0
+          ? "unread"
+          : book.totalPages > 0 && preview.page >= book.totalPages
+            ? "completed"
+            : "reading";
+      return { ...book, currentPage: preview.page, status };
+    });
+  }, [books, preview, selectedBookId]);
+  const matchingBookIds = useMemo(
+    () =>
+      filteredBooks === books
+        ? undefined
+        : new Set(filteredBooks.map((book) => book.id)),
+    [books, filteredBooks],
+  );
   const ready = loadState === "loaded" && !isLoading;
   const empty = ready && books.length === 0 && !lastError;
   const nowReading = books.filter((book) => book.status === "reading");
@@ -77,7 +102,8 @@ function ObservatoryContent() {
   return (
     <main className={styles.observatory}>
       <UniverseCanvas
-        books={filteredBooks}
+        books={visibleBooks}
+        matchingBookIds={matchingBookIds}
         constellationLines={constellationLines}
         onStarClick={handleStarClick}
         selectedBookId={selectedBookId}

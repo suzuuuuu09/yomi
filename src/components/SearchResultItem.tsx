@@ -2,6 +2,8 @@ import Image from "next/image";
 import { sva } from "styled-system/css";
 import type { BookSearchResult } from "@/types/book-search";
 
+const COVER_FALLBACK = "/images/book-cover-fallback.png";
+
 interface SearchResultItemProps {
   book: BookSearchResult;
   isSelected?: boolean;
@@ -57,6 +59,7 @@ export const SearchResultItem = (props: SearchResultItemProps) => {
       type="button"
       onClick={() => onSelect(book)}
       className={styles.button}
+      aria-pressed={Boolean(isSelected)}
       style={
         isSelected
           ? {
@@ -67,14 +70,16 @@ export const SearchResultItem = (props: SearchResultItemProps) => {
       }
     >
       <div className={styles.thumbnail}>
-        {book.thumbnail && (
-          <Image
-            src={book.thumbnail.replace("http://", "https://")}
-            width={80}
-            height={112}
-            alt={book.title}
-          />
-        )}
+        <Image
+          src={
+            book.thumbnail
+              ? book.thumbnail.replace("http://", "https://")
+              : COVER_FALLBACK
+          }
+          width={80}
+          height={112}
+          alt=""
+        />
       </div>
       <div className={styles.info}>
         <p className={styles.title}>{book.title}</p>

@@ -1,11 +1,12 @@
 "use client";
 
 import { Globe2, LogIn, LogOut, Settings } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { css } from "styled-system/css";
 import { Box, HStack, styled as s } from "styled-system/jsx";
 import styles from "@/components/observatory.module.css";
+import spatialStyles from "@/components/shares/user-menu-spatial.module.css";
 import { authClient } from "@/lib/auth-client";
 import useLibraryStore from "@/store/useLibraryStore";
 import Text from "~liftkit/text";
@@ -24,6 +25,34 @@ export default function UserMenu() {
     (state) => state.setReadingTimezone,
   );
   const restoreBook = useLibraryStore((state) => state.restoreBook);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSettingsOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (
+        !panelRef.current?.contains(target) &&
+        !triggerRef.current?.contains(target)
+      ) {
+        setSettingsOpen(false);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [settingsOpen]);
 
   const openSettings = () => {
     setTimezoneDraft(readingTimezone ?? "");
@@ -70,6 +99,7 @@ export default function UserMenu() {
     return (
       <>
         <button
+          ref={triggerRef}
           type="button"
           className={styles.glassButton}
           onClick={openSettings}
@@ -81,6 +111,7 @@ export default function UserMenu() {
         {settingsOpen &&
           createPortal(
             <Box
+              className={spatialStyles.overlay}
               position="fixed"
               inset={0}
               zIndex={100}
@@ -92,6 +123,8 @@ export default function UserMenu() {
               onClick={() => setSettingsOpen(false)}
             >
               <Box
+                ref={panelRef}
+                className={spatialStyles.panel}
                 w={{ base: "full", md: "360px" }}
                 maxH="calc(100vh - 2rem)"
                 overflowY="auto"
@@ -108,7 +141,7 @@ export default function UserMenu() {
                   <HStack gap={2}>
                     <Globe2 size={15} color="#a5b4fc" />
                     <Text tag="h2" fontClass="callout-bold" color="onsurface">
-                      読書設定
+                      設定
                     </Text>
                   </HStack>
                   <s.button
@@ -186,15 +219,15 @@ export default function UserMenu() {
                   </s.button>
                 </Box>
 
-                <Box>
-                  <HStack justify="between" mb={2}>
+                <details className={spatialStyles.archive}>
+                  <summary>
                     <Text tag="h3" fontClass="caption-bold" color="outline">
                       アーカイブ済み
                     </Text>
                     <Text tag="span" fontClass="capline" color="outline">
                       {archivedBooks.length}冊
                     </Text>
-                  </HStack>
+                  </summary>
                   {archivedBooks.length === 0 ? (
                     <Text tag="p" fontClass="capline" color="outline">
                       アーカイブされた本はありません。
@@ -231,7 +264,7 @@ export default function UserMenu() {
                       ))}
                     </Box>
                   )}
-                </Box>
+                </details>
               </Box>
             </Box>,
             document.body,
