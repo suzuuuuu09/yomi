@@ -5,14 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { css } from "styled-system/css";
 import { Box, HStack, styled as s } from "styled-system/jsx";
+import GuestDataControls from "@/components/GuestDataControls";
 import styles from "@/components/observatory.module.css";
 import spatialStyles from "@/components/shares/user-menu-spatial.module.css";
 import { authClient } from "@/lib/auth-client";
+import { isGuestMode } from "@/lib/library-mode";
 import useLibraryStore from "@/store/useLibraryStore";
 import Text from "~liftkit/text";
 
 export default function UserMenu() {
   const { data: session, isPending } = authClient.useSession();
+  const guest = isGuestMode();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timezoneDraft, setTimezoneDraft] = useState("");
   const [timezoneError, setTimezoneError] = useState<string | null>(null);
@@ -81,7 +84,7 @@ export default function UserMenu() {
     });
   };
 
-  if (isPending) {
+  if (isPending && !guest) {
     return (
       <button
         type="button"
@@ -95,7 +98,7 @@ export default function UserMenu() {
     );
   }
 
-  if (session?.user) {
+  if (session?.user || guest) {
     return (
       <>
         <button
@@ -106,7 +109,7 @@ export default function UserMenu() {
           aria-expanded={settingsOpen}
         >
           <Settings size={18} aria-hidden="true" />
-          <span>設定</span>
+          <span>{guest ? "ゲスト · 設定" : "設定"}</span>
         </button>
         {settingsOpen &&
           createPortal(
@@ -156,17 +159,23 @@ export default function UserMenu() {
 
                 <HStack justify="between" mb={5}>
                   <Text tag="span" fontClass="caption" color="onsurface">
-                    {session.user.name}
+                    {guest
+                      ? "ゲスト · このブラウザーに保存"
+                      : session?.user.name}
                   </Text>
-                  <button
-                    type="button"
-                    className={styles.glassButton}
-                    onClick={handleLogout}
-                  >
-                    <LogOut size={16} />
-                    ログアウト
-                  </button>
+                  {!guest && (
+                    <button
+                      type="button"
+                      className={styles.glassButton}
+                      onClick={handleLogout}
+                    >
+                      <LogOut size={16} />
+                      ログアウト
+                    </button>
+                  )}
                 </HStack>
+
+                <GuestDataControls guest={guest} userId={session?.user.id} />
 
                 <Box mb={6}>
                   <Text tag="label" fontClass="caption" color="outline">

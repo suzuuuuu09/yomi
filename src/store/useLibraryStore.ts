@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { getApiErrorMessage, requestJson } from "@/lib/api-client";
+import { getApiErrorMessage } from "@/lib/api-client";
+import { libraryRequest as requestJson } from "@/lib/library-request";
 import { pageToStatus, resolveCompletedAt } from "@/server/lib/book-status";
 import { computeConstellationLines } from "@/server/lib/star-formation";
 import type {
@@ -296,8 +297,7 @@ function parseReadingLogsResponse(value: unknown): ReadingLogsResponse {
     if (
       log.readingTimezoneRevision !== undefined &&
       (!isNumber(log.readingTimezoneRevision) ||
-        !Number.isSafeInteger(log.readingTimezoneRevision) ||
-        log.readingTimezoneRevision < 0)
+        !Number.isSafeInteger(log.readingTimezoneRevision))
     ) {
       throw new Error("reading log has an invalid timezone revision");
     }

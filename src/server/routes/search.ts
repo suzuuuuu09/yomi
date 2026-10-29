@@ -5,7 +5,7 @@ import {
   BookProviderTimeoutError,
   fetchBookData,
 } from "@/server/lib/fetch-book";
-import { authMiddleware } from "@/server/middleware/auth";
+import { allowBookSearch } from "@/server/lib/search-rate-limit";
 import {
   BookResponseSchema,
   FinalResponseSchema,
@@ -18,8 +18,6 @@ const searchApp = new OpenAPIHono({
     if (!result.success) return invalidRequest(c, result.error);
   },
 });
-
-searchApp.use("/*", authMiddleware);
 
 const searchRoute = createRoute({
   method: "get",
@@ -50,13 +48,13 @@ const searchRoute = createRoute({
       },
       description: "検索条件が不正です。",
     },
-    401: {
+    429: {
       content: {
         "application/json": {
           schema: SearchErrorSchema,
         },
       },
-      description: "認証が必要です。",
+      description: "検索回数の上限です。時間をおいて再試行してください。",
     },
     502: {
       content: {
@@ -79,6 +77,18 @@ const searchRoute = createRoute({
 
 searchApp.openapi(searchRoute, async (c) => {
   const { q, isbn, index, results } = c.req.valid("query");
+  if (!(await allowBookSearch(c.req.header("CF-Connecting-IP") ?? "local"))) {
+    c.header("Retry-After", "60");
+    return c.json(
+      {
+        error: {
+          code: "RATE_LIMITED",
+          message: "検索回数の上限です。1分ほど待ってから再試行してください",
+        },
+      },
+      429,
+    );
+  }
   const apiKey = process.env.GOOGLE_API_KEY ?? "";
 
   const searchQuery = isbn ? `isbn:${isbn}` : q || "";

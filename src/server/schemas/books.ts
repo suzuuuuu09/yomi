@@ -87,7 +87,6 @@ export const ReadingLogUpdateSchema = z.object({
   readingTimezoneRevision: z
     .number()
     .int()
-    .min(0)
     .refine(Number.isSafeInteger)
     .nullable()
     .optional(),
