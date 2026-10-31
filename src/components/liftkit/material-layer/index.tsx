@@ -1,6 +1,5 @@
 "use client";
-import { useMemo } from "react";
-import { propsToDataAttrs } from "@/lib/liftkit/utilities";
+import styles from "./material-layer.module.css";
 
 /** LKMatProps is an object of any of the given types. Each material type has different unique props. */
 type LkMatProps = LkMatProps_Glass | LkMatProps_Flat;
@@ -31,123 +30,71 @@ export default function MaterialLayer({
   type,
   materialProps,
 }: LkMaterialLayerProps) {
-  /**If materialProps are provided, loop through the keys and pass each one as a data attribute to the component. */
-  let lkMatProps: LkMatProps;
-
-  if (materialProps) {
-    lkMatProps = useMemo(
-      () => propsToDataAttrs(materialProps, `${type}`),
-      [materialProps],
-    );
-  }
-
-  /**Commented out, was likely used for debugging */
-
-  // switch (material) {
-  //   case "glass":
-  //     break;
-  //   case "debug":
-  //     break;
-  // }
+  const glassProps =
+    type === "glass" ? (materialProps as LkMatProps_Glass) : undefined;
+  const flatProps =
+    type === "flat" ? (materialProps as LkMatProps_Flat) : undefined;
 
   return (
-    <>
-      <div
-        data-lk-component="material-layer"
-        data-lk-material-type={type}
-        style={{ zIndex: zIndex }}
-      >
-        {type === "glass" && (
-          <div>
-            <div data-lk-material-sublayer="texture">
-              {(materialProps as LkMatProps_Glass)?.tint && (
-                <div data-lk-material-sublayer="tint">
-                  {(materialProps as LkMatProps_Glass)?.light && (
-                    <div data-lk-material-sublayer="light"></div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div data-lk-material-sublayer="base-glass-fill"></div>
+    <div
+      data-lk-component="material-layer"
+      data-lk-material-type={type}
+      className={styles.layer}
+      style={{ zIndex: zIndex }}
+    >
+      {type === "glass" && (
+        <div>
+          <div
+            data-lk-material-sublayer="texture"
+            className={`${styles.sublayer} ${styles.texture}`}
+            style={{
+              backdropFilter: `blur(var(--blur-${
+                glassProps?.thickness || "normal"
+              }))`,
+            }}
+          >
+            {glassProps?.tint && (
+              <div
+                data-lk-material-sublayer="tint"
+                className={styles.sublayer}
+                style={{
+                  opacity: glassProps.tintOpacity || 0.2,
+                  backgroundColor: `var(--lk-${glassProps.tint})`,
+                }}
+              >
+                {glassProps.light && (
+                  <div
+                    data-lk-material-sublayer="light"
+                    className={`${styles.sublayer} ${styles.light}`}
+                    style={{
+                      background: glassProps.lightExpression || "none",
+                    }}
+                  ></div>
+                )}
+              </div>
+            )}
           </div>
-        )}
+          <div
+            data-lk-material-sublayer="base-glass-fill"
+            className={styles.sublayer}
+            style={{
+              backgroundColor: "var(--lk-surface)",
+              opacity: getGlassFillOpacity(glassProps?.thickness || "normal"),
+            }}
+          ></div>
+        </div>
+      )}
 
-        {type === "flat" && (
-          <div>
-            <div data-lk-material-sublayer="bgColor"></div>
-          </div>
-        )}
-      </div>
-
-      <style jsx>
-        {`
-          [data-lk-component="material-layer"] {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-
-            [data-lk-material-sublayer] {
-              position: absolute;
-              inset: 0;
-              pointer-events: none;
-            }
-          }
-        `}
-      </style>
-
-      {/** Glass behavior */}
-
-      <style jsx>{`
-        [data-lk-material-type="glass"] {
-          [data-lk-material-sublayer="tint"] {
-            opacity: ${(materialProps as LkMatProps_Glass)?.tintOpacity || 0.2};
-            background-color: var(
-              --lk-${(materialProps as LkMatProps_Glass)?.tint || "transparent"}
-            );
-          }
-
-          [data-lk-material-sublayer="texture"] {
-            --blur-thick: var(--lk-size-lg);
-            --blur-normal: var(--lk-size-md);
-            --blur-thin: var(--lk-size-xs);
-
-            z-index: 1;
-            isolation: isolate;
-            backdrop-filter: blur(
-              var(
-                --blur-${
-                  (materialProps as LkMatProps_Glass)?.thickness || "normal"
-                }
-              )
-            );
-          }
-
-          [data-lk-material-sublayer="light"] {
-            background: ${
-              (materialProps as LkMatProps_Glass)?.lightExpression || "none"
-            };
-            mix-blend-mode: soft-light;
-            opacity: 1;
-          }
-
-          [data-lk-material-sublayer="base-glass-fill"] {
-            background-color: var(--lk-surface);
-            opacity: ${getGlassFillOpacity(
-              (materialProps as LkMatProps_Glass)?.thickness || "normal",
-            )};
-          }
-        }
-        [data-lk-material-type="flat"] {
-          [data-lk-material-sublayer="bgColor"] {
-            background-color: ${getBgColor(
-              (materialProps as LkMatProps_Flat)?.bgColor,
-            )};
-          }
-        }
-      `}</style>
-    </>
+      {type === "flat" && (
+        <div>
+          <div
+            data-lk-material-sublayer="bgColor"
+            className={styles.sublayer}
+            style={{ backgroundColor: getBgColor(flatProps?.bgColor) }}
+          ></div>
+        </div>
+      )}
+    </div>
   );
 }
 

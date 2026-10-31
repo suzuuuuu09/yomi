@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Rotate3D } from "lucide-react";
+import { Plus } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import BookListDrawer from "@/components/BookListDrawer";
@@ -47,8 +47,6 @@ function ObservatoryContent() {
   const [loadState, setLoadState] = useState<"loading" | "loaded" | "failed">(
     "loading",
   );
-  const [vrMode, setVrMode] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   const loadBooks = useCallback(async () => {
     setLoadState("loading");
@@ -58,7 +56,6 @@ function ObservatoryContent() {
 
   useEffect(() => {
     void loadBooks();
-    setIsTouchDevice(navigator.maxTouchPoints > 0 || "ontouchstart" in window);
   }, [loadBooks]);
 
   const {
@@ -109,8 +106,6 @@ function ObservatoryContent() {
         selectedBookId={selectedBookId}
         newlyAddedBookId={newlyAddedBookId}
         onBirthEffectComplete={clearNewlyAdded}
-        vrMode={vrMode}
-        onExitVrMode={() => setVrMode(false)}
       />
       <TopBar bookCount={bookCount} />
       {lastError && (
@@ -166,20 +161,6 @@ function ObservatoryContent() {
               <span className={styles.addLabel}>本を追加</span>
             </button>
           </div>
-          {isTouchDevice && (
-            <div className={styles.gyroButton} data-selected={!!selectedBookId}>
-              <button
-                type="button"
-                className={styles.glassButton}
-                aria-pressed={vrMode}
-                onClick={() => setVrMode((value) => !value)}
-                aria-label={vrMode ? "ジャイロを終了" : "ジャイロで見渡す"}
-              >
-                <Rotate3D size={18} />
-                <span>{vrMode ? "終了" : "ジャイロ"}</span>
-              </button>
-            </div>
-          )}
           <div
             className={styles.readingAccess}
             data-selected={!!selectedBookId}

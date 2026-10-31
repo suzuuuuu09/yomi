@@ -1,11 +1,11 @@
 import {
   BarChart3,
   BookOpen,
+  ChevronDown,
   Pencil,
   Plus,
   StickyNote,
   Trash2,
-  X,
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
@@ -15,7 +15,10 @@ import { token } from "styled-system/tokens";
 import BookEditModal from "@/components/BookEditModal";
 import DeleteBookModal from "@/components/DelBookModal";
 import styles from "@/components/observatory.module.css";
+import CloseButton from "@/components/shares/CloseButton";
+import Modal from "@/components/shares/modal/Modal";
 import progressStyles from "@/components/star-insight-progress.module.css";
+import useBookListStore from "@/store/useBookListStore";
 import useProgressPreviewStore from "@/store/useProgressPreviewStore";
 import type {
   Book,
@@ -302,12 +305,14 @@ export function PageControls({
   current,
   total,
   onSet,
+  onCancel,
 }: {
   bookId: string;
   current: number;
   total: number;
   onUpdate?: (bookId: string, delta: number) => void;
   onSet: (bookId: string, page: number) => Promise<void> | void;
+  onCancel?: () => void;
 }) {
   const [draft, setDraft] = useState(String(current));
   const [isSaving, setIsSaving] = useState(false);
@@ -394,6 +399,7 @@ export function PageControls({
     pendingSaveRef.current = null;
     setDraft(String(current));
     clearPreview();
+    onCancel?.();
   };
 
   return (
@@ -423,21 +429,8 @@ export function PageControls({
 
       <div className={progressStyles.targetHeader}>
         <label className={progressStyles.eyebrow} htmlFor={inputId}>
-          記録するページ
+          新しい現在ページ
         </label>
-        <span className={progressStyles.previewRow} aria-live="polite">
-          <span>
-            プレビュー{" "}
-            <strong className={progressStyles.previewPercent}>
-              {targetPercent === null ? "—" : `${targetPercent}%`}
-            </strong>
-          </span>
-          <span
-            className={`${progressStyles.delta}${delta === 0 ? ` ${progressStyles.deltaMuted}` : ""}`}
-          >
-            {delta === null ? "—" : formatDelta(delta)}
-          </span>
-        </span>
       </div>
 
       <div className={progressStyles.targetRow}>
@@ -494,6 +487,18 @@ export function PageControls({
         </span>
       </div>
 
+      <div className={progressStyles.previewRow} aria-live="polite">
+        <span className={progressStyles.delta}>
+          {delta === null ? "—" : formatDelta(delta)}
+        </span>
+        <span>
+          記録後{" "}
+          <strong className={progressStyles.previewPercent}>
+            {targetPercent === null ? "—" : `${targetPercent}%`}
+          </strong>
+        </span>
+      </div>
+
       {error !== null && (
         <p id={errorId} className={progressStyles.error} role="alert">
           {error}
@@ -509,7 +514,7 @@ export function PageControls({
           disabled={isSaving}
           aria-label="記録するページのプレビューを取り消す"
         >
-          取り消す
+          キャンセル
         </button>
         <button
           type="button"
@@ -743,7 +748,6 @@ export default function StarInsightPanel({
   book,
   onClose,
   onUpdateBook,
-  onPageUpdate,
   onPageSet,
   onAddNote,
   onDeleteNote,
@@ -786,25 +790,41 @@ export default function StarInsightPanel({
     readingTimezoneRevision?: number,
   ) => void;
 }) {
-  const [isDelOpen, setIsDelOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const progressRef = useRef<HTMLDivElement>(null);
+  const activePanel = useBookListStore((state) => state.activePanel);
+  const setPanel = useBookListStore((state) => state.setPanel);
+  const closePanel = useBookListStore((state) => state.closePanel);
+  const isDelOpen = activePanel === "delete";
+  const isEditOpen = activePanel === "edit";
+  const isRecording = activePanel === "progress";
+  const setIsDelOpen = (open: boolean) =>
+    open ? setPanel("delete") : closePanel("delete");
+  const setIsEditOpen = (open: boolean) =>
+    open ? setPanel("edit") : closePanel("edit");
+  const setIsRecording = (open: boolean) =>
+    open ? setPanel("progress") : closePanel("progress");
+  useEffect(
+    () => () => {
+      closePanel("progress");
+      closePanel("edit");
+      closePanel("delete");
+    },
+    [closePanel],
+  );
+
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [failedCover, setFailedCover] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!book || isEditOpen || isDelOpen) return;
+    if (!book || activePanel !== null) return;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !event.defaultPrevented) {
+        event.preventDefault();
+        onClose();
+      }
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [book, isEditOpen, isDelOpen, onClose]);
-
-  useEffect(() => {
-    if (isRecording) progressRef.current?.scrollIntoView({ block: "nearest" });
-  }, [isRecording]);
+  }, [book, activePanel, onClose]);
 
   if (!book) return null;
   const statusLabel = { unread: "未読", reading: "読書中", completed: "読了" }[
@@ -836,21 +856,70 @@ export default function StarInsightPanel({
           onSaveAction={onUpdateBook}
         />
       )}
+      {isRecording && (
+        <Modal
+          isOpen
+          onClose={() => setIsRecording(false)}
+          variant="floating"
+          placement="end"
+          className={progressStyles.position}
+        >
+          <section
+            className={progressStyles.dialog}
+            role="dialog"
+            aria-labelledby="reading-progress-title"
+            data-star-tool="progress"
+          >
+            <header className={progressStyles.dialogHeader}>
+              <h2 id="reading-progress-title">読書を記録</h2>
+              <CloseButton
+                onClick={() => setIsRecording(false)}
+                aria-label="読書記録を閉じる"
+              />
+            </header>
+            <div className={progressStyles.bookSummary}>
+              <Image
+                src={
+                  book.coverUrl && book.coverUrl !== failedCover
+                    ? book.coverUrl.replace("http://", "https://")
+                    : "/images/book-cover-fallback.png"
+                }
+                alt={book.coverUrl ? `${book.title}の書影` : "書影なし"}
+                width={100}
+                height={140}
+                unoptimized
+                onError={() => setFailedCover(book.coverUrl)}
+              />
+              <div>
+                <h3>{book.title}</h3>
+                <p>{book.author || "著者未設定"}</p>
+                <p>
+                  現在　{book.currentPage} /{" "}
+                  {book.totalPages > 0 ? book.totalPages : "未設定"} ページ ·{" "}
+                  {percentOf(book.currentPage, book.totalPages) ?? "—"}%
+                </p>
+              </div>
+            </div>
+            <PageControls
+              key={book.id}
+              bookId={book.id}
+              current={book.currentPage}
+              total={book.totalPages}
+              onSet={onPageSet}
+              onCancel={() => setIsRecording(false)}
+            />
+          </section>
+        </Modal>
+      )}
       <section
         className={styles.panel}
-        data-expanded={isRecording || isNotesOpen}
-        data-star-tool={isRecording ? "progress" : undefined}
+        data-star-detail
+        data-expanded={isNotesOpen}
+        hidden={activePanel !== null}
         aria-labelledby="selected-book-title"
       >
         <span className={styles.sheetHandle} aria-hidden="true" />
-        <button
-          type="button"
-          className={`${styles.iconButton} ${styles.panelClose}`}
-          onClick={onClose}
-          aria-label="パネルを閉じる"
-        >
-          <X size={18} />
-        </button>
+        <CloseButton onClick={onClose} aria-label="パネルを閉じる" />
         <div className={styles.bookHeader}>
           <Image
             src={
@@ -886,7 +955,7 @@ export default function StarInsightPanel({
           className={`${styles.primaryButton} ${styles.recordButton}`}
           aria-expanded={isRecording}
           aria-controls="reading-progress-controls"
-          onClick={() => setIsRecording((value) => !value)}
+          onClick={() => setIsRecording(!isRecording)}
         >
           <Pencil size={20} />
           読書を記録する
@@ -912,22 +981,6 @@ export default function StarInsightPanel({
           </button>
         </div>
         <div
-          ref={progressRef}
-          id="reading-progress-controls"
-          hidden={!isRecording}
-        >
-          {isRecording && (
-            <PageControls
-              key={book.id}
-              bookId={book.id}
-              current={book.currentPage}
-              total={book.totalPages}
-              onUpdate={onPageUpdate}
-              onSet={onPageSet}
-            />
-          )}
-        </div>
-        <div
           id="reading-notes"
           hidden={!isNotesOpen}
           className={styles.expandedSection}
@@ -942,7 +995,10 @@ export default function StarInsightPanel({
           />
         </div>
         <details className={styles.moreDetails}>
-          <summary>読書の記録・書籍情報</summary>
+          <summary className={styles.secondaryButton}>
+            <span>読書の記録・書籍情報</span>
+            <ChevronDown size={18} aria-hidden="true" />
+          </summary>
           <Column gap="lg">
             <MiniGraph stats={readingStats} />
             <ReadingLogEditor

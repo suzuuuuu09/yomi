@@ -1,24 +1,23 @@
 "use client";
 
-import { Camera, Search, Sparkles, X } from "lucide-react";
-import type { IconName } from "lucide-react/dynamic";
+import { Camera, LoaderCircle, Search, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Box, Flex, styled as s } from "styled-system/jsx";
 import { token } from "styled-system/tokens";
-import { ModeButton } from "@/components/ModeButton";
 import { SearchResultItem } from "@/components/SearchResultItem";
 import styles from "@/components/sections/add-book-modal.module.css";
 import CloseButton from "@/components/shares/CloseButton";
 import BookInfoFields from "@/components/shares/field/BookInfoFields";
 import Modal from "@/components/shares/modal/Modal";
+import { GENRES } from "@/consts/genre";
 import { useAddBook } from "@/hooks/useAddBook";
 import type { BookSearchMode } from "@/types/book-search";
 import type { Book } from "@/types/library";
 import IconButton from "~liftkit/icon-button";
 import Text from "~liftkit/text";
-import TextInput from "~liftkit/text-input";
 
 const BarcodeScanner = dynamic(
   () => import("@/components/BarCodeScanner").then((m) => m.BarcodeScanner),
@@ -27,10 +26,10 @@ const BarcodeScanner = dynamic(
 
 const COVER_FALLBACK = "/images/book-cover-fallback.png";
 
-const MODES: { mode: BookSearchMode; label: string; icon: IconName }[] = [
-  { mode: "search", label: "キーワード", icon: "search" },
-  { mode: "isbn", label: "ISBN", icon: "book-open" },
-  { mode: "manual", label: "手動入力", icon: "pencil" },
+const MODES: { mode: BookSearchMode; label: string }[] = [
+  { mode: "search", label: "キーワード" },
+  { mode: "isbn", label: "ISBN" },
+  { mode: "manual", label: "手動入力" },
 ];
 
 interface AddBlockModalProps {
@@ -111,28 +110,25 @@ export default function AddBookModal(props: AddBlockModalProps) {
     store.mode === "isbn" ? 1 : Math.ceil(store.totalItems / 20);
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} variant="floating" maxW="3xl">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      variant="floating"
+      maxW="3xl"
+      className={styles.position}
+    >
       <div
         ref={dialogRef}
         className={styles.dialog}
         role="dialog"
         aria-labelledby="add-book-title"
-        aria-describedby="add-book-description"
       >
-        <CloseButton onClick={handleClose} className={styles.close} />
+        <CloseButton onClick={handleClose} />
 
         <header className={styles.header}>
-          <span className={styles.headerIcon} aria-hidden="true">
-            <Sparkles size={18} />
-          </span>
-          <div>
-            <h2 id="add-book-title" className={styles.title}>
-              新しい星を生む
-            </h2>
-            <p id="add-book-description" className={styles.description}>
-              本を登録して宇宙に星を追加
-            </p>
-          </div>
+          <h2 id="add-book-title" className={styles.title}>
+            本を追加
+          </h2>
         </header>
 
         <fieldset
@@ -144,15 +140,18 @@ export default function AddBookModal(props: AddBlockModalProps) {
           <div className={styles.layout}>
             <div className={styles.searchColumn}>
               <div className={styles.modeRow}>
-                {MODES.map(({ mode, label, icon }) => (
-                  <ModeButton
+                {MODES.map(({ mode, label }) => (
+                  <button
                     key={mode}
-                    mode={mode}
-                    current={store.mode}
-                    onClick={store.setMode}
-                    icon={icon}
-                    label={label}
-                  />
+                    type="button"
+                    className={`${styles.modeButton} ${
+                      store.mode === mode ? styles.modeButtonActive : ""
+                    }`}
+                    onClick={() => store.setMode(mode)}
+                    aria-pressed={store.mode === mode}
+                  >
+                    {label}
+                  </button>
                 ))}
               </div>
 
@@ -162,53 +161,75 @@ export default function AddBookModal(props: AddBlockModalProps) {
                 </p>
               ) : (
                 <>
-                  <div className={styles.searchRow}>
-                    <TextInput
+                  <div className={styles.searchField}>
+                    <button
+                      type="button"
+                      className={styles.searchIconButton}
+                      onClick={() => {
+                        if (store.query.trim() && !store.isSearching) {
+                          store.fetchPage(0);
+                        }
+                      }}
+                      aria-label="検索"
+                    >
+                      <Search size={18} aria-hidden="true" />
+                    </button>
+                    <input
+                      className={styles.searchInput}
                       name={store.mode === "isbn" ? "ISBN" : "キーワード"}
                       placeholder={
                         store.mode === "isbn"
                           ? "97..."
                           : "タイトルや著者名で検索"
                       }
-                      endIcon={store.isSearching ? "loader-circle" : "search"}
+                      aria-label={
+                        store.mode === "isbn" ? "ISBNを検索" : "本を検索"
+                      }
+                      inputMode={store.mode === "isbn" ? "numeric" : undefined}
                       value={store.query}
                       onChange={(e) => store.setQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && store.fetchPage(0)}
-                      onEndIconClick={
-                        store.query.trim() && !store.isSearching
-                          ? () => store.fetchPage(0)
-                          : undefined
-                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          store.fetchPage(0);
+                        }
+                      }}
                     />
-                    {store.error && (
-                      <s.p role="alert" className={styles.error}>
-                        {store.error}
-                      </s.p>
-                    )}
-                    {store.mode === "isbn" && (
-                      <s.button
+                    {store.isSearching ? (
+                      <LoaderCircle
+                        size={18}
+                        className={styles.spinner}
+                        aria-hidden="true"
+                      />
+                    ) : store.query ? (
+                      <button
                         type="button"
-                        onClick={startCamera}
-                        w="full"
-                        py={2}
-                        rounded="xl"
-                        bg="indigo.500/15"
-                        border="1px solid"
-                        borderColor="indigo.500/40"
-                        color="indigo.300"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        gap={2}
-                        cursor="pointer"
-                        _hover={{ bg: "indigo.500/25" }}
-                        title="カメラでバーコードをスキャン"
+                        className={styles.clearButton}
+                        onClick={() => store.setQuery("")}
+                        aria-label="検索語を消去"
                       >
-                        <Camera size={16} />
-                        <s.span fontSize="sm">カメラでスキャン</s.span>
-                      </s.button>
-                    )}
+                        <X size={16} aria-hidden="true" />
+                      </button>
+                    ) : null}
                   </div>
+
+                  {store.error && (
+                    <s.p role="alert" className={styles.error}>
+                      {store.error}
+                    </s.p>
+                  )}
+
+                  {store.mode === "isbn" && (
+                    <button
+                      type="button"
+                      onClick={startCamera}
+                      className={styles.scanButton}
+                      title="カメラでバーコードをスキャン"
+                    >
+                      <Camera size={16} aria-hidden="true" />
+                      カメラでスキャン
+                    </button>
+                  )}
 
                   <div className={styles.results}>
                     {!store.isSearching &&
@@ -279,17 +300,17 @@ export default function AddBookModal(props: AddBlockModalProps) {
                   onChange={setField}
                 />
               ) : selected ? (
-                <>
-                  <div className={styles.coverFrame}>
+                <div className={styles.detailBody}>
+                  <div className={styles.detailCover}>
                     <Image
                       src={coverSrc}
                       alt={
                         showBookCover ? `${selected.title}の書影` : "書影なし"
                       }
-                      width={160}
-                      height={240}
-                      sizes="(max-width: 639px) 90px, 160px"
-                      className={styles.coverImage}
+                      width={118}
+                      height={166}
+                      sizes="118px"
+                      className={styles.detailCoverImage}
                       onError={() =>
                         setCoverState((previous) =>
                           previous === "book" ? "fallback" : previous,
@@ -297,19 +318,15 @@ export default function AddBookModal(props: AddBlockModalProps) {
                       }
                     />
                   </div>
+                  <h3 className={styles.detailTitle}>{selected.title}</h3>
+                  <p className={styles.detailAuthor}>
+                    {selected.authors?.join(", ") || "—"}
+                  </p>
                   <dl className={styles.metadata}>
-                    <div>
-                      <dt>タイトル</dt>
-                      <dd>{selected.title}</dd>
-                    </div>
-                    <div>
-                      <dt>著者</dt>
-                      <dd>{selected.authors?.join(", ") || "—"}</dd>
-                    </div>
                     {selected.page ? (
                       <div>
                         <dt>ページ数</dt>
-                        <dd>{selected.page}</dd>
+                        <dd>{selected.page}ページ</dd>
                       </div>
                     ) : null}
                     {selected.isbn ? (
@@ -318,8 +335,26 @@ export default function AddBookModal(props: AddBlockModalProps) {
                         <dd>{selected.isbn}</dd>
                       </div>
                     ) : null}
+                    <div>
+                      <dt>ジャンル</dt>
+                      <dd>
+                        <select
+                          className={styles.genreSelect}
+                          value={form.genre}
+                          onChange={(e) => setField("genre", e.target.value)}
+                          aria-label="ジャンル"
+                        >
+                          <option value="">未選択</option>
+                          {GENRES.map(({ id, label }) => (
+                            <option key={id} value={id}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </dd>
+                    </div>
                   </dl>
-                </>
+                </div>
               ) : (
                 <div className={styles.placeholder}>
                   <p>
@@ -328,136 +363,113 @@ export default function AddBookModal(props: AddBlockModalProps) {
                 </div>
               )}
 
-              {store.mode !== "manual" && (
-                <BookInfoFields
-                  genreOnly
-                  values={{
-                    title: "",
-                    author: "",
-                    pages: "",
-                    isbn: "",
-                    genre: form.genre,
-                  }}
-                  onChange={(field, value) =>
-                    field === "genre" && setField("genre", value)
-                  }
-                />
-              )}
-
-              <s.button
+              <button
                 type="button"
                 className={styles.addButton}
                 onClick={handleSubmit}
                 disabled={!canSubmit || isSubmitting}
               >
-                星を誕生させる
-              </s.button>
+                {isSubmitting ? "追加中..." : "この本を追加"}
+              </button>
             </div>
           </div>
         </fieldset>
 
-        {scanStep !== "idle" && (
-          <Box
-            position="fixed"
-            inset="0"
-            zIndex="50"
-            bg="black/80"
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-          >
+        {scanStep !== "idle" &&
+          createPortal(
             <Box
-              position="relative"
-              w="full"
-              maxW="md"
-              mx="4"
-              bg="gray.950"
-              rounded="2xl"
-              overflow="hidden"
+              position="fixed"
+              inset="0"
+              zIndex={1100}
+              pointerEvents="auto"
+              p="4"
+              overflowY="auto"
+              bg="black/80"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
             >
-              <s.button
-                type="button"
-                onClick={closeScanner}
-                position="absolute"
-                top="3"
-                right="3"
-                zIndex="10"
-                p="1"
-                rounded="full"
-                bg="gray.800/80"
-                color="gray.300"
-                _hover={{ bg: "gray.700" }}
-                aria-label="スキャナーを閉じる"
+              <Box
+                position="relative"
+                w="full"
+                maxW="md"
+                mx="4"
+                bg="gray.950"
+                rounded="2xl"
+                overflow="hidden"
               >
-                <X size={18} />
-              </s.button>
+                <CloseButton
+                  onClick={closeScanner}
+                  aria-label="スキャナーを閉じる"
+                />
 
-              {scanStep === "scanning" && (
-                <BarcodeScanner onScan={handleBarcodeScan} />
-              )}
+                {scanStep === "scanning" && (
+                  <BarcodeScanner onScan={handleBarcodeScan} />
+                )}
 
-              {scanStep === "post-confirm" && (
-                <Box p="8" textAlign="center">
-                  <Box
-                    mb="4"
-                    display="inline-flex"
-                    p="4"
-                    rounded="full"
-                    bg="green.500/15"
-                    color="green.300"
-                  >
-                    <Search size={32} />
-                  </Box>
-                  <s.p fontSize="lg" fontWeight="bold" color="white" mb="2">
-                    バーコードを読み取りました
-                  </s.p>
-                  <s.p fontSize="sm" color="gray.400" mb="2">
-                    以下のISBNで検索しますか？
-                  </s.p>
-                  <s.p
-                    fontSize="xl"
-                    fontWeight="mono"
-                    color="indigo.200"
-                    mb="6"
-                    letterSpacing="widest"
-                  >
-                    {scannedIsbn}
-                  </s.p>
-                  <Flex gap="3" justify="center">
-                    <s.button
-                      type="button"
-                      onClick={() => setScanStep("scanning")}
-                      px="5"
-                      py="2"
-                      rounded="xl"
-                      bg="gray.800"
-                      color="gray.300"
-                      border="1px solid"
-                      borderColor="gray.700"
-                      _hover={{ bg: "gray.700" }}
+                {scanStep === "post-confirm" && (
+                  <Box p="8" textAlign="center">
+                    <Box
+                      mb="4"
+                      display="inline-flex"
+                      p="4"
+                      rounded="full"
+                      bg="green.500/15"
+                      color="green.300"
                     >
-                      やり直す
-                    </s.button>
-                    <s.button
-                      type="button"
-                      onClick={confirmScan}
-                      px="5"
-                      py="2"
-                      rounded="xl"
-                      bg="indigo.500/30"
+                      <Search size={32} />
+                    </Box>
+                    <s.p fontSize="lg" fontWeight="bold" color="white" mb="2">
+                      バーコードを読み取りました
+                    </s.p>
+                    <s.p fontSize="sm" color="gray.400" mb="2">
+                      以下のISBNで検索しますか？
+                    </s.p>
+                    <s.p
+                      fontSize="xl"
+                      fontWeight="mono"
                       color="indigo.200"
-                      border="1px solid"
-                      borderColor="indigo.500/50"
-                      _hover={{ bg: "indigo.500/40" }}
+                      mb="6"
+                      letterSpacing="widest"
                     >
-                      この本を検索する
-                    </s.button>
-                  </Flex>
-                </Box>
-              )}
-            </Box>
-          </Box>
-        )}
+                      {scannedIsbn}
+                    </s.p>
+                    <Flex gap="3" justify="center">
+                      <s.button
+                        type="button"
+                        onClick={() => setScanStep("scanning")}
+                        px="5"
+                        py="2"
+                        rounded="xl"
+                        bg="gray.800"
+                        color="gray.300"
+                        border="1px solid"
+                        borderColor="gray.700"
+                        _hover={{ bg: "gray.700" }}
+                      >
+                        やり直す
+                      </s.button>
+                      <s.button
+                        type="button"
+                        onClick={confirmScan}
+                        px="5"
+                        py="2"
+                        rounded="xl"
+                        bg="indigo.500/30"
+                        color="indigo.200"
+                        border="1px solid"
+                        borderColor="indigo.500/50"
+                        _hover={{ bg: "indigo.500/40" }}
+                      >
+                        この本を検索する
+                      </s.button>
+                    </Flex>
+                  </Box>
+                )}
+              </Box>
+            </Box>,
+            document.body,
+          )}
       </div>
     </Modal>
   );

@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Billboard,
-  DeviceOrientationControls,
-  OrbitControls,
-  Stars,
-} from "@react-three/drei";
+import { Billboard, OrbitControls, Stars } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import {
   Suspense,
@@ -21,16 +16,19 @@ import {
   BIRTH_EFFECT_DURATION,
   DUST_CLOUDS,
 } from "@/consts/universe";
-import { useGyroPermission } from "@/hooks/useGyroPermission";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { getGlowTex } from "@/lib/universe-texture";
 import type { Book } from "@/types/library";
-import { bookSeed, starVisuals } from "@/utils/universe-helper";
+import { bookSeed, clampProgress, starVisuals } from "@/utils/universe-helper";
 import BookLabels from "./BookLabels";
 import { CameraSetup } from "./CameraSetup";
 import { DustCloud } from "./DustCloud";
 import NebulaField from "./NebulaField";
+import NebulaFilaments from "./NebulaFilaments";
 import StarSpikes from "./StarSpikes";
+
+const PROGRESS_FLASH_DURATION = 0.8;
+const BOOK_STAR_SCALE = 0.58;
 
 function GlowSprite({
   color,
@@ -77,15 +75,21 @@ function BookStar({
   const starColor = book.status === "completed" ? "#c4b5fd" : "#9bb5ff";
 
   // 読書進捗率: 未読=0.0, 読了=1.0
-  const progress =
+  const progress = clampProgress(
     book.status === "completed"
       ? 1.0
       : book.totalPages > 0
-        ? Math.min(book.currentPage / book.totalPages, 1)
-        : 0;
+        ? book.currentPage / book.totalPages
+        : 0,
+  );
+
+  const flashRef = useRef<THREE.Sprite>(null);
+  const flashElapsedRef = useRef(PROGRESS_FLASH_DURATION);
+  const prevProgressRef = useRef(progress);
 
   const {
     coreScale,
+    coreOpacity,
     spikeSize,
     glowInner,
     glowMid,
@@ -94,20 +98,32 @@ function BookStar({
     spikeOpacity,
   } = starVisuals(progress);
 
+  const ringRadius = Math.max(spikeSize * 0.65, 0.2);
+
   const coreMat = useMemo(
     () =>
       new THREE.SpriteMaterial({
         map: getGlowTex(),
         color: "#ffffff",
         transparent: true,
-        // 進捗に応じてコアの明るさを変化させる
-        // 進捗0で0.55、進捗1で1.0になるように調整
-        opacity: 0.55 + progress * 0.45,
+        opacity: coreOpacity,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [progress],
+    [coreOpacity],
+  );
+
+  const flashMat = useMemo(
+    () =>
+      new THREE.SpriteMaterial({
+        map: getGlowTex(),
+        color: "#ffffff",
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    [],
   );
 
   const hitMat = useMemo(
@@ -123,12 +139,41 @@ function BookStar({
 
   const seed = useMemo(() => bookSeed(book.id), [book.id]);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
+    const prevProgress = prevProgressRef.current;
+    if (progress > prevProgress && !reducedMotion) {
+      flashElapsedRef.current = 0;
+      if (flashRef.current) flashRef.current.visible = true;
+    } else if (progress < prevProgress) {
+      flashElapsedRef.current = PROGRESS_FLASH_DURATION;
+      if (flashRef.current) flashRef.current.visible = false;
+    }
+    prevProgressRef.current = progress;
+
+    if (reducedMotion) {
+      flashElapsedRef.current = PROGRESS_FLASH_DURATION;
+      if (flashRef.current) flashRef.current.visible = false;
+    } else if (flashElapsedRef.current < PROGRESS_FLASH_DURATION) {
+      flashElapsedRef.current = Math.min(
+        flashElapsedRef.current + delta,
+        PROGRESS_FLASH_DURATION,
+      );
+      const flashT = flashElapsedRef.current / PROGRESS_FLASH_DURATION;
+      const flash = flashRef.current;
+      if (flash) {
+        const flashScale = glowInner * (1 + flashT * 2.6);
+        flash.scale.set(flashScale, flashScale, 1);
+        (flash.material as THREE.SpriteMaterial).opacity =
+          (1 - flashT) * (1 - flashT) * 0.5;
+        flash.visible = flashT < 1;
+      }
+    }
+
     if (!groupRef.current) return;
     const t = state.clock.elapsedTime;
     const pulse =
       !reducedMotion && isReading ? Math.sin(t * 1.3 + seed) * 0.04 : 0;
-    groupRef.current.scale.setScalar((isSelected ? 1.25 : 1) + pulse);
+    groupRef.current.scale.setScalar(1 + pulse);
   });
 
   useEffect(
@@ -137,6 +182,8 @@ function BookStar({
     },
     [coreMat],
   );
+
+  useEffect(() => () => flashMat.dispose(), [flashMat]);
 
   useEffect(
     () => () => {
@@ -150,36 +197,43 @@ function BookStar({
     <group ref={groupRef} position={book.position}>
       <GlowSprite
         color={starColor}
-        scale={glowOuter}
+        scale={glowOuter * BOOK_STAR_SCALE}
         opacity={glowOpacity.outer}
       />
-      <GlowSprite color={starColor} scale={glowMid} opacity={glowOpacity.mid} />
       <GlowSprite
         color={starColor}
-        scale={glowInner}
+        scale={glowMid * BOOK_STAR_SCALE}
+        opacity={glowOpacity.mid}
+      />
+      <GlowSprite
+        color={starColor}
+        scale={glowInner * BOOK_STAR_SCALE}
         opacity={glowOpacity.inner}
       />
 
-      <StarSpikes color={starColor} size={spikeSize} opacity={spikeOpacity} />
+      <StarSpikes
+        color={starColor}
+        size={spikeSize * BOOK_STAR_SCALE}
+        opacity={spikeOpacity}
+      />
 
       <sprite
         ref={coreRef}
         material={coreMat}
-        scale={[coreScale, coreScale, 1]}
+        scale={[coreScale * BOOK_STAR_SCALE, coreScale * BOOK_STAR_SCALE, 1]}
+      />
+
+      <sprite
+        ref={flashRef}
+        material={flashMat}
+        visible={false}
+        scale={[glowInner, glowInner, 1]}
       />
 
       {isSelected && (
-        <>
-          <GlowSprite color="#ffffff" scale={glowMid * 2.0} opacity={0.22} />
-          <GlowSprite color={starColor} scale={glowMid * 1.3} opacity={0.4} />
-          <StarSpikes color="#ffffff" size={spikeSize * 2.0} opacity={0.55} />
-        </>
-      )}
-
-      {isSelected && (
         <Billboard>
-          <mesh>
-            <ringGeometry args={[spikeSize * 0.65, spikeSize * 0.67, 64]} />
+          <mesh scale={BOOK_STAR_SCALE}>
+            <ringGeometry args={[ringRadius, ringRadius + 0.02, 64]} />
             <meshBasicMaterial
               color="#a5b4fc"
               transparent
@@ -366,66 +420,6 @@ function StarBirthEffect({
   );
 }
 
-function GyroPermissionOverlay({
-  onRequest,
-  onClose,
-  error,
-}: {
-  onRequest?: () => Promise<void>;
-  onClose: () => void;
-  error: string | null;
-}) {
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 100,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(2,6,23,0.93)",
-        color: "white",
-        gap: 20,
-      }}
-    >
-      <p
-        style={{
-          fontSize: 18,
-          textAlign: "center",
-          padding: "0 32px",
-          lineHeight: 1.7,
-        }}
-      >
-        宇宙を見渡すには
-        <br />
-        {error ?? "センサーの許可が必要です"}
-      </p>
-      {onRequest && (
-        <button
-          type="button"
-          onClick={() => void onRequest()}
-          style={{
-            padding: "14px 36px",
-            borderRadius: 9999,
-            background: "linear-gradient(135deg, #6366f1, #a855f7)",
-            border: "none",
-            color: "white",
-            fontSize: 16,
-            cursor: "pointer",
-          }}
-        >
-          センサーを有効にする
-        </button>
-      )}
-      <button type="button" onClick={onClose}>
-        VRモードを終了
-      </button>
-    </div>
-  );
-}
-
 interface UniverseCanvasProps {
   books: Book[];
   matchingBookIds?: ReadonlySet<string>;
@@ -434,8 +428,6 @@ interface UniverseCanvasProps {
   selectedBookId: string | null;
   newlyAddedBookId: string | null;
   onBirthEffectComplete: () => void;
-  vrMode?: boolean;
-  onExitVrMode: () => void;
 }
 
 export default function UniverseCanvas({
@@ -446,8 +438,6 @@ export default function UniverseCanvas({
   selectedBookId,
   newlyAddedBookId,
   onBirthEffectComplete,
-  vrMode = false,
-  onExitVrMode,
 }: UniverseCanvasProps) {
   const reducedMotion = useReducedMotion();
   const [hoveredBookId, setHoveredBookId] = useState<string | null>(null);
@@ -455,12 +445,6 @@ export default function UniverseCanvas({
     target: THREE.Vector3;
     update: () => void;
   } | null>(null);
-  const {
-    granted: gyroGranted,
-    needsPrompt,
-    requestPermission,
-    error,
-  } = useGyroPermission(vrMode);
 
   const newBook = newlyAddedBookId
     ? books.find((b) => b.id === newlyAddedBookId)
@@ -485,16 +469,8 @@ export default function UniverseCanvas({
         height: "100%",
       }}
     >
-      {vrMode && !gyroGranted && (needsPrompt || error) && (
-        <GyroPermissionOverlay
-          onRequest={needsPrompt ? requestPermission : undefined}
-          onClose={onExitVrMode}
-          error={error}
-        />
-      )}
-
       <Canvas
-        camera={{ position: [0, 2, 20], fov: 60, near: 0.1, far: 100 }}
+        camera={{ position: [0, 2, 20], fov: 60, near: 0.1, far: 300 }}
         style={{ background: "#040817" }}
         gl={{ antialias: true }}
         dpr={[1, 1.5]}
@@ -505,8 +481,8 @@ export default function UniverseCanvas({
           <Stars
             radius={80}
             depth={60}
-            count={1400}
-            factor={1.2}
+            count={16000}
+            factor={2}
             saturation={0.5}
             fade
             speed={motionSpeed(0.3)}
@@ -514,8 +490,8 @@ export default function UniverseCanvas({
           <Stars
             radius={22}
             depth={22}
-            count={160}
-            factor={1.5}
+            count={800}
+            factor={1.3}
             saturation={0.9}
             fade
             speed={motionSpeed(0.6)}
@@ -559,27 +535,21 @@ export default function UniverseCanvas({
               onComplete={onBirthEffectComplete}
             />
           )}
-          {vrMode && gyroGranted ? (
-            <DeviceOrientationControls makeDefault />
-          ) : (
-            <OrbitControls
-              // biome-ignore lint/suspicious/noExplicitAny: drei ref type
-              ref={controlsRef as any}
-              makeDefault
-              enableDamping
-              dampingFactor={0.05}
-              rotateSpeed={0.5}
-              zoomSpeed={0.8}
-              minDistance={3}
-              maxDistance={40}
-              enablePan
-            />
-          )}
+          <OrbitControls
+            // biome-ignore lint/suspicious/noExplicitAny: drei ref type
+            ref={controlsRef as any}
+            makeDefault
+            enableDamping
+            dampingFactor={0.05}
+            rotateSpeed={0.5}
+            zoomSpeed={0.8}
+            minDistance={3}
+            maxDistance={40}
+            enablePan
+          />
           <CameraSetup
             books={books}
             controlsRef={controlsRef}
-            vrMode={vrMode}
-            gyroGranted={gyroGranted}
             selectedBookId={selectedBookId}
           />
 
@@ -587,6 +557,7 @@ export default function UniverseCanvas({
             reducedMotion={reducedMotion}
             empty={books.length === 0}
           />
+          <NebulaFilaments reducedMotion={reducedMotion} />
           <BookLabels
             books={
               matchingBookIds === undefined

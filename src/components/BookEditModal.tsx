@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Check, Pencil } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import styles from "@/components/book-edit-modal.module.css";
@@ -90,6 +90,7 @@ export default function BookEditModal(props: BookEditModalProps) {
       variant="floating"
       placement="end"
       maxW="lg"
+      className={styles.position}
     >
       <div
         ref={dialogRef}
@@ -97,26 +98,13 @@ export default function BookEditModal(props: BookEditModalProps) {
         role="dialog"
         data-star-tool="edit"
         aria-labelledby="book-edit-title"
-        aria-describedby="book-edit-description"
       >
-        <CloseButton
-          onClick={handleClose}
-          disabled={isSaving}
-          className={styles.close}
-        />
+        <CloseButton onClick={handleClose} disabled={isSaving} />
 
         <header className={styles.header}>
-          <span className={styles.headerIcon} aria-hidden="true">
-            <Pencil size={18} />
-          </span>
-          <div>
-            <h2 id="book-edit-title" className={styles.title}>
-              星の情報を編集
-            </h2>
-            <p id="book-edit-description" className={styles.description}>
-              本の詳細を更新する
-            </p>
-          </div>
+          <h2 id="book-edit-title" className={styles.title}>
+            本の情報を編集
+          </h2>
         </header>
 
         <form
@@ -129,8 +117,11 @@ export default function BookEditModal(props: BookEditModalProps) {
             inert={isSaving}
             aria-busy={isSaving}
           >
-            <div className={styles.layout}>
-              <div className={styles.coverColumn}>
+            <BookInfoFields
+              layout="edit"
+              values={editForm}
+              onChange={handleChange}
+              cover={
                 <div className={styles.coverFrame}>
                   {coverState === "none" ? (
                     <div
@@ -144,9 +135,9 @@ export default function BookEditModal(props: BookEditModalProps) {
                     <Image
                       src={coverSrc}
                       alt={showBookCover ? `${book.title}の書影` : "書影なし"}
-                      width={180}
-                      height={270}
-                      sizes="(max-width: 639px) 108px, 180px"
+                      width={140}
+                      height={214}
+                      sizes="140px"
                       className={styles.coverImage}
                       onError={() =>
                         setCoverState((previous) =>
@@ -156,12 +147,8 @@ export default function BookEditModal(props: BookEditModalProps) {
                     />
                   )}
                 </div>
-              </div>
-
-              <div className={styles.fieldsColumn}>
-                <BookInfoFields values={editForm} onChange={handleChange} />
-              </div>
-            </div>
+              }
+            />
 
             <div className={styles.actions}>
               <button
@@ -175,8 +162,7 @@ export default function BookEditModal(props: BookEditModalProps) {
                 type="submit"
                 className={`${styles.button} ${styles.save}`}
               >
-                <Check size={16} aria-hidden="true" />
-                {isSaving ? "保存中..." : "保存"}
+                {isSaving ? "保存中..." : "変更を保存"}
               </button>
             </div>
           </fieldset>

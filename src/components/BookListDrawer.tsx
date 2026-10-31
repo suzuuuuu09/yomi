@@ -1,12 +1,15 @@
 "use client";
 
-import { Search, Star, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import styles from "@/components/book-list-drawer.module.css";
+import CloseButton from "@/components/shares/CloseButton";
 import { useBookCount } from "@/hooks/useBookCount";
 import { useBookList } from "@/hooks/useBookList";
+import { useFilteredBooks } from "@/hooks/useFilteredBooks";
 import useBookListStore from "@/store/useBookListStore";
+import useLibraryFilterStore from "@/store/useLibraryFilterStore";
 import useLibraryStore from "@/store/useLibraryStore";
 import type { Book, BookStatus } from "@/types/library";
 
@@ -15,16 +18,10 @@ const MOBILE_QUERY = "(max-width: 767px)";
 
 const FILTERS: { label: string; value: BookStatus | "all" }[] = [
   { label: "すべて", value: "all" },
-  { label: "読書中", value: "reading" },
   { label: "未読", value: "unread" },
+  { label: "読書中", value: "reading" },
   { label: "読了", value: "completed" },
 ];
-
-const STATUS_LABEL: Record<BookStatus, string> = {
-  reading: "読書中",
-  unread: "未読",
-  completed: "読了",
-};
 
 function getPercentage(book: Book) {
   if (book.totalPages <= 0) return 0;
@@ -48,8 +45,8 @@ function BookCover({ book }: { book: Book }) {
       src={src.replace("http://", "https://")}
       alt={isFallback ? `${book.title}の代替書影` : `${book.title}の書影`}
       className={styles.cover}
-      width={46}
-      height={64}
+      width={72}
+      height={106}
       loading="lazy"
       unoptimized
       onError={() => {
@@ -75,7 +72,7 @@ function BookRow({
     book.totalPages > 0 ? `${book.totalPages}ページ` : "ページ数未設定";
 
   return (
-    <li>
+    <li className={styles.rowItem}>
       <button
         type="button"
         className={styles.row}
@@ -87,20 +84,10 @@ function BookRow({
       >
         <BookCover book={book} />
         <span className={styles.body}>
-          <span className={styles.titleLine}>
-            <span className={styles.title}>{book.title}</span>
-            {isSelected && (
-              <Star
-                className={styles.selectedStar}
-                size={12}
-                fill="currentColor"
-                aria-hidden="true"
-              />
-            )}
-          </span>
+          <span className={styles.title}>{book.title}</span>
           <span className={styles.author}>{book.author || "著者未設定"}</span>
           <span className={styles.meta}>
-            <span>
+            <span className={styles.pages}>
               {book.currentPage} /{" "}
               {book.totalPages > 0 ? book.totalPages : "未設定"}ページ
             </span>
@@ -110,49 +97,37 @@ function BookRow({
             <span className={styles.fill} style={{ width: `${percentage}%` }} />
           </span>
         </span>
-        <span className={styles.status} data-status={book.status}>
-          {STATUS_LABEL[book.status]}
-        </span>
       </button>
     </li>
   );
 }
 
 export default function BookListDrawer() {
-  const books = useLibraryStore((s) => s.books);
   const selectedBookId = useLibraryStore((s) => s.selectedBookId);
   const setSelectedBook = useLibraryStore((s) => s.setSelectedBook);
   const isOpen = useBookListStore((s) => s.isOpen);
   const close = useBookListStore((s) => s.close);
   const { handleSelectBook } = useBookList();
   const counts = useBookCount();
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<BookStatus | "all">("all");
+  const filtered = useFilteredBooks();
+  const { activeFilter, query, setFilter, setQuery, resetFilters } =
+    useLibraryFilterStore();
 
-  const filtered = useMemo(() => {
-    let result = books;
-    if (filter !== "all") result = result.filter((b) => b.status === filter);
-    if (query) {
-      const q = query.toLowerCase();
-      result = result.filter(
-        (b) =>
-          b.title.toLowerCase().includes(q) ||
-          b.author.toLowerCase().includes(q) ||
-          b.genre.toLowerCase().includes(q),
-      );
-    }
-    return result;
-  }, [books, filter, query]);
+  const closeList = useCallback(() => {
+    resetFilters();
+    close();
+  }, [close, resetFilters]);
 
   useEffect(() => {
     if (!isOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      close();
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      closeList();
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [isOpen, close]);
+  }, [isOpen, closeList]);
 
   if (!isOpen) return null;
 
@@ -161,19 +136,19 @@ export default function BookListDrawer() {
       typeof window !== "undefined" &&
       window.matchMedia?.(MOBILE_QUERY).matches === true;
     if (isMobile) {
+      resetFilters();
       handleSelectBook(book);
       return;
     }
     setSelectedBook(book);
   };
 
-  const resetFilters = () => {
-    setQuery("");
-    setFilter("all");
-  };
-
   return (
-    <aside className={styles.panel} aria-labelledby="book-list-heading">
+    <aside
+      className={styles.panel}
+      aria-labelledby="book-list-heading"
+      data-book-list-panel
+    >
       <span className={styles.handle} aria-hidden="true" />
       <header className={styles.header}>
         <div className={styles.headingGroup}>
@@ -182,18 +157,11 @@ export default function BookListDrawer() {
           </h2>
           <span className={styles.total}>{counts.all}冊</span>
         </div>
-        <button
-          type="button"
-          className={styles.close}
-          onClick={close}
-          aria-label="本の一覧を閉じる"
-        >
-          <X size={18} aria-hidden="true" />
-        </button>
+        <CloseButton onClick={closeList} aria-label="本の一覧を閉じる" />
       </header>
 
       <div className={styles.search}>
-        <Search className={styles.searchIcon} size={16} aria-hidden="true" />
+        <Search className={styles.searchIcon} size={18} aria-hidden="true" />
         <input
           type="search"
           className={styles.input}
@@ -209,7 +177,7 @@ export default function BookListDrawer() {
             onClick={() => setQuery("")}
             aria-label="検索をクリア"
           >
-            <X size={15} aria-hidden="true" />
+            <X size={16} aria-hidden="true" />
           </button>
         )}
       </div>
@@ -222,12 +190,12 @@ export default function BookListDrawer() {
               key={item.value}
               type="button"
               className={styles.filter}
-              aria-pressed={filter === item.value}
+              aria-pressed={activeFilter === item.value}
               aria-label={`${item.label}（${count}冊）`}
               onClick={() => setFilter(item.value)}
             >
               {item.label}
-              <span className={styles.filterCount}>{count}</span>
+              <span className={styles.filterCount}>({count})</span>
             </button>
           );
         })}
@@ -247,7 +215,7 @@ export default function BookListDrawer() {
             <p className={styles.emptyText}>
               検索語や読書状態を変えて、もう一度探してみてください。
             </p>
-            {(query || filter !== "all") && (
+            {(query || activeFilter !== "all") && (
               <button
                 type="button"
                 className={styles.reset}

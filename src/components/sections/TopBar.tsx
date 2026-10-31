@@ -1,30 +1,60 @@
 "use client";
 
-import { Library, Search, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronDown, Library, Search } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import styles from "@/components/observatory.module.css";
+import CloseButton from "@/components/shares/CloseButton";
 import type { FilterTabsCounts } from "@/components/shares/FilterTabs";
-import FilterTabs from "@/components/shares/FilterTabs";
 import UserMenu from "@/components/shares/UserMenu";
 import searchStyles from "@/components/star-search.module.css";
+import { getGenreOptions } from "@/hooks/useFilteredBooks";
 import useBookListStore from "@/store/useBookListStore";
-import useLibraryFilterStore from "@/store/useLibraryFilterStore";
+import useLibraryFilterStore, {
+  ALL_GENRES,
+} from "@/store/useLibraryFilterStore";
+import useLibraryStore from "@/store/useLibraryStore";
+import type { BookStatus } from "@/types/library";
+
+const FILTERS: { label: string; value: BookStatus | "all" }[] = [
+  { label: "すべて", value: "all" },
+  { label: "未読", value: "unread" },
+  { label: "読書中", value: "reading" },
+  { label: "読了", value: "completed" },
+];
 
 export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
-  const { activeFilter, query, setFilter, setQuery, clearSearch } =
-    useLibraryFilterStore();
+  const {
+    activeFilter,
+    query,
+    genre,
+    setFilter,
+    setQuery,
+    setGenre,
+    resetFilters,
+  } = useLibraryFilterStore();
+  const books = useLibraryStore((state) => state.books);
   const openBookList = useBookListStore((state) => state.open);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const isBookListOpen = useBookListStore((state) => state.isOpen);
+  const isSearchOpen = useBookListStore(
+    (state) => state.activePanel === "search",
+  );
+  const setIsSearchOpen = useCallback((open: boolean) => {
+    const ui = useBookListStore.getState();
+    if (open) ui.setPanel("search");
+    else ui.closePanel("search");
+  }, []);
   const searchRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const headerRef = useRef<HTMLElement>(null);
+  const genreOptions = useMemo(() => getGenreOptions(books), [books]);
 
-  const closeSearch = useCallback(() => {
-    setIsSearchOpen(false);
-    clearSearch();
-    setFilter("all");
-    triggerRef.current?.focus();
-  }, [clearSearch, setFilter]);
+  const closeSearch = useCallback(
+    (restoreFocus = true) => {
+      setIsSearchOpen(false);
+      resetFilters();
+      if (restoreFocus) triggerRef.current?.focus();
+    },
+    [resetFilters, setIsSearchOpen],
+  );
 
   useEffect(() => {
     if (isSearchOpen) searchRef.current?.focus();
@@ -32,31 +62,33 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
 
   useEffect(() => {
     if (bookCount.all === 0) setIsSearchOpen(false);
-  }, [bookCount.all]);
+  }, [bookCount.all, setIsSearchOpen]);
+
+  useEffect(() => {
+    if (
+      genre !== ALL_GENRES &&
+      !genreOptions.some((item) => item.id === genre)
+    ) {
+      setGenre(ALL_GENRES);
+    }
+  }, [genre, genreOptions, setGenre]);
 
   useEffect(() => {
     if (!isSearchOpen) return;
-    const closeOnOutside = (event: PointerEvent) => {
-      if (!headerRef.current?.contains(event.target as Node)) {
-        closeSearch();
-      }
-    };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !event.defaultPrevented) {
+        event.preventDefault();
         closeSearch();
       }
     };
     document.addEventListener("keydown", closeOnEscape);
-    document.addEventListener("pointerdown", closeOnOutside);
     return () => {
       document.removeEventListener("keydown", closeOnEscape);
-      document.removeEventListener("pointerdown", closeOnOutside);
     };
   }, [isSearchOpen, closeSearch]);
 
   return (
     <header
-      ref={headerRef}
       className={`${styles.header}${
         isSearchOpen ? ` ${searchStyles.headerActive}` : ""
       }`}
@@ -81,8 +113,9 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
             <button
               type="button"
               className={styles.glassButton}
+              aria-pressed={isBookListOpen}
               onClick={() => {
-                closeSearch();
+                closeSearch(false);
                 openBookList();
               }}
             >
@@ -101,7 +134,7 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
         >
           <div className={searchStyles.field}>
             <Search
-              size={17}
+              size={19}
               className={searchStyles.searchIcon}
               aria-hidden="true"
             />
@@ -121,24 +154,57 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
                 onClick={() => setQuery("")}
                 aria-label="検索語を消去"
               >
-                <X size={15} aria-hidden="true" />
+                消去
               </button>
             )}
-            <button
-              type="button"
+            <CloseButton
               className={searchStyles.closeButton}
-              onClick={closeSearch}
-              aria-label="検索を解除して閉じる"
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
+              onClick={() => closeSearch()}
+              aria-label="検索を閉じる"
+            />
           </div>
           <div className={searchStyles.filters}>
-            <FilterTabs
-              activeFilter={activeFilter}
-              setFilter={setFilter}
-              counts={bookCount}
-            />
+            <fieldset
+              className={searchStyles.tabs}
+              aria-label="読書状態で絞り込む"
+            >
+              {FILTERS.map((item) => {
+                const count = bookCount[item.value];
+                return (
+                  <button
+                    key={item.value}
+                    type="button"
+                    className={searchStyles.tab}
+                    aria-pressed={activeFilter === item.value}
+                    aria-label={`${item.label}（${count}冊）`}
+                    onClick={() => setFilter(item.value)}
+                  >
+                    {item.label}
+                    <span className={searchStyles.tabCount}>({count})</span>
+                  </button>
+                );
+              })}
+            </fieldset>
+            <label className={searchStyles.genreField}>
+              <span className={searchStyles.srOnly}>ジャンルで絞り込む</span>
+              <select
+                className={searchStyles.genreSelect}
+                value={genre}
+                onChange={(event) => setGenre(event.target.value)}
+              >
+                <option value={ALL_GENRES}>ジャンル: すべて</option>
+                {genreOptions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={16}
+                className={searchStyles.genreChevron}
+                aria-hidden="true"
+              />
+            </label>
           </div>
         </section>
       )}
