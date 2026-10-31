@@ -1,6 +1,7 @@
 import {
   BarChart3,
   BookOpen,
+  ChevronDown,
   Pencil,
   Plus,
   StickyNote,
@@ -942,7 +943,10 @@ export default function StarInsightPanel({
           />
         </div>
         <details className={styles.moreDetails}>
-          <summary>読書の記録・書籍情報</summary>
+          <summary className={styles.secondaryButton}>
+            <span>読書の記録・書籍情報</span>
+            <ChevronDown size={18} aria-hidden="true" />
+          </summary>
           <Column gap="lg">
             <MiniGraph stats={readingStats} />
             <ReadingLogEditor
