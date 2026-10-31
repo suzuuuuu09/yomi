@@ -67,7 +67,7 @@ it("renders an accessible floating edit form with a cover fallback and clear act
   expect(html).toContain('role="dialog"');
   expect(html).not.toContain('aria-modal="true"');
   expect(html).toContain('aria-labelledby="book-edit-title"');
-  expect(html).toContain("星の情報を編集");
+  expect(html).toContain("本の情報を編集");
   expect(html).toContain("book-cover-fallback.png");
   expect(html).toContain('value="星の王子さま"');
   expect(html).toContain("キャンセル");

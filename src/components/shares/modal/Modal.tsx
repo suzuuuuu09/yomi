@@ -10,6 +10,7 @@ interface ModalProps {
   maxW?: string;
   variant?: "default" | "floating";
   placement?: "center" | "end";
+  className?: string;
 }
 
 export default function Modal(props: ModalProps) {
@@ -20,6 +21,7 @@ export default function Modal(props: ModalProps) {
     maxW = "lg",
     variant = "default",
     placement = "center",
+    className,
   } = props;
   const isFloating = variant === "floating";
   const onCloseRef = useRef(onClose);
@@ -29,10 +31,10 @@ export default function Modal(props: ModalProps) {
   }, [onClose]);
 
   useEffect(() => {
-    if (!isFloating || !isOpen) return;
+    if (!isOpen) return;
     const previousFocus = document.activeElement;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
       onCloseRef.current();
     };
@@ -43,7 +45,7 @@ export default function Modal(props: ModalProps) {
         previousFocus.focus();
       }
     };
-  }, [isFloating, isOpen]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -53,7 +55,11 @@ export default function Modal(props: ModalProps) {
       inset={0}
       zIndex={1000}
       display="flex"
-      alignItems="center"
+      alignItems={
+        isFloating && placement === "end"
+          ? { base: "flex-end", md: "center" }
+          : "center"
+      }
       justifyContent={placement === "end" ? "flex-end" : "center"}
       p={{ base: "2", md: "4" }}
       style={isFloating ? { pointerEvents: "none" } : undefined}
@@ -76,6 +82,7 @@ export default function Modal(props: ModalProps) {
       )}
 
       <Box
+        className={className}
         position="relative"
         w="full"
         maxW={{ base: "full", md: maxW }}

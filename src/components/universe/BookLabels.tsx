@@ -6,9 +6,12 @@ import Image from "next/image";
 import { type SyntheticEvent, useRef } from "react";
 import { Vector3 } from "three";
 import styles from "@/components/observatory.module.css";
+import labelStyles from "@/components/star-labels.module.css";
 import searchStyles from "@/components/star-search.module.css";
 import useBookListStore from "@/store/useBookListStore";
 import useLibraryFilterStore from "@/store/useLibraryFilterStore";
+import useLibraryStore from "@/store/useLibraryStore";
+import useProgressPreviewStore from "@/store/useProgressPreviewStore";
 import type { Book } from "@/types/library";
 
 const FALLBACK_COVER_URL = "/images/book-cover-fallback.png";
@@ -42,8 +45,14 @@ export default function BookLabels({
   const toolConnector = useRef<HTMLDivElement>(null);
   const position = useRef(new Vector3());
   const query = useLibraryFilterStore((state) => state.query);
+  const activeFilter = useLibraryFilterStore((state) => state.activeFilter);
+  const genre = useLibraryFilterStore((state) => state.genre);
   const listOpen = useBookListStore((state) => state.isOpen);
-  const searchActive = query.length > 0;
+  const closeList = useBookListStore((state) => state.close);
+  const savedBooks = useLibraryStore((state) => state.books);
+  const preview = useProgressPreviewStore((state) => state.preview);
+  const searchActive =
+    query.length > 0 || activeFilter !== "all" || genre !== "all";
 
   useFrame(({ camera, size }) => {
     const activeBook = books.find((item) => item.id === selectedBookId);
@@ -117,8 +126,11 @@ export default function BookLabels({
     }
 
     const mobile = size.width < 768;
-    const width = searchActive ? (mobile ? 216 : 264) : mobile ? 120 : 164;
-    const height = searchActive ? 70 : 42;
+    const panels = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        "[data-star-tool], [data-star-detail]:not([hidden]), [data-book-list-panel]",
+      ),
+    ).map((panel) => panel.getBoundingClientRect());
     const placed: { x: number; y: number }[] = [];
     const ordered = [...books].sort((a, b) => {
       const priority = (book: Book) =>
@@ -133,14 +145,21 @@ export default function BookLabels({
     for (const book of ordered) {
       const label = labels.current.get(book.id);
       if (!label) continue;
+      const rich = searchActive || book.id === selectedBookId;
+      const width = rich ? (mobile ? 220 : 300) : mobile ? 120 : 164;
+      const height = rich ? (mobile ? 80 : 110) : 36;
       const projected = position.current.set(...book.position).project(camera);
-      const x = ((projected.x + 1) * size.width) / 2 + 22;
-      const y = ((1 - projected.y) * size.height) / 2 - 16;
+      const x = ((projected.x + 1) * size.width) / 2 + (mobile ? 24 : 56);
+      const y = ((1 - projected.y) * size.height) / 2 - height - 24;
       const isPriority =
         book.id === selectedBookId || book.id === hoveredBookId;
-      const behindPanel =
-        selectedBookId &&
-        (mobile ? y > size.height * 0.5 : x + width > size.width - 536);
+      const behindPanel = panels.some(
+        (panel) =>
+          x < panel.right &&
+          x + width > panel.left &&
+          y < panel.bottom &&
+          y + height > panel.top,
+      );
       const collides = placed.some(
         (other) =>
           Math.abs(other.x - x) < width + 12 &&
@@ -180,6 +199,11 @@ export default function BookLabels({
       <div ref={connector} className={searchStyles.connector} hidden />
       <div ref={toolConnector} className={searchStyles.connector} hidden />
       {books.map((book) => {
+        const savedBook =
+          savedBooks.find((item) => item.id === book.id) ?? book;
+        const selected = book.id === selectedBookId;
+        const rich = searchActive || selected;
+        const withCover = searchActive || (selected && listOpen);
         const progress =
           book.totalPages > 0
             ? Math.min(
@@ -194,7 +218,9 @@ export default function BookLabels({
             type="button"
             hidden
             className={
-              searchActive ? searchStyles.searchLabel : styles.starLabel
+              rich
+                ? `${searchStyles.searchLabel} ${labelStyles.callout}${withCover ? "" : ` ${labelStyles.selected}`}${listOpen ? ` ${labelStyles.compact}` : ""}`
+                : `${styles.starLabel} ${labelStyles.callout}`
             }
             ref={(element) => {
               if (element) labels.current.set(book.id, element);
@@ -209,37 +235,65 @@ export default function BookLabels({
             data-book-label={book.id}
             data-selected={book.id === selectedBookId}
             aria-label={`本を開く: ${book.title}`}
-            onClick={() => onSelect(book)}
+            onClick={() => {
+              onSelect(savedBook);
+              if (listOpen) closeList();
+            }}
             title={book.title}
           >
-            {searchActive ? (
+            {rich ? (
               <>
-                <span className={searchStyles.coverFrame}>
-                  <Image
-                    src={resolveCoverUrl(book.coverUrl)}
-                    alt=""
-                    aria-hidden="true"
-                    width={40}
-                    height={56}
-                    loading="lazy"
-                    decoding="async"
-                    unoptimized
-                    className={searchStyles.coverImage}
-                    onError={handleCoverError}
-                  />
-                </span>
+                {withCover && (
+                  <span className={searchStyles.coverFrame}>
+                    <Image
+                      src={resolveCoverUrl(book.coverUrl)}
+                      alt=""
+                      aria-hidden="true"
+                      width={40}
+                      height={56}
+                      loading="lazy"
+                      decoding="async"
+                      unoptimized
+                      className={searchStyles.coverImage}
+                      onError={handleCoverError}
+                    />
+                  </span>
+                )}
                 <span className={searchStyles.details}>
                   <span className={searchStyles.title}>{book.title}</span>
-                  <span className={searchStyles.author}>
-                    {book.author || "著者未設定"}
-                  </span>
+                  {withCover && (
+                    <span className={searchStyles.author}>
+                      {book.author || "著者未設定"}
+                    </span>
+                  )}
                   <span className={searchStyles.meta}>
                     <span className={searchStyles.pages}>
-                      {book.currentPage} /{" "}
+                      {savedBook.currentPage} /{" "}
                       {book.totalPages > 0 ? book.totalPages : "未設定"}
                       ページ
                     </span>
-                    <span className={searchStyles.percent}>{progress}%</span>
+                    <span className={searchStyles.percent}>
+                      {savedBook.totalPages > 0
+                        ? Math.round(
+                            (savedBook.currentPage / savedBook.totalPages) *
+                              100,
+                          )
+                        : 0}
+                      %
+                      {preview?.bookId === book.id &&
+                        preview.page !== savedBook.currentPage && (
+                          <span className={labelStyles.preview}>
+                            {" "}
+                            → {progress}%
+                          </span>
+                        )}
+                    </span>
+                  </span>
+                  <span className={labelStyles.track} aria-hidden="true">
+                    <span
+                      className={labelStyles.fill}
+                      style={{ width: `${progress}%` }}
+                    />
                   </span>
                 </span>
               </>
