@@ -58,50 +58,6 @@ const panel = document.querySelector('section[aria-labelledby="selected-book-tit
 if (innerWidth < 768) assert(panel.getBoundingClientRect().top >= innerHeight / 2, 'upper half');
 ```
 
-## 2026-10-26: 元画像を使った立体星雲
-
-- `ambient-dust.png` の色・濃淡を使い、厚みのある2つの領域をボリューム描画する方式へ変更。カメラ追従の平面を廃止した。雲は星のクリックを遮らない。
-- サンプル認証・6冊の応答をブラウザ内で差し替え、1440×900、390×844、ドラッグによる視点変更、ズーム、0冊時を確認。本番認証・保存の検証ではない。
-- WebGL2のシェーダーリンク成功とエラーなしを確認。動きを減らす設定では、30フレーム後も星雲の時間uniformが変わらないことをassertした。
-- 390×844で60フレームの間隔の中央値は約16.7ms。ただし開発用Chromiumでの参考値であり、実機GPU負荷・バッテリー消費は未確認。
-- 60テスト、型チェック、変更箇所のBiome、ビルドが成功。workspace root・edge静的生成・Three.Clockの既存警告は対象外。
-
-### 立体描画と動きを減らす設定のself-check
-
-ブラウザで `prefers-reduced-motion: reduce` を有効にし、書籍表示後に実行する。
-
-```js
-const assert = (ok, message) => { if (!ok) throw new Error(message); };
-const gl = document.querySelector('canvas').getContext('webgl2');
-const programs = new Set();
-const original = gl.useProgram.bind(gl);
-gl.useProgram = program => {
-  if (program) programs.add(program);
-  return original(program);
-};
-const frames = count => new Promise(resolve => {
-  const tick = () => --count ? requestAnimationFrame(tick) : resolve();
-  requestAnimationFrame(tick);
-});
-try {
-  await frames(5);
-  const volumes = [...programs].filter(program =>
-    gl.getAttachedShaders(program).some(shader =>
-      gl.getShaderSource(shader).includes('out vec4 cloudColor')));
-  assert(volumes.length > 0, 'volume shader rendered');
-  assert(volumes.every(program =>
-    gl.getProgramParameter(program, gl.LINK_STATUS)), 'shader link');
-  const locations = volumes.map(program => gl.getUniformLocation(program, 'time'));
-  const before = volumes.map((program, i) => gl.getUniform(program, locations[i]));
-  await frames(30);
-  assert(volumes.every((program, i) =>
-    gl.getUniform(program, locations[i]) === before[i]), 'reduced motion');
-  assert(!gl.isContextLost() && gl.getError() === gl.NO_ERROR, 'WebGL');
-} finally {
-  gl.useProgram = original;
-}
-```
-
 ## 2026-10-26: vinext移行後の確認
 
 - Cloudflare Workersのビルドとローカルプレビューで、ログイン画面と未認証時の転送・APIの401応答を確認。

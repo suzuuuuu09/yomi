@@ -12,23 +12,6 @@ import {
 const BOOK_STATUS = ["unread", "reading", "completed"] as const;
 export type BookStatus = (typeof BOOK_STATUS)[number];
 
-export const searchRateLimits = sqliteTable("search_rate_limits", {
-  key: text("key").primaryKey(),
-  window: integer("window").notNull(),
-  count: integer("count").notNull(),
-});
-
-export const guestBookImports = sqliteTable(
-  "guest_book_imports",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-  },
-  (t) => [index("idx_guest_book_imports_user").on(t.userId)],
-);
-
 // ╭─────────────────────────────────────────────────────────╮
 // │                   認証関連のテーブル                    │
 // ╰─────────────────────────────────────────────────────────╯

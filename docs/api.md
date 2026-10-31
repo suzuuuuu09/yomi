@@ -5,7 +5,6 @@
 - ベースURL: アプリと同一オリジンの`/api`（ローカル: `http://localhost:3000/api`）
 - 業務APIのレスポンス形式: `application/json`（`GET /api/` はテキスト、`GET /api/docs` はHTML）
 - 認証方式: Cookie ベースのセッション認証
-- `GET /api/search` は認証不要。蔵書・読書ログ・ゲスト記録の引き継ぎには認証が必要。
 - OpenAPI ドキュメント: `GET /api/openapi.json`
 - Swagger UI: `GET /api/docs`
 
@@ -28,9 +27,6 @@
 | 400 | `INVALID_REQUEST` | リクエストパラメータ不正 |
 | 401 | `UNAUTHORIZED` | 未認証（セッションなし or 期限切れ） |
 | 404 | `NOT_FOUND` | リソースが見つからない |
-| 409 | `CONFLICT` | アカウント・設定が変更されたため再試行が必要 |
-| 413 | `INVALID_REQUEST` | 引き継ぎリクエストが大きすぎる |
-| 429 | `RATE_LIMITED` | 検索回数の上限。`Retry-After: 60` |
 | 500 | `INTERNAL_ERROR` | サーバー内部エラー |
 | 502 | `UPSTREAM_ERROR` | Google Books APIの障害または不正応答 |
 | 504 | `UPSTREAM_TIMEOUT` | Google Books APIのタイムアウト |
@@ -114,7 +110,7 @@ Better Auth はすべての認証フロー（OAuth リダイレクト、コー�
 
 ### 認証ミドルウェア
 
-書籍・読書ログ・ゲスト記録の引き継ぎに `src/server/middleware/auth.ts` の `authMiddleware` を適用する。Better Auth の `auth.api.getSession({ headers: c.req.raw.headers })` でセッションを検証し、有効なら `user` と `session` をコンテキストへ設定する。検索は認証不要だが、サーバー側で回数を制限する。
+検索・書籍・読書ログの全エンドポイントに `src/server/middleware/auth.ts` の `authMiddleware` を適用する。Better Auth の `auth.api.getSession({ headers: c.req.raw.headers })` でセッションを検証し、有効なら `user` と `session` をコンテキストへ設定する。
 
 セッションがなければ `401 UNAUTHORIZED`、認証サービスの例外は `500 INTERNAL_ERROR` を返す。認証エンドポイント・OpenAPI・Swagger UIにはこのミドルウェアを適用しない。
 
@@ -143,7 +139,7 @@ Better Auth はすべての認証フロー（OAuth リダイレクト、コー�
 
 ### 本の検索 (`GET /api/search`)
 
-認証不要。検索語・ISBNはサーバー経由でGoogle Booksへ送信する。D1上のカウンターで、接続元ごとに30回/分、アプリ全体で300回/分を上限とする。ログイン利用者も同じ上限を適用し、上限に達した場合は外部APIを呼ばず`429 RATE_LIMITED`と`Retry-After: 60`を返す。接続元にはCloudflareの`CF-Connecting-IP`をハッシュ化した値を使い、ローカルでは共通のカウンターを使う。D1が利用できなければ検索も失敗し、制限を迂回して呼び出さない。
+ログイン済みセッションが必要です。匿名リクエストは`401 UNAUTHORIZED`になります。
 
 クエリパラメータ:
 
@@ -239,16 +235,3 @@ OpenAPIドキュメントには現在、スキーマ定義済みの検索エン�
 - 設定の取得・更新: `{ readingTimezone }` を返します。未設定の取得値はnull。更新ボディは `{ "readingTimezone": "Asia/Tokyo" }`。
 
 実装: `src/server/routes/{books,reading-logs,search}.ts`、入力スキーマ: `src/server/schemas/{books,search}.ts`。
-
-## ゲスト記録の引き継ぎ (`POST /api/guest-import`)
-
-認証必須。本1冊と、そのメモ・読書ログをまとめて送る。入力は`src/lib/guest-schema.ts`の`GuestImportSchema`で検証する。
-
-- `expectedUserId`: 操作開始時のアカウントID。現在のセッションと異なる場合は409。
-- `libraryId`: ゲスト蔵書のUUID。
-- `readingTimezone`・`readingDayOffset`・`readingTimezoneRevision`: ゲストの読書設定。
-- `book`: 書誌・進捗・星の表示情報・日時・アーカイブ状態・`notes`・`logs`を含む本。
-
-本・メモ・ログ・完了印はD1の同じbatchで保存する。利用者・蔵書・元の本IDが同じ場合は再追加せず`200 { "ok": true }`を返す。既存の同ISBNの本も更新しない。複数冊の途中で失敗した場合は再試行でき、完了済みの本はスキップする。引き継ぎ済みの本へのゲスト側の追加編集は同期しない。
-
-アカウントのタイムゾーンが未設定ならゲストの設定を採用する。設定済みなら上書きせず、ログの論理読書日を両側の「今日」の差分だけ移し、日同士の間隔を維持する。日付表示・メモ・進捗は保持する。引き継いだログの世代番号は負数へ割り当て、今後アカウントで記録する世代（0以上）との衝突を防ぐ。読書ログの訂正・削除では、この負数の世代番号も指定できる。設定の同時変更で条件が合わない場合は409として再試行を求める。リクエストは4MB以下、本1冊の記録は1MB以下。

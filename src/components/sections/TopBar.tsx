@@ -1,60 +1,29 @@
 "use client";
 
-import { ChevronDown, Library, Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { Library, Search, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "@/components/observatory.module.css";
-import CloseButton from "@/components/shares/CloseButton";
 import type { FilterTabsCounts } from "@/components/shares/FilterTabs";
+import FilterTabs from "@/components/shares/FilterTabs";
 import UserMenu from "@/components/shares/UserMenu";
-import searchStyles from "@/components/star-search.module.css";
-import { getGenreOptions } from "@/hooks/useFilteredBooks";
 import useBookListStore from "@/store/useBookListStore";
-import useLibraryFilterStore, {
-  ALL_GENRES,
-} from "@/store/useLibraryFilterStore";
-import useLibraryStore from "@/store/useLibraryStore";
-import type { BookStatus } from "@/types/library";
-
-const FILTERS: { label: string; value: BookStatus | "all" }[] = [
-  { label: "すべて", value: "all" },
-  { label: "未読", value: "unread" },
-  { label: "読書中", value: "reading" },
-  { label: "読了", value: "completed" },
-];
+import useLibraryFilterStore from "@/store/useLibraryFilterStore";
 
 export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
-  const {
-    activeFilter,
-    query,
-    genre,
-    setFilter,
-    setQuery,
-    setGenre,
-    resetFilters,
-  } = useLibraryFilterStore();
-  const books = useLibraryStore((state) => state.books);
+  const { activeFilter, query, setFilter, setQuery, clearSearch } =
+    useLibraryFilterStore();
   const openBookList = useBookListStore((state) => state.open);
-  const isBookListOpen = useBookListStore((state) => state.isOpen);
-  const isSearchOpen = useBookListStore(
-    (state) => state.activePanel === "search",
-  );
-  const setIsSearchOpen = useCallback((open: boolean) => {
-    const ui = useBookListStore.getState();
-    if (open) ui.setPanel("search");
-    else ui.closePanel("search");
-  }, []);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const genreOptions = useMemo(() => getGenreOptions(books), [books]);
+  const headerRef = useRef<HTMLElement>(null);
 
-  const closeSearch = useCallback(
-    (restoreFocus = true) => {
-      setIsSearchOpen(false);
-      resetFilters();
-      if (restoreFocus) triggerRef.current?.focus();
-    },
-    [resetFilters, setIsSearchOpen],
-  );
+  const closeSearch = useCallback(() => {
+    setIsSearchOpen(false);
+    clearSearch();
+    setFilter("all");
+    triggerRef.current?.focus();
+  }, [clearSearch, setFilter]);
 
   useEffect(() => {
     if (isSearchOpen) searchRef.current?.focus();
@@ -62,37 +31,30 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
 
   useEffect(() => {
     if (bookCount.all === 0) setIsSearchOpen(false);
-  }, [bookCount.all, setIsSearchOpen]);
-
-  useEffect(() => {
-    if (
-      genre !== ALL_GENRES &&
-      !genreOptions.some((item) => item.id === genre)
-    ) {
-      setGenre(ALL_GENRES);
-    }
-  }, [genre, genreOptions, setGenre]);
+  }, [bookCount.all]);
 
   useEffect(() => {
     if (!isSearchOpen) return;
+    const closeOnOutside = (event: PointerEvent) => {
+      if (!headerRef.current?.contains(event.target as Node)) {
+        closeSearch();
+      }
+    };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.defaultPrevented) {
-        event.preventDefault();
+      if (event.key === "Escape") {
         closeSearch();
       }
     };
     document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("pointerdown", closeOnOutside);
     return () => {
       document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("pointerdown", closeOnOutside);
     };
   }, [isSearchOpen, closeSearch]);
 
   return (
-    <header
-      className={`${styles.header}${
-        isSearchOpen ? ` ${searchStyles.headerActive}` : ""
-      }`}
-    >
+    <header ref={headerRef} className={styles.header}>
       <span className={styles.logo}>YOMi</span>
       <nav className={styles.navigation} aria-label="本と設定">
         {bookCount.all > 0 && (
@@ -113,9 +75,8 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
             <button
               type="button"
               className={styles.glassButton}
-              aria-pressed={isBookListOpen}
               onClick={() => {
-                closeSearch(false);
+                closeSearch();
                 openBookList();
               }}
             >
@@ -129,83 +90,33 @@ export default function TopBar({ bookCount }: { bookCount: FilterTabsCounts }) {
       {isSearchOpen && bookCount.all > 0 && (
         <section
           id="library-search"
-          className={searchStyles.panel}
+          className={styles.searchPanel}
           aria-label="蔵書を検索"
         >
-          <div className={searchStyles.field}>
-            <Search
-              size={19}
-              className={searchStyles.searchIcon}
-              aria-hidden="true"
-            />
+          <div className={styles.searchRow}>
             <input
               ref={searchRef}
               type="search"
-              className={searchStyles.input}
+              className={styles.searchInput}
               aria-label="タイトル・著者・ジャンルで検索"
               placeholder="タイトル・著者・ジャンル"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
-            {query && (
-              <button
-                type="button"
-                className={searchStyles.clearButton}
-                onClick={() => setQuery("")}
-                aria-label="検索語を消去"
-              >
-                消去
-              </button>
-            )}
-            <CloseButton
-              className={searchStyles.closeButton}
-              onClick={() => closeSearch()}
-              aria-label="検索を閉じる"
-            />
-          </div>
-          <div className={searchStyles.filters}>
-            <fieldset
-              className={searchStyles.tabs}
-              aria-label="読書状態で絞り込む"
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={closeSearch}
+              aria-label="検索を解除して閉じる"
             >
-              {FILTERS.map((item) => {
-                const count = bookCount[item.value];
-                return (
-                  <button
-                    key={item.value}
-                    type="button"
-                    className={searchStyles.tab}
-                    aria-pressed={activeFilter === item.value}
-                    aria-label={`${item.label}（${count}冊）`}
-                    onClick={() => setFilter(item.value)}
-                  >
-                    {item.label}
-                    <span className={searchStyles.tabCount}>({count})</span>
-                  </button>
-                );
-              })}
-            </fieldset>
-            <label className={searchStyles.genreField}>
-              <span className={searchStyles.srOnly}>ジャンルで絞り込む</span>
-              <select
-                className={searchStyles.genreSelect}
-                value={genre}
-                onChange={(event) => setGenre(event.target.value)}
-              >
-                <option value={ALL_GENRES}>ジャンル: すべて</option>
-                {genreOptions.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                size={16}
-                className={searchStyles.genreChevron}
-                aria-hidden="true"
-              />
-            </label>
+              <X size={18} />
+            </button>
           </div>
+          <FilterTabs
+            activeFilter={activeFilter}
+            setFilter={setFilter}
+            counts={bookCount}
+          />
         </section>
       )}
     </header>

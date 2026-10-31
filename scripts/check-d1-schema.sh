@@ -14,8 +14,6 @@ LIMIT 0;
 SELECT reading_day, reading_timezone_revision
 FROM reading_logs
 LIMIT 0;
-SELECT id, user_id FROM guest_book_imports LIMIT 0;
-SELECT key, window, count FROM search_rate_limits LIMIT 0;
 SQL
 )
 

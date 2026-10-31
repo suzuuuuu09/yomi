@@ -28,10 +28,10 @@ describe("authentication proxy", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
-  it("セッションCookieがなくてもゲスト選択を確認する画面へ到達できる", () => {
+  it("still redirects an app request without a session cookie", () => {
     const request = new NextRequest("http://localhost/app");
     const response = proxy(request);
 
-    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("location")).toBe("http://localhost/login");
   });
 });

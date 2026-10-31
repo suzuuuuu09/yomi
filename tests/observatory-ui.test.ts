@@ -60,7 +60,7 @@ it("prioritizes recording progress while keeping notes, editing and history avai
   expect(html.indexOf("読書を記録する")).toBeLessThan(
     html.indexOf('aria-controls="reading-notes"'),
   );
-  expect(html).not.toContain('id="reading-progress-controls"');
+  expect(html).toMatch(/id="reading-progress-controls" hidden=""/);
   expect(html).toMatch(/id="reading-notes" hidden=""/);
   expect(html).toContain("読書の記録・書籍情報");
   expect(html).toContain("この本をアーカイブ");

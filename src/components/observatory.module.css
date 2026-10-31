@@ -10,7 +10,7 @@
 }
 .header {
   position: fixed;
-  inset: max(18px, env(safe-area-inset-top)) 30px auto 3.2vw;
+  inset: max(16px, env(safe-area-inset-top)) 28px auto;
   z-index: 30;
   display: flex;
   align-items: center;
@@ -22,9 +22,9 @@
   pointer-events: auto;
 }
 .logo {
-  font-size: 40px;
-  font-weight: 500;
-  letter-spacing: 0.03em;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
 }
 .navigation {
   display: flex;
@@ -41,12 +41,12 @@
   gap: 10px;
   min-height: 44px;
   padding: 10px 16px;
-  border: 1px solid #7779b366;
+  border: 1px solid #a5b4fc38;
   border-radius: 12px;
-  background: #07102bbd;
+  background: #101a30e8;
   backdrop-filter: blur(18px);
   color: #eef2ff;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition:
@@ -62,7 +62,7 @@
 .primaryButton {
   min-height: 48px;
   border-radius: 14px;
-  background: #7537ff;
+  background: #635bff;
   border-color: #b5b8ff80;
   box-shadow:
     0 4px 24px #4740b633,
@@ -72,7 +72,7 @@
   font-size: 16px;
 }
 .primaryButton:hover {
-  background: #824aff;
+  background: #554ae8;
 }
 .primaryButton:disabled,
 .glassButton:disabled {
@@ -154,13 +154,12 @@
 }
 .addButton {
   position: fixed;
-  bottom: max(50px, env(safe-area-inset-bottom));
-  right: 30px;
+  bottom: max(28px, env(safe-area-inset-bottom));
+  right: 28px;
   z-index: 30;
 }
 .addButton .primaryButton {
   min-width: 174px;
-  min-height: 54px;
   border-radius: 999px;
   padding-inline: 22px;
 }
@@ -209,7 +208,11 @@
 .panel[data-expanded="true"] {
   max-height: calc(100dvh - 160px);
 }
-
+.panelClose {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
 .bookHeader {
   display: flex;
   align-items: center;
@@ -302,19 +305,8 @@
   min-height: 44px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   cursor: pointer;
-  font-size: 14px;
-  list-style: none;
-}
-.moreDetails summary::-webkit-details-marker {
-  display: none;
-}
-.moreDetails[open] > summary {
-  margin-bottom: 16px;
-}
-.moreDetails[open] > summary svg {
-  transform: rotate(180deg);
+  font-size: 13px;
 }
 .sheetHandle {
   display: none;
@@ -322,38 +314,31 @@
 .starLabel {
   display: block;
   width: 164px;
-  padding: 5px 0;
+  padding: 6px 9px;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #eef2ff;
-  background: transparent;
+  background: #050b19cc;
   border: 1px solid transparent;
-  border-radius: 0;
+  border-radius: 8px;
   font-family: var(--font-noto-sans-jp), sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   text-shadow: 0 1px 6px #000;
 }
 .starLabel[data-selected="true"] {
   color: white;
-  border-color: transparent;
+  border-color: #a5b4fc70;
   font-weight: 600;
   font-size: 15px;
 }
-.panel[hidden] {
-  display: none;
-}
-.glassButton[aria-expanded="true"],
-.glassButton[aria-pressed="true"] {
-  border-color: #b19aff;
-  background: #7136ff;
-  box-shadow: 0 0 16px #773bff66;
-}
-:global(body):has([data-settings-panel]) .readingAccess,
-.observatory:has([role="dialog"], aside, #library-search) .readingAccess {
-  display: none;
+.gyroButton {
+  position: fixed;
+  bottom: 86px;
+  left: 20px;
+  z-index: 25;
 }
 .error {
   position: fixed;
@@ -485,6 +470,13 @@
   }
   .starLabel[data-selected="true"] {
     font-size: 14px;
+  }
+  .gyroButton {
+    bottom: 88px;
+    left: 16px;
+  }
+  .gyroButton[data-selected="true"] {
+    bottom: calc(min(46dvh, 390px) + 28px);
   }
 }
 @media (prefers-reduced-motion: reduce) {

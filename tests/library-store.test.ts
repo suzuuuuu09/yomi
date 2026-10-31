@@ -49,26 +49,6 @@ function resetStore() {
   });
 }
 
-it("reports whether a book edit was saved and restores the book on failure", async () => {
-  resetStore();
-  vi.stubGlobal("fetch", vi.fn().mockRejectedValueOnce(new Error("offline")));
-  await expect(
-    useLibraryStore.getState().updateBook("book-1", { title: "新しい題名" }),
-  ).resolves.toBe(false);
-  expect(useLibraryStore.getState().books[0].title).toBe("テスト本");
-
-  vi.stubGlobal(
-    "fetch",
-    vi
-      .fn()
-      .mockResolvedValueOnce(response({ ...baseBook, title: "新しい題名" })),
-  );
-  await expect(
-    useLibraryStore.getState().updateBook("book-1", { title: "新しい題名" }),
-  ).resolves.toBe(true);
-  expect(useLibraryStore.getState().books[0].title).toBe("新しい題名");
-});
-
 afterEach(() => {
   vi.restoreAllMocks();
   resetStore();

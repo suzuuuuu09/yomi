@@ -5,12 +5,11 @@ export type ApiErrorCode =
   | "INVALID_REQUEST"
   | "NOT_FOUND"
   | "CONFLICT"
-  | "RATE_LIMITED"
   | "UPSTREAM_ERROR"
   | "UPSTREAM_TIMEOUT"
   | "INTERNAL_ERROR";
 
-type ApiErrorStatus = 400 | 401 | 404 | 409 | 413 | 429 | 500 | 502 | 504;
+type ApiErrorStatus = 400 | 401 | 404 | 409 | 500 | 502 | 504;
 
 export interface ApiErrorIssue {
   path: (string | number)[];

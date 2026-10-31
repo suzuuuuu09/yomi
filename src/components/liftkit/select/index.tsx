@@ -197,8 +197,6 @@ export function SelectMenu({ children, cardProps }: LkSelectMenuProps) {
       if (!open) return;
 
       if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
         setOpen(false);
         if (triggerRef.current) {
           (triggerRef.current as HTMLElement).focus();
