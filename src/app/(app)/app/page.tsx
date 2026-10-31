@@ -1,8 +1,8 @@
 "use client";
 
-import { Plus, Rotate3D } from "lucide-react";
+import { Plus } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import BookListDrawer from "@/components/BookListDrawer";
 import styles from "@/components/observatory.module.css";
 import SessionGuard from "@/components/SessionGuard";
@@ -15,6 +15,8 @@ import { useObservatory } from "@/hooks/useObservatory";
 import { useStarInsight } from "@/hooks/useStarInsight";
 import useLibraryFilterStore from "@/store/useLibraryFilterStore";
 import useLibraryStore from "@/store/useLibraryStore";
+import useProgressPreviewStore from "@/store/useProgressPreviewStore";
+import type { BookStatus } from "@/types/library";
 
 const UniverseCanvas = dynamic(
   () => import("@/components/universe/UniverseCanvas"),
@@ -45,8 +47,6 @@ function ObservatoryContent() {
   const [loadState, setLoadState] = useState<"loading" | "loaded" | "failed">(
     "loading",
   );
-  const [vrMode, setVrMode] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   const loadBooks = useCallback(async () => {
     setLoadState("loading");
@@ -56,7 +56,6 @@ function ObservatoryContent() {
 
   useEffect(() => {
     void loadBooks();
-    setIsTouchDevice(navigator.maxTouchPoints > 0 || "ontouchstart" in window);
   }, [loadBooks]);
 
   const {
@@ -69,6 +68,29 @@ function ObservatoryContent() {
     handleAdd,
   } = useObservatory();
   const starInsight = useStarInsight();
+  const preview = useProgressPreviewStore((state) => state.preview);
+  const visibleBooks = useMemo(() => {
+    if (!preview || preview.bookId !== selectedBookId) return books;
+
+    return books.map((book) => {
+      if (book.id !== preview.bookId) return book;
+
+      const status: BookStatus =
+        preview.page <= 0
+          ? "unread"
+          : book.totalPages > 0 && preview.page >= book.totalPages
+            ? "completed"
+            : "reading";
+      return { ...book, currentPage: preview.page, status };
+    });
+  }, [books, preview, selectedBookId]);
+  const matchingBookIds = useMemo(
+    () =>
+      filteredBooks === books
+        ? undefined
+        : new Set(filteredBooks.map((book) => book.id)),
+    [books, filteredBooks],
+  );
   const ready = loadState === "loaded" && !isLoading;
   const empty = ready && books.length === 0 && !lastError;
   const nowReading = books.filter((book) => book.status === "reading");
@@ -77,14 +99,13 @@ function ObservatoryContent() {
   return (
     <main className={styles.observatory}>
       <UniverseCanvas
-        books={filteredBooks}
+        books={visibleBooks}
+        matchingBookIds={matchingBookIds}
         constellationLines={constellationLines}
         onStarClick={handleStarClick}
         selectedBookId={selectedBookId}
         newlyAddedBookId={newlyAddedBookId}
         onBirthEffectComplete={clearNewlyAdded}
-        vrMode={vrMode}
-        onExitVrMode={() => setVrMode(false)}
       />
       <TopBar bookCount={bookCount} />
       {lastError && (
@@ -140,20 +161,6 @@ function ObservatoryContent() {
               <span className={styles.addLabel}>本を追加</span>
             </button>
           </div>
-          {isTouchDevice && (
-            <div className={styles.gyroButton} data-selected={!!selectedBookId}>
-              <button
-                type="button"
-                className={styles.glassButton}
-                aria-pressed={vrMode}
-                onClick={() => setVrMode((value) => !value)}
-                aria-label={vrMode ? "ジャイロを終了" : "ジャイロで見渡す"}
-              >
-                <Rotate3D size={18} />
-                <span>{vrMode ? "終了" : "ジャイロ"}</span>
-              </button>
-            </div>
-          )}
           <div
             className={styles.readingAccess}
             data-selected={!!selectedBookId}
