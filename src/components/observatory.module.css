@@ -334,12 +334,6 @@
   font-weight: 600;
   font-size: 15px;
 }
-.gyroButton {
-  position: fixed;
-  bottom: 86px;
-  left: 20px;
-  z-index: 25;
-}
 .error {
   position: fixed;
   top: 84px;
@@ -470,13 +464,6 @@
   }
   .starLabel[data-selected="true"] {
     font-size: 14px;
-  }
-  .gyroButton {
-    bottom: 88px;
-    left: 16px;
-  }
-  .gyroButton[data-selected="true"] {
-    bottom: calc(min(46dvh, 390px) + 28px);
   }
 }
 @media (prefers-reduced-motion: reduce) {

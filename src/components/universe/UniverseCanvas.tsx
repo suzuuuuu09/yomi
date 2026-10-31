@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Billboard,
-  DeviceOrientationControls,
-  OrbitControls,
-  Stars,
-} from "@react-three/drei";
+import { Billboard, OrbitControls, Stars } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import {
   Suspense,
@@ -21,7 +16,6 @@ import {
   BIRTH_EFFECT_DURATION,
   DUST_CLOUDS,
 } from "@/consts/universe";
-import { useGyroPermission } from "@/hooks/useGyroPermission";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { getGlowTex } from "@/lib/universe-texture";
 import type { Book } from "@/types/library";
@@ -366,66 +360,6 @@ function StarBirthEffect({
   );
 }
 
-function GyroPermissionOverlay({
-  onRequest,
-  onClose,
-  error,
-}: {
-  onRequest?: () => Promise<void>;
-  onClose: () => void;
-  error: string | null;
-}) {
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 100,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(2,6,23,0.93)",
-        color: "white",
-        gap: 20,
-      }}
-    >
-      <p
-        style={{
-          fontSize: 18,
-          textAlign: "center",
-          padding: "0 32px",
-          lineHeight: 1.7,
-        }}
-      >
-        宇宙を見渡すには
-        <br />
-        {error ?? "センサーの許可が必要です"}
-      </p>
-      {onRequest && (
-        <button
-          type="button"
-          onClick={() => void onRequest()}
-          style={{
-            padding: "14px 36px",
-            borderRadius: 9999,
-            background: "linear-gradient(135deg, #6366f1, #a855f7)",
-            border: "none",
-            color: "white",
-            fontSize: 16,
-            cursor: "pointer",
-          }}
-        >
-          センサーを有効にする
-        </button>
-      )}
-      <button type="button" onClick={onClose}>
-        VRモードを終了
-      </button>
-    </div>
-  );
-}
-
 interface UniverseCanvasProps {
   books: Book[];
   matchingBookIds?: ReadonlySet<string>;
@@ -434,8 +368,6 @@ interface UniverseCanvasProps {
   selectedBookId: string | null;
   newlyAddedBookId: string | null;
   onBirthEffectComplete: () => void;
-  vrMode?: boolean;
-  onExitVrMode: () => void;
 }
 
 export default function UniverseCanvas({
@@ -446,8 +378,6 @@ export default function UniverseCanvas({
   selectedBookId,
   newlyAddedBookId,
   onBirthEffectComplete,
-  vrMode = false,
-  onExitVrMode,
 }: UniverseCanvasProps) {
   const reducedMotion = useReducedMotion();
   const [hoveredBookId, setHoveredBookId] = useState<string | null>(null);
@@ -455,12 +385,6 @@ export default function UniverseCanvas({
     target: THREE.Vector3;
     update: () => void;
   } | null>(null);
-  const {
-    granted: gyroGranted,
-    needsPrompt,
-    requestPermission,
-    error,
-  } = useGyroPermission(vrMode);
 
   const newBook = newlyAddedBookId
     ? books.find((b) => b.id === newlyAddedBookId)
@@ -485,14 +409,6 @@ export default function UniverseCanvas({
         height: "100%",
       }}
     >
-      {vrMode && !gyroGranted && (needsPrompt || error) && (
-        <GyroPermissionOverlay
-          onRequest={needsPrompt ? requestPermission : undefined}
-          onClose={onExitVrMode}
-          error={error}
-        />
-      )}
-
       <Canvas
         camera={{ position: [0, 2, 20], fov: 60, near: 0.1, far: 100 }}
         style={{ background: "#040817" }}
@@ -559,27 +475,21 @@ export default function UniverseCanvas({
               onComplete={onBirthEffectComplete}
             />
           )}
-          {vrMode && gyroGranted ? (
-            <DeviceOrientationControls makeDefault />
-          ) : (
-            <OrbitControls
-              // biome-ignore lint/suspicious/noExplicitAny: drei ref type
-              ref={controlsRef as any}
-              makeDefault
-              enableDamping
-              dampingFactor={0.05}
-              rotateSpeed={0.5}
-              zoomSpeed={0.8}
-              minDistance={3}
-              maxDistance={40}
-              enablePan
-            />
-          )}
+          <OrbitControls
+            // biome-ignore lint/suspicious/noExplicitAny: drei ref type
+            ref={controlsRef as any}
+            makeDefault
+            enableDamping
+            dampingFactor={0.05}
+            rotateSpeed={0.5}
+            zoomSpeed={0.8}
+            minDistance={3}
+            maxDistance={40}
+            enablePan
+          />
           <CameraSetup
             books={books}
             controlsRef={controlsRef}
-            vrMode={vrMode}
-            gyroGranted={gyroGranted}
             selectedBookId={selectedBookId}
           />
 

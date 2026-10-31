@@ -13,22 +13,19 @@ type ControlsRef = React.RefObject<{
 interface CameraSetupProps {
   books: Book[];
   controlsRef: ControlsRef;
-  vrMode: boolean;
-  gyroGranted: boolean;
   selectedBookId: string | null;
 }
 
 export function CameraSetup(props: CameraSetupProps) {
-  const { books, controlsRef, vrMode, gyroGranted, selectedBookId } = props;
+  const { books, controlsRef, selectedBookId } = props;
   const { camera, size } = useThree();
   const initializedSize = useRef("");
-  const vrPositioned = useRef(false);
 
-  // 重心と分布半径を計算するユーティリティ
+  // 本の重心を計算する
   const computeBounds = useCallback(() => {
     const n = books.length;
 
-    if (n === 0) return { cx: 0, cy: 0, cz: 0, radius: 1 }; // 欲がないときは原点
+    if (n === 0) return { cx: 0, cy: 0, cz: 0 }; // 欲がないときは原点
 
     const cx = books.reduce((sum, b) => sum + b.position[0], 0) / n;
     const cy = books.reduce((sum, b) => sum + b.position[1], 0) / n;
@@ -36,20 +33,12 @@ export function CameraSetup(props: CameraSetupProps) {
     /* let cx = 0,
       cy = 0,
       cz = 0; */
-    const radius = books.reduce((max, b) => {
-      const d = Math.hypot(
-        b.position[0] - cx,
-        b.position[1] - cy,
-        b.position[2] - cz,
-      );
-      return Math.max(max, d);
-    }, 0);
-    return { cx, cy, cz, radius };
+    return { cx, cy, cz };
   }, [books]);
 
   useEffect(() => {
     const perspective = camera as PerspectiveCamera;
-    if (selectedBookId && !vrMode) {
+    if (selectedBookId) {
       perspective.setViewOffset(
         size.width,
         size.height,
@@ -60,7 +49,7 @@ export function CameraSetup(props: CameraSetupProps) {
       );
     } else perspective.clearViewOffset();
     return () => perspective.clearViewOffset();
-  }, [camera, selectedBookId, size, vrMode]);
+  }, [camera, selectedBookId, size]);
 
   // 通常モードの初期カメラ配置
   useEffect(() => {
@@ -106,21 +95,6 @@ export function CameraSetup(props: CameraSetupProps) {
     controlsRef.current?.target.set(cx, cy, cz);
     controlsRef.current?.update();
   }, [books, camera, size, controlsRef, computeBounds, selectedBookId]);
-
-  // VRモード時のカメラ配置: 全体を適度に俯瞰できる位置へ
-  useEffect(() => {
-    if (!vrMode || !gyroGranted || books.length === 0) {
-      vrPositioned.current = false;
-      return;
-    }
-    if (vrPositioned.current) return;
-    vrPositioned.current = true;
-
-    const { cx, cy, cz, radius } = computeBounds();
-    const vrDist = Math.min(Math.max(radius * 0.45, 3), 12);
-    camera.position.set(cx, cy, cz + vrDist);
-    camera.lookAt(cx, cy, cz);
-  }, [vrMode, gyroGranted, books, camera, computeBounds]);
 
   return null;
 }
