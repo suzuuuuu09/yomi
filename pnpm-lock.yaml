@@ -6,7 +6,7 @@ settings:
 
 overrides:
   fflate@>=0.7.0 <0.7.5: ^0.7.5
-  '@hono/node-server@<1.19.10': ^1.19.10
+  '@hono/node-server@<1.19.10': ^2.0.0
   '@hono/node-server@<1.19.13': ^1.19.13
   '@hono/node-server@<2.0.5': ^2.0.5
   browserslist@<=4.28.6: ^4.28.7
@@ -360,6 +360,7 @@ packages:
   '@chainlift/liftkit@0.2.0':
     resolution: {integrity: sha512-9St6tcUE46OHarYOdG2mJQIIbEL2djfKB3YtwnFWoKpC5fwFsK48D395QOxGcqnz4p1xZ3dvQ8ae/8zn+g1BdQ==}
     engines: {node: '>=16'}
+    deprecated: 'This is the old LiftKit v1 command-line tool, which is no longer maintained. LiftKit v2 is a proper component library. Try it: npm i liftkit'
     hasBin: true
 
   '@chevrotain/cst-dts-gen@10.5.0':
