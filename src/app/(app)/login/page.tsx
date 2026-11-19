@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import { css } from "styled-system/css";
 import { Box, Stack, styled as s } from "styled-system/jsx";
 import StarfieldBackground from "@/components/shares/StarfieldBackground";
 import { signIn } from "@/lib/auth-client";
+import { startAccountMode, startGuestMode } from "@/lib/library-mode";
 import Text from "~liftkit/text";
 
 const GoogleIcon = () => (
@@ -29,7 +31,13 @@ const GoogleIcon = () => (
 );
 
 export default function LoginPage() {
+  const [error, setError] = useState("");
   const handleGoogleSignIn = async () => {
+    try {
+      startAccountMode();
+    } catch {
+      /* 端末保存が拒否されてもクラウドへのログインは可能にする。 */
+    }
     await signIn.social({
       provider: "google",
       callbackURL: "/app",
@@ -40,12 +48,13 @@ export default function LoginPage() {
     <s.main
       position="relative"
       w="screen"
-      h="screen"
+      minH="screen"
       display="flex"
       alignItems="center"
       justifyContent="center"
       bg="#020617"
-      overflow="hidden"
+      overflowX="hidden"
+      py="6"
     >
       <StarfieldBackground />
 
@@ -138,6 +147,44 @@ export default function LoginPage() {
           <GoogleIcon />
           Google アカウントでログイン
         </button>
+
+        <button
+          type="button"
+          className={css({
+            color: "slate.100",
+            border: "1px solid",
+            borderColor: "white/20",
+            rounded: "xl",
+            p: "3",
+            w: "full",
+            cursor: "pointer",
+            _focusVisible: {
+              outline: "2px solid #a5b4fc",
+              outlineOffset: "3px",
+            },
+          })}
+          onClick={() => {
+            try {
+              startGuestMode();
+              window.location.assign("/app");
+            } catch {
+              setError(
+                "端末への保存が許可されていません。ブラウザーの設定を確認するか、ログインしてください。",
+              );
+            }
+          }}
+        >
+          ゲストとして始める
+        </button>
+        <Text
+          tag="p"
+          fontClass="caption"
+          className={css({ color: "slate.400", textAlign: "center" })}
+        >
+          ゲストの記録はこのブラウザーに保存されます。データの削除で記録も消えるため、設定からバックアップしてください。検索には通信が必要です。検索語・ISBNはGoogle
+          Booksへ送信され、検索回数には制限があります。
+        </Text>
+        {error && <p role="alert">{error}</p>}
 
         <Text
           tag="p"

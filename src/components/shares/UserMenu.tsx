@@ -1,19 +1,41 @@
 "use client";
 
-import { Globe2, LogIn, LogOut, Settings } from "lucide-react";
-import { useState } from "react";
+import {
+  BookOpen,
+  ChevronRight,
+  LogIn,
+  LogOut,
+  Settings,
+  UserRound,
+} from "lucide-react";
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { css } from "styled-system/css";
 import { Box, HStack, styled as s } from "styled-system/jsx";
+import GuestDataControls from "@/components/GuestDataControls";
 import styles from "@/components/observatory.module.css";
+import CloseButton from "@/components/shares/CloseButton";
+import spatialStyles from "@/components/shares/user-menu-spatial.module.css";
 import { authClient } from "@/lib/auth-client";
+import { isGuestMode } from "@/lib/library-mode";
+import useBookListStore from "@/store/useBookListStore";
 import useLibraryStore from "@/store/useLibraryStore";
 import Text from "~liftkit/text";
 
 export default function UserMenu() {
   const { data: session, isPending } = authClient.useSession();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const guest = isGuestMode();
+  const settingsOpen = useBookListStore(
+    (state) => state.activePanel === "settings",
+  );
+  const setSettingsOpen = useCallback((open: boolean) => {
+    const ui = useBookListStore.getState();
+    if (open) ui.setPanel("settings");
+    else ui.closePanel("settings");
+  }, []);
   const [timezoneDraft, setTimezoneDraft] = useState("");
+  const [timezones, setTimezones] = useState<string[]>([]);
   const [timezoneError, setTimezoneError] = useState<string | null>(null);
   const readingTimezone = useLibraryStore((state) => state.readingTimezone);
   const archivedBooks = useLibraryStore((state) => state.archivedBooks);
@@ -24,9 +46,38 @@ export default function UserMenu() {
     (state) => state.setReadingTimezone,
   );
   const restoreBook = useLibraryStore((state) => state.restoreBook);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) {
+        event.preventDefault();
+        setSettingsOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [settingsOpen, setSettingsOpen]);
 
   const openSettings = () => {
-    setTimezoneDraft(readingTimezone ?? "");
+    const currentTimezone =
+      readingTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+    setTimezones(
+      [
+        ...new Set([
+          "UTC",
+          currentTimezone,
+          ...Intl.supportedValuesOf("timeZone"),
+        ]),
+      ].sort(),
+    );
+    setTimezoneDraft(currentTimezone);
     setTimezoneError(null);
     setSettingsOpen(true);
     void fetchArchivedBooks();
@@ -36,7 +87,7 @@ export default function UserMenu() {
     try {
       new Intl.DateTimeFormat(undefined, { timeZone: timezoneDraft }).format();
     } catch {
-      setTimezoneError("IANAタイムゾーンを入力してください（例: Asia/Tokyo）");
+      setTimezoneError("有効なタイムゾーンを選択してください");
       return;
     }
     if (await setReadingTimezone(timezoneDraft)) setSettingsOpen(false);
@@ -52,7 +103,7 @@ export default function UserMenu() {
     });
   };
 
-  if (isPending) {
+  if (isPending && !guest) {
     return (
       <button
         type="button"
@@ -66,21 +117,23 @@ export default function UserMenu() {
     );
   }
 
-  if (session?.user) {
+  if (session?.user || guest) {
     return (
       <>
         <button
+          ref={triggerRef}
           type="button"
           className={styles.glassButton}
           onClick={openSettings}
           aria-expanded={settingsOpen}
         >
           <Settings size={18} aria-hidden="true" />
-          <span>設定</span>
+          <span>{guest ? "ゲスト · 設定" : "設定"}</span>
         </button>
         {settingsOpen &&
           createPortal(
             <Box
+              className={spatialStyles.overlay}
               position="fixed"
               inset={0}
               zIndex={100}
@@ -89,9 +142,11 @@ export default function UserMenu() {
               justifyContent="flex-end"
               p={{ base: 3, md: 5 }}
               bg="black/45"
-              onClick={() => setSettingsOpen(false)}
             >
               <Box
+                ref={panelRef}
+                className={spatialStyles.panel}
+                data-settings-panel
                 w={{ base: "full", md: "360px" }}
                 maxH="calc(100vh - 2rem)"
                 overflowY="auto"
@@ -104,48 +159,54 @@ export default function UserMenu() {
                 shadowColor="black/50"
                 onClick={(event) => event.stopPropagation()}
               >
-                <HStack justify="between" mb={5}>
-                  <HStack gap={2}>
-                    <Globe2 size={15} color="#a5b4fc" />
-                    <Text tag="h2" fontClass="callout-bold" color="onsurface">
-                      読書設定
-                    </Text>
-                  </HStack>
-                  <s.button
-                    type="button"
+                <header className={spatialStyles.header}>
+                  <Text tag="h2" fontClass="callout-bold" color="onsurface">
+                    設定
+                  </Text>
+                  <CloseButton
                     onClick={() => setSettingsOpen(false)}
-                    color="slate.500"
-                    fontSize="xs"
-                  >
-                    閉じる
-                  </s.button>
-                </HStack>
+                    aria-label="設定を閉じる"
+                  />
+                </header>
 
-                <HStack justify="between" mb={5}>
+                <HStack className={spatialStyles.profile} mb={5}>
+                  {!guest && session?.user.image ? (
+                    <Image
+                      src={session.user.image}
+                      alt=""
+                      width={56}
+                      height={56}
+                      unoptimized
+                      className={spatialStyles.avatar}
+                    />
+                  ) : (
+                    <span className={spatialStyles.avatar}>
+                      <UserRound size={26} aria-hidden="true" />
+                    </span>
+                  )}
                   <Text tag="span" fontClass="caption" color="onsurface">
-                    {session.user.name}
+                    {guest
+                      ? "ゲスト · このブラウザーに保存"
+                      : session?.user.name}
                   </Text>
-                  <button
-                    type="button"
-                    className={styles.glassButton}
-                    onClick={handleLogout}
-                  >
-                    <LogOut size={16} />
-                    ログアウト
-                  </button>
                 </HStack>
 
-                <Box mb={6}>
-                  <Text tag="label" fontClass="caption" color="outline">
-                    読書タイムゾーン
-                  </Text>
+                <GuestDataControls guest={guest} userId={session?.user.id} />
+
+                <Box mb={6} className={spatialStyles.readingSettings}>
+                  <h3>読書の設定</h3>
+                  <s.label htmlFor="reading-timezone">
+                    <Text tag="span" fontClass="caption" color="outline">
+                      タイムゾーン
+                    </Text>
+                  </s.label>
                   <Text tag="p" fontClass="capline" color="outline">
-                    読書日の境界に使うIANAタイムゾーンです。
+                    読書日の区切りに使います
                   </Text>
-                  <s.input
+                  <s.select
+                    id="reading-timezone"
                     value={timezoneDraft}
                     onChange={(event) => setTimezoneDraft(event.target.value)}
-                    placeholder="Asia/Tokyo"
                     mt={2}
                     w="full"
                     px={3}
@@ -157,7 +218,13 @@ export default function UserMenu() {
                     color="slate.100"
                     fontSize="sm"
                     _focus={{ borderColor: "indigo.400/60", outline: "none" }}
-                  />
+                  >
+                    {timezones.map((timezone) => (
+                      <option key={timezone} value={timezone}>
+                        {timezone}
+                      </option>
+                    ))}
+                  </s.select>
                   {timezoneError && (
                     <Text
                       tag="p"
@@ -169,6 +236,7 @@ export default function UserMenu() {
                     </Text>
                   )}
                   <s.button
+                    className={spatialStyles.save}
                     type="button"
                     mt={3}
                     w="full"
@@ -182,19 +250,25 @@ export default function UserMenu() {
                     fontWeight="semibold"
                     onClick={() => void saveTimezone()}
                   >
-                    タイムゾーンを保存
+                    保存
                   </s.button>
                 </Box>
 
-                <Box>
-                  <HStack justify="between" mb={2}>
+                <details className={spatialStyles.archive}>
+                  <summary>
+                    <BookOpen size={20} aria-hidden="true" />
                     <Text tag="h3" fontClass="caption-bold" color="outline">
-                      アーカイブ済み
+                      アーカイブした本
                     </Text>
                     <Text tag="span" fontClass="capline" color="outline">
                       {archivedBooks.length}冊
                     </Text>
-                  </HStack>
+                    <ChevronRight
+                      size={16}
+                      className={spatialStyles.archiveChevron}
+                      aria-hidden="true"
+                    />
+                  </summary>
                   {archivedBooks.length === 0 ? (
                     <Text tag="p" fontClass="capline" color="outline">
                       アーカイブされた本はありません。
@@ -231,7 +305,17 @@ export default function UserMenu() {
                       ))}
                     </Box>
                   )}
-                </Box>
+                </details>
+                {!guest && (
+                  <button
+                    type="button"
+                    className={spatialStyles.logout}
+                    onClick={handleLogout}
+                  >
+                    <LogOut size={20} aria-hidden="true" />
+                    ログアウト
+                  </button>
+                )}
               </Box>
             </Box>,
             document.body,

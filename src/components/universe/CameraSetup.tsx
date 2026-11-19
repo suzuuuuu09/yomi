@@ -2,7 +2,8 @@
 
 import { useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useRef } from "react";
-import type { PerspectiveCamera, Vector3 } from "three";
+import { type PerspectiveCamera, Vector3 } from "three";
+import useBookListStore from "@/store/useBookListStore";
 import type { Book } from "@/types/library";
 
 type ControlsRef = React.RefObject<{
@@ -13,22 +14,36 @@ type ControlsRef = React.RefObject<{
 interface CameraSetupProps {
   books: Book[];
   controlsRef: ControlsRef;
-  vrMode: boolean;
-  gyroGranted: boolean;
   selectedBookId: string | null;
 }
 
+export function getSelectionOffset(
+  width: number,
+  height: number,
+  listOpen: boolean,
+): [number, number] {
+  if (width < 768) return [0, height * 0.22];
+  return [
+    listOpen
+      ? -(Math.min(465, width * 0.34) / 2 + 18)
+      : Math.min(500, width - 56) / 2 + 14,
+    0,
+  ];
+}
+
 export function CameraSetup(props: CameraSetupProps) {
-  const { books, controlsRef, vrMode, gyroGranted, selectedBookId } = props;
+  const { books, controlsRef, selectedBookId } = props;
   const { camera, size } = useThree();
   const initializedSize = useRef("");
-  const vrPositioned = useRef(false);
+  const listOpen = useBookListStore((state) => state.isOpen);
+  const selectedBook = books.find((book) => book.id === selectedBookId);
+  const [selectedX, selectedY, selectedZ] = selectedBook?.position ?? [0, 0, 0];
 
-  // 重心と分布半径を計算するユーティリティ
+  // 本の重心を計算する
   const computeBounds = useCallback(() => {
     const n = books.length;
 
-    if (n === 0) return { cx: 0, cy: 0, cz: 0, radius: 1 }; // 欲がないときは原点
+    if (n === 0) return { cx: 0, cy: 0, cz: 0 }; // 欲がないときは原点
 
     const cx = books.reduce((sum, b) => sum + b.position[0], 0) / n;
     const cy = books.reduce((sum, b) => sum + b.position[1], 0) / n;
@@ -36,35 +51,32 @@ export function CameraSetup(props: CameraSetupProps) {
     /* let cx = 0,
       cy = 0,
       cz = 0; */
-    const radius = books.reduce((max, b) => {
-      const d = Math.hypot(
-        b.position[0] - cx,
-        b.position[1] - cy,
-        b.position[2] - cz,
-      );
-      return Math.max(max, d);
-    }, 0);
-    return { cx, cy, cz, radius };
+    return { cx, cy, cz };
   }, [books]);
 
   useEffect(() => {
     const perspective = camera as PerspectiveCamera;
-    if (selectedBookId && !vrMode) {
+    if (selectedBookId) {
+      const [offsetX, offsetY] = getSelectionOffset(
+        size.width,
+        size.height,
+        listOpen,
+      );
       perspective.setViewOffset(
         size.width,
         size.height,
-        size.width < 768 ? 0 : 200,
-        size.width < 768 ? size.height * 0.22 : 0,
+        offsetX,
+        offsetY,
         size.width,
         size.height,
       );
     } else perspective.clearViewOffset();
     return () => perspective.clearViewOffset();
-  }, [camera, selectedBookId, size, vrMode]);
+  }, [camera, selectedBookId, size, listOpen]);
 
   // 通常モードの初期カメラ配置
   useEffect(() => {
-    const viewportKey = `${size.width}x${size.height}:${!!selectedBookId}`;
+    const viewportKey = `${size.width}x${size.height}`;
     if (initializedSize.current === viewportKey || books.length === 0) return;
     initializedSize.current = viewportKey;
 
@@ -107,20 +119,25 @@ export function CameraSetup(props: CameraSetupProps) {
     controlsRef.current?.update();
   }, [books, camera, size, controlsRef, computeBounds, selectedBookId]);
 
-  // VRモード時のカメラ配置: 全体を適度に俯瞰できる位置へ
   useEffect(() => {
-    if (!vrMode || !gyroGranted || books.length === 0) {
-      vrPositioned.current = false;
+    const controls = controlsRef.current;
+    if (!selectedBookId || !controls || size.width === 0 || size.height === 0)
       return;
-    }
-    if (vrPositioned.current) return;
-    vrPositioned.current = true;
 
-    const { cx, cy, cz, radius } = computeBounds();
-    const vrDist = Math.min(Math.max(radius * 0.45, 3), 12);
-    camera.position.set(cx, cy, cz + vrDist);
-    camera.lookAt(cx, cy, cz);
-  }, [vrMode, gyroGranted, books, camera, computeBounds]);
+    const target = new Vector3(selectedX, selectedY, selectedZ);
+    camera.position.add(target.clone().sub(controls.target));
+    controls.target.copy(target);
+    controls.update();
+  }, [
+    camera,
+    controlsRef,
+    selectedBookId,
+    selectedX,
+    selectedY,
+    selectedZ,
+    size.width,
+    size.height,
+  ]);
 
   return null;
 }

@@ -1,4 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createTestDatabase } from "./support/d1";
+
+let database: ReturnType<typeof createTestDatabase>;
+vi.mock("@/server/lib/db", () => ({ getDBFromContext: () => database.db }));
 
 vi.mock("@/server/lib/auth", () => ({
   createAuth: () => ({
@@ -22,16 +26,42 @@ import app from "@/server";
 
 describe("search HTTP route", () => {
   beforeEach(() => {
+    database = createTestDatabase();
     vi.stubGlobal("fetch", vi.fn());
   });
+  afterEach(() => {
+    database.sqlite.close();
+    vi.unstubAllGlobals();
+  });
 
-  it("requires an authenticated session", async () => {
+  it("ゲストも認証なしで検索できる", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ totalItems: 0 })),
+    );
     const response = await app.request("/api/search?q=TypeScript");
 
-    expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toMatchObject({
-      error: { code: "UNAUTHORIZED" },
-    });
+    expect(response.status).toBe(200);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("検索上限に達すると外部APIを呼ばず、次の時間枠では再開できる", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-30T00:00:00Z"));
+    try {
+      vi.mocked(fetch).mockImplementation(
+        async () => new Response(JSON.stringify({ totalItems: 0 })),
+      );
+      for (let index = 0; index < 30; index += 1)
+        expect((await app.request("/api/search?q=本")).status).toBe(200);
+      const limited = await app.request("/api/search?q=本");
+      expect(limited.status).toBe(429);
+      expect(limited.headers.get("Retry-After")).toBe("60");
+      expect(fetch).toHaveBeenCalledTimes(30);
+      vi.setSystemTime(new Date("2026-10-30T00:01:01Z"));
+      expect((await app.request("/api/search?q=本")).status).toBe(200);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("rejects an empty or over-sized search request before the upstream call", async () => {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Box, Flex, styled as s } from "styled-system/jsx";
+import CloseButton from "@/components/shares/CloseButton";
 import Modal from "@/components/shares/modal/Modal";
 
 interface DeleteBookModalProps {
@@ -50,14 +51,25 @@ export default function DeleteBookModal(props: DeleteBookModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={handleCancel}>
       <Box
+        position="relative"
+        role="dialog"
+        aria-labelledby="delete-book-title"
         p={4}
+        pt={14}
         rounded="2xl"
         border="1px solid"
         borderColor="red.500/20"
         bg="red.500/6"
         animation="fadeIn 0.15s ease-out"
       >
-        <s.p fontSize="xs" color="red.300" mb={3} textAlign="center">
+        <CloseButton onClick={handleCancel} aria-label="削除確認を閉じる" />
+        <s.p
+          id="delete-book-title"
+          fontSize="xs"
+          color="red.300"
+          mb={3}
+          textAlign="center"
+        >
           {confirming === "permanent"
             ? "本と読書履歴を完全削除しますか？"
             : confirming === "archive"

@@ -18,11 +18,22 @@ books 1--N reading_notes
 books 1--N reading_logs
 
 verifications（外部キーなし）
+users 1--N guest_book_imports
+search_rate_limits（外部キーなし）
 ```
 
 ---
 
 ## テーブル定義
+
+### ゲスト引き継ぎと検索制限
+
+`drizzle/0003_guest_book_imports.sql` は次の2テーブルを追加する。リリース前に対象D1へマイグレーションを適用する。
+
+- `guest_book_imports`: `id`（TEXT PK）と`user_id`（usersへの外部キー）。利用者・ゲスト蔵書・元の本IDから生成する引き継ぎ完了印。本の完全削除後も残し、再試行で復活させない。利用者の削除時は連動して削除する。
+- `search_rate_limits`: `key`（TEXT PK）、`window`（INTEGER、分単位）、`count`（INTEGER）。接続元のハッシュ値と全体の検索回数を原子的に加算する。古い時間枠の行は検索時に削除する。
+
+ゲストの本・メモ・ログはD1へ自動保存しない。ブラウザー内のバージョン付きデータとして保持し、利用者が引き継ぎを選んだ場合だけ、既存の`books`・`reading_notes`・`reading_logs`へ追加する。
 
 ### Better Auth 管理テーブル
 

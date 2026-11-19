@@ -22,6 +22,13 @@
       "when": 1786545607901,
       "tag": "0002_strong_human_robot",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793293638222,
+      "tag": "0003_guest_book_imports",
+      "breakpoints": true
     }
   ]
 }

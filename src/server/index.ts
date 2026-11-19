@@ -3,6 +3,7 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { apiError } from "@/server/lib/api-error";
 import authApp from "@/server/routes/auth";
 import booksApp from "@/server/routes/books";
+import guestImportApp from "@/server/routes/guest-import";
 import readingLogsApp from "@/server/routes/reading-logs";
 import searchApp from "@/server/routes/search";
 
@@ -23,6 +24,7 @@ app.onError((error, c) => {
 app.route("/auth", authApp);
 app.route("/search", searchApp);
 app.route("/books", booksApp);
+app.route("/guest-import", guestImportApp);
 app.route("/reading-logs", readingLogsApp);
 
 app.get("/", (c) => {

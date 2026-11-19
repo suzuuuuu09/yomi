@@ -66,10 +66,11 @@ export const BarcodeScanner = ({ onScan }: ScannerProps) => {
       >
         <s.video
           muted
+          playsInline
           ref={videoRef}
           width="full"
           height="full"
-          objectFit="cover"
+          objectFit="contain"
         />
         <Center position="absolute" inset={0} pointerEvents="none">
           <Box

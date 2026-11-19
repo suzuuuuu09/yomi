@@ -44,7 +44,7 @@ function readRevisionQuery(c: Parameters<typeof apiError>[0]) {
   const raw = c.req.query("readingTimezoneRevision");
   if (raw === undefined) return { value: undefined as number | undefined };
   const value = Number(raw);
-  if (!Number.isSafeInteger(value) || value < 0) {
+  if (!Number.isSafeInteger(value)) {
     return { error: "readingTimezoneRevisionが不正です" };
   }
   return { value };

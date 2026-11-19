@@ -1,0 +1,28 @@
+.button {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #e5e7ff;
+  cursor: pointer;
+}
+.button:hover {
+  background: #ffffff14;
+}
+.button:focus-visible {
+  outline: 2px solid #c4b5fd;
+  outline-offset: 2px;
+}
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

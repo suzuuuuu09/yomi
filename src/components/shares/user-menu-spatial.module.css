@@ -1,0 +1,146 @@
+.overlay {
+  background: transparent;
+  pointer-events: none;
+  padding: 18px 30px;
+}
+.panel {
+  position: relative;
+  pointer-events: auto;
+  margin-top: 64px;
+  width: min(340px, calc(100vw - 24px));
+  max-height: calc(100dvh - 104px);
+  padding: 20px;
+  border: 1px solid #7376bd;
+  border-radius: 16px;
+  background: #050b22ed;
+  box-shadow: 0 16px 40px #00000040;
+  backdrop-filter: blur(12px);
+  color: #eceaff;
+}
+.panel h2 {
+  font-size: 22px;
+  font-weight: 600;
+}
+.panel h3 {
+  font-size: 18px;
+  font-weight: 600;
+}
+.panel button {
+  cursor: pointer;
+}
+.profile {
+  gap: 18px;
+  padding: 4px 0 22px;
+  border-bottom: 1px solid #7473ad44;
+}
+.profile > span {
+  font-size: 16px;
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border: 1px solid #9d98cf;
+  border-radius: 50%;
+  background: #13284a;
+  color: #d6d7ff;
+}
+.readingSettings {
+  display: flex;
+  flex-direction: column;
+}
+.readingSettings h3 {
+  order: 0;
+  margin-bottom: 16px;
+}
+.readingSettings label {
+  order: 1;
+}
+.readingSettings label span {
+  font-size: 15px;
+  color: #e6e3fa;
+}
+.readingSettings select {
+  order: 2;
+  min-height: 44px;
+  border: 1px solid #7779b7;
+  border-radius: 8px;
+  background: #111a39;
+  font-size: 15px;
+}
+.readingSettings > p {
+  order: 3;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.save {
+  order: 4;
+  min-height: 48px;
+  margin-top: 20px;
+  border: 1px solid #ad8bff;
+  border-radius: 10px;
+  background: #7136ff;
+  box-shadow: 0 0 14px #7438ff44;
+  color: white;
+  font-size: 16px;
+}
+.archive {
+  padding: 20px 0;
+  border-block: 1px solid #7473ad44;
+}
+.archive > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  cursor: pointer;
+  color: #e7e5fc;
+  list-style: none;
+}
+.archive h3 {
+  font-size: 15px;
+  font-weight: 400;
+}
+.archive > summary::-webkit-details-marker {
+  display: none;
+}
+.archiveChevron {
+  margin-left: auto;
+}
+.archive[open] .archiveChevron {
+  transform: rotate(90deg);
+}
+.archive[open] > summary {
+  margin-bottom: 16px;
+}
+.logout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 4px 2px;
+  color: #a4a0bd;
+  font-size: 15px;
+}
+.panel button:focus-visible,
+.archive > summary:focus-visible {
+  outline: 2px solid #d1b7ff;
+  outline-offset: 3px;
+}
+@media (max-width: 767px) {
+  .overlay {
+    padding: 12px;
+  }
+  .panel {
+    margin-top: 54px;
+    max-height: calc(100dvh - 90px);
+  }
+}
+
+.header {
+  min-height: 36px;
+  padding-right: 44px;
+  margin-bottom: 20px;
+}

@@ -1,8 +1,19 @@
-import type { LkIconButtonProps } from "~liftkit/icon-button";
-import IconButton from "~liftkit/icon-button";
+import { X } from "lucide-react";
+import type { ButtonHTMLAttributes } from "react";
+import styles from "./close-button.module.css";
 
-interface CloseButtonProps extends Omit<LkIconButtonProps, "icon"> {}
-
-export default function CloseButton(props: CloseButtonProps) {
-  return <IconButton icon="x" variant="text" aria-label="閉じる" {...props} />;
+export default function CloseButton({
+  className,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type="button"
+      aria-label="閉じる"
+      {...props}
+      className={`${styles.button} ${className ?? ""}`}
+    >
+      <X size={18} aria-hidden="true" />
+    </button>
+  );
 }
