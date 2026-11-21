@@ -28,7 +28,7 @@
     "@hono/zod-openapi": "^1.5.1",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.8.2",
-    "@zxing/library": "^0.21.3",
+    "@zxing/library": "^0.23.0",
     "better-auth": "^1.6.25",
     "better-sqlite3": "^12.6.2",
     "dotenv": "^17.3.1",
